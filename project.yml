@@ -1,0 +1,123 @@
+name: RightClick
+
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: true
+    CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: true
+
+targets:
+  RightClickCore:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/RightClickCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick.Core
+        GENERATE_INFOPLIST_FILE: true
+        DEFINES_MODULE: true
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  RightClick:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/RightClickApp
+    dependencies:
+      - target: RightClickCore
+        embed: true
+      - target: RightClickFinderExtension
+        embed: true
+    info:
+      path: Configuration/RightClick-Info.plist
+      properties:
+        CFBundleDisplayName: RightClick
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.utilities
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSPrincipalClass: NSApplication
+        CFBundleURLTypes:
+          - CFBundleURLName: com.example.RightClick.request
+            CFBundleURLSchemes:
+              - rightclick
+    entitlements:
+      path: Configuration/RightClick.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.RightClick
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick
+        PRODUCT_NAME: RightClick
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        CODE_SIGN_ENTITLEMENTS: Configuration/RightClick.entitlements
+
+  RightClickFinderExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Sources/RightClickFinderExtension
+    dependencies:
+      - target: RightClickCore
+        embed: true
+    info:
+      path: Configuration/RightClickFinderExtension-Info.plist
+      properties:
+        CFBundleDisplayName: RightClick Finder Extension
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSExtension:
+          NSExtensionAttributes: {}
+          NSExtensionPointIdentifier: com.apple.FinderSync
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).FinderSync
+    entitlements:
+      path: Configuration/RightClickFinderExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - group.com.example.RightClick
+        com.apple.security.files.user-selected.read-write: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick.FinderExtension
+        PRODUCT_NAME: RightClickFinderExtension
+        CODE_SIGN_ENTITLEMENTS: Configuration/RightClickFinderExtension.entitlements
+        APPLICATION_EXTENSION_API_ONLY: true
+        SKIP_INSTALL: true
+
+  RightClickCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/RightClickCoreTests
+    dependencies:
+      - target: RightClickCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick.CoreTests
+        GENERATE_INFOPLIST_FILE: true
+
+schemes:
+  RightClick:
+    build:
+      targets:
+        RightClick: all
+        RightClickFinderExtension: all
+        RightClickCore: all
+        RightClickCoreTests: [test]
+    test:
+      targets:
+        - RightClickCoreTests
