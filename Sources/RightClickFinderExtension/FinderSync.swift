@@ -5,11 +5,12 @@ import RightClickCore
 final class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
     private let fileCreator = FileCreator()
-    private let requestStore = RequestStore()
 
     override init() {
         super.init()
-        controller.directoryURLs = SharedSettings.shared.monitoredURLs
+        controller.directoryURLs = [
+            URL(fileURLWithPath: "/", isDirectory: true)
+        ]
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
@@ -88,8 +89,22 @@ final class FinderSync: FIFinderSync {
             case let .createFile(template):
                 guard let directory = context.creationDirectory else { return }
                 _ = try fileCreator.create(template, in: directory)
-            default:
-                try routeToHost(action, context: context)
+            case .openInVSCode:
+                try open(
+                    context.effectiveURLs,
+                    bundleIdentifiers: ["com.microsoft.VSCode"],
+                    applicationNames: ["Visual Studio Code"]
+                )
+            case .openInCodex:
+                try open(
+                    context.effectiveURLs,
+                    bundleIdentifiers: ["com.openai.codex"],
+                    applicationNames: ["Codex"]
+                )
+            case .runCodexCLI:
+                openHost(for: .codex, context: context)
+            case .runClaudeCode:
+                openHost(for: .claude, context: context)
             }
         } catch {
             NSLog("RightClick action failed: %@", error.localizedDescription)
@@ -102,18 +117,57 @@ final class FinderSync: FIFinderSync {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
-    private func routeToHost(
-        _ action: RightClickAction,
-        context: SelectionContext
+    private func open(
+        _ urls: [URL],
+        bundleIdentifiers: [String],
+        applicationNames: [String]
     ) throws {
-        let request = ActionRequest(
-            action: action,
-            selectedURLs: context.effectiveURLs,
-            targetedURL: context.targetedURL
+        let workspace = NSWorkspace.shared
+        let installedURL = bundleIdentifiers.lazy.compactMap {
+            workspace.urlForApplication(withBundleIdentifier: $0)
+        }.first
+        let conventionalURL = applicationNames.lazy
+            .map { URL(fileURLWithPath: "/Applications/\($0).app") }
+            .first { FileManager.default.fileExists(atPath: $0.path) }
+
+        guard let applicationURL = installedURL ?? conventionalURL else {
+            throw FinderActionError.applicationNotFound(
+                applicationNames.first ?? "应用"
+            )
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        workspace.open(
+            urls,
+            withApplicationAt: applicationURL,
+            configuration: configuration
         )
-        try requestStore.enqueue(request)
-        guard let deepLink = request.deepLink else { return }
+    }
+
+    private func openHost(
+        for command: CLICommand,
+        context: SelectionContext
+    ) {
+        guard let directory = context.workingDirectory,
+              let deepLink = CLIInvocation(
+                  command: command,
+                  workingDirectory: directory
+              ).deepLink else {
+            return
+        }
         NSWorkspace.shared.open(deepLink)
+    }
+}
+
+private enum FinderActionError: LocalizedError {
+    case applicationNotFound(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .applicationNotFound(name):
+            "未找到 \(name)，请先安装应用。"
+        }
     }
 }
 

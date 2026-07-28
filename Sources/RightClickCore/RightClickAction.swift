@@ -20,13 +20,4 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case let .createFile(template): template.title
         }
     }
-
-    public var requiresHostApp: Bool {
-        switch self {
-        case .openInVSCode, .openInCodex, .runCodexCLI, .runClaudeCode:
-            true
-        case .copyPath, .copyFilename, .createFile:
-            false
-        }
-    }
 }

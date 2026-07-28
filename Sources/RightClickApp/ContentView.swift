@@ -45,14 +45,23 @@ struct ContentView: View {
             }
 
             HStack {
-                Button("打开扩展设置") {
+                Button(model.extensionEnabled ? "管理扩展" : "启用 Finder 扩展") {
                     model.openExtensionSettings()
                 }
                 .buttonStyle(.borderedProminent)
 
-                Text("安装后需要在“登录项与扩展”中启用 Finder 扩展")
+                Label(
+                    model.extensionEnabled
+                        ? "Finder 扩展已启用"
+                        : "还差一步：请在系统设置中启用扩展",
+                    systemImage: model.extensionEnabled
+                        ? "checkmark.circle.fill"
+                        : "exclamationmark.circle"
+                )
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(
+                        model.extensionEnabled ? .green : .secondary
+                    )
             }
 
             Divider()

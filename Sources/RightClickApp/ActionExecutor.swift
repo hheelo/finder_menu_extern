@@ -2,87 +2,34 @@ import AppKit
 import RightClickCore
 
 enum ActionExecutorError: LocalizedError {
-    case applicationNotFound(String)
-    case missingWorkingDirectory
     case processFailed(String)
-    case unsupportedAction
 
     var errorDescription: String? {
         switch self {
-        case let .applicationNotFound(name):
-            "未找到 \(name)，请先安装应用。"
-        case .missingWorkingDirectory:
-            "无法确定要打开的工作目录。"
         case let .processFailed(message):
             "终端启动失败：\(message)"
-        case .unsupportedAction:
-            "宿主 App 收到了不应由它处理的操作。"
         }
     }
 }
 
 @MainActor
 struct ActionExecutor {
-    private let workspace = NSWorkspace.shared
-
     func execute(
-        _ request: ActionRequest,
+        _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile
     ) throws {
-        switch request.action {
-        case .openInVSCode:
-            try open(
-                request.selectedURLs,
-                bundleIdentifiers: ["com.microsoft.VSCode"],
-                displayName: "Visual Studio Code"
-            )
-        case .openInCodex:
-            try open(
-                request.selectedURLs,
-                bundleIdentifiers: ["com.openai.codex"],
-                displayName: "Codex"
-            )
-        case .runCodexCLI:
-            try run(.codex, request: request, terminalProfile: terminalProfile)
-        case .runClaudeCode:
-            try run(.claude, request: request, terminalProfile: terminalProfile)
-        case .copyPath, .copyFilename, .createFile:
-            throw ActionExecutorError.unsupportedAction
-        }
-    }
-
-    private func open(
-        _ urls: [URL],
-        bundleIdentifiers: [String],
-        displayName: String
-    ) throws {
-        guard let appURL = bundleIdentifiers.lazy.compactMap({
-            workspace.urlForApplication(withBundleIdentifier: $0)
-        }).first else {
-            throw ActionExecutorError.applicationNotFound(displayName)
-        }
-
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        workspace.open(
-            urls,
-            withApplicationAt: appURL,
-            configuration: configuration
+        try run(
+            invocation.command,
+            directory: invocation.workingDirectory,
+            terminalProfile: terminalProfile
         )
     }
 
     private func run(
         _ command: CLICommand,
-        request: ActionRequest,
+        directory: URL,
         terminalProfile: TerminalProfile
     ) throws {
-        guard let directory = SelectionContext(
-            selectedURLs: request.selectedURLs,
-            targetedURL: request.targetedURL
-        ).workingDirectory else {
-            throw ActionExecutorError.missingWorkingDirectory
-        }
-
         let shellCommand = ShellCommandBuilder.command(command, in: directory)
         let script = appleScript(
             terminalProfile: terminalProfile,

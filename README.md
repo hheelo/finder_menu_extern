@@ -11,27 +11,53 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 
 ```text
 RightClick.app
-├── SwiftUI 设置与状态界面
-├── ActionExecutor（打开 App、启动终端命令）
+├── SwiftUI 设置、扩展状态与启用入口
+├── ActionExecutor（启动终端命令）
 └── RightClickFinderExtension.appex
-    └── Finder 菜单、复制、新建文件、请求转发
+    └── Finder 菜单、复制、新建文件、打开编辑器
 
 RightClickCore.framework
-└── 动作模型、选区规则、文件模板、共享请求与设置
+└── 动作模型、选区规则、文件模板、CLI 链接与设置
 ```
 
-Finder 扩展保持轻量：复制和新建文件在扩展进程中完成；打开应用、AppleScript
-和 CLI 启动通过 App Group 请求队列交给宿主 App。
+Finder 扩展直接完成复制、新建文件以及打开编辑器。运行 CLI 时，扩展通过只包含
+工具名称与工作目录的 `rightclick://run` 链接唤起宿主 App。项目不依赖 App
+Group、开发团队或 provisioning profile。
 
-## 本地构建
+## 安装
+
+### 从 DMG 安装
+
+从 [GitHub Releases](https://github.com/hheelo/finder_menu_extern/releases)
+下载最新的 `RightClick-版本号.dmg`，将 App 拖入 Applications。
+
+当前版本使用 Ad-hoc 签名，没有 Developer ID 公证。首次打开时：
+
+1. 尝试打开 RightClick
+2. 前往“系统设置 → 隐私与安全性”
+3. 点击“仍要打开”
+4. 回到 RightClick，点击“启用 Finder 扩展”
+
+### 一键本地安装
+
+已安装 Xcode 的开发者可以运行：
+
+```sh
+git clone https://github.com/hheelo/finder_menu_extern.git
+cd finder_menu_extern
+./scripts/install.sh
+```
+
+脚本会构建通用 App、进行 Ad-hoc 签名、备份已有版本、安装到
+`~/Applications`，注册 Finder 扩展并启动 RightClick。
+
+## 开发
 
 1. 安装 XcodeGen：`brew install xcodegen`
 2. 运行 `xcodegen generate`
 3. 打开 `RightClick.xcodeproj`
-4. 将 `com.example`、`group.com.example.RightClick` 替换为自己的标识
-5. 给 App 与 Finder Extension 选择同一个开发团队，并创建同名 App Group
-6. 运行 `RightClick` scheme
-7. 点击 App 内的“打开扩展设置”，启用 RightClick Finder Extension
+4. 运行 `RightClick` scheme
+5. 点击 App 内的“启用 Finder 扩展”
 
 命令行验证：
 
@@ -45,11 +71,26 @@ xcodebuild -project RightClick.xcodeproj \
   test
 ```
 
-## 分发策略
+本地生成 DMG：
 
-首选 Developer ID 直接分发并公证。宿主 App 需要调用本机编辑器、CLI 和终端，
-不以 Mac App Store 沙盒版本为第一目标。Finder Sync 最初是为同步软件设计的；
-本项目将 `/` 作为监控根目录以提供全局右键菜单，因此上架前需要重新评估审核策略。
+```sh
+VERSION=0.1.0 ./scripts/build-release.sh
+```
+
+产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。
+
+## 发布
+
+推送 `v` 开头的 Tag 会触发 GitHub Actions，自动构建 Ad-hoc 签名的通用
+DMG、生成校验文件并创建 GitHub Release：
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+没有 Developer ID 时，macOS 会要求用户首次手动允许打开。Homebrew 或安装脚本
+不能安全消除此限制。本项目不会自动移除 quarantine 属性。
 
 更多设计与里程碑见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 和
 [docs/ROADMAP.md](docs/ROADMAP.md)。

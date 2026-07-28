@@ -1,7 +1,7 @@
 name: RightClick
 
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: com.hheelo
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -24,7 +24,7 @@ targets:
       - Sources/RightClickCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick.Core
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.Core
         GENERATE_INFOPLIST_FILE: true
         DEFINES_MODULE: true
         APPLICATION_EXTENSION_API_ONLY: true
@@ -49,20 +49,14 @@ targets:
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSPrincipalClass: NSApplication
         CFBundleURLTypes:
-          - CFBundleURLName: com.example.RightClick.request
+          - CFBundleURLName: com.hheelo.RightClick.command
             CFBundleURLSchemes:
               - rightclick
-    entitlements:
-      path: Configuration/RightClick.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.example.RightClick
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick
         PRODUCT_NAME: RightClick
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
-        CODE_SIGN_ENTITLEMENTS: Configuration/RightClick.entitlements
 
   RightClickFinderExtension:
     type: app-extension
@@ -87,12 +81,10 @@ targets:
       path: Configuration/RightClickFinderExtension.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.application-groups:
-          - group.com.example.RightClick
         com.apple.security.files.user-selected.read-write: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick.FinderExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.FinderExtension
         PRODUCT_NAME: RightClickFinderExtension
         CODE_SIGN_ENTITLEMENTS: Configuration/RightClickFinderExtension.entitlements
         APPLICATION_EXTENSION_API_ONLY: true
@@ -107,7 +99,7 @@ targets:
       - target: RightClickCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.RightClick.CoreTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.CoreTests
         GENERATE_INFOPLIST_FILE: true
 
 schemes:
