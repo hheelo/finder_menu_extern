@@ -4,7 +4,7 @@ set -euo pipefail
 
 script_dir="${0:A:h}"
 project_dir="${script_dir:h}"
-version="${VERSION:-0.1.0}"
+version="${VERSION:-0.2.0}"
 version="${version#v}"
 release_root="${project_dir}/.build/release"
 derived_data="${project_dir}/.build/ReleaseDerivedData"
@@ -19,10 +19,6 @@ fi
 
 cd "${project_dir}"
 
-if command -v xcodegen >/dev/null 2>&1; then
-    xcodegen generate
-fi
-
 rm -rf "${release_root}" "${derived_data}"
 mkdir -p "${staging_dir}" "${output_dir}"
 
@@ -33,6 +29,8 @@ xcodebuild \
     -configuration Release \
     -derivedDataPath "${derived_data}" \
     MARKETING_VERSION="${version}" \
+    ARCHS="arm64 x86_64" \
+    ONLY_ACTIVE_ARCH=NO \
     CODE_SIGN_STYLE=Manual \
     CODE_SIGN_IDENTITY=- \
     CODE_SIGNING_ALLOWED=YES \
@@ -41,7 +39,7 @@ xcodebuild \
     build
 
 built_app="${derived_data}/Build/Products/Release/RightClick.app"
-codesign --verify --deep --strict "${built_app}"
+"${project_dir}/scripts/verify-app.sh" "${built_app}"
 
 ditto "${built_app}" "${staging_dir}/RightClick.app"
 ln -s /Applications "${staging_dir}/Applications"
@@ -57,6 +55,8 @@ hdiutil create \
     cd "${output_dir}"
     shasum -a 256 "${dmg_name}" > "${dmg_name}.sha256"
 )
+
+"${project_dir}/scripts/verify-dmg.sh" "${output_dir}/${dmg_name}"
 
 echo "Release 产物："
 echo "  ${output_dir}/${dmg_name}"

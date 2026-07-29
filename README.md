@@ -6,6 +6,7 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 - 用 Visual Studio Code 或 Codex 打开
 - 在 Terminal / iTerm2 中运行 Codex CLI 或 Claude Code
 - 新建 TXT、Markdown、Python、Shell、HTML、JSON、CSV 文件
+- 启动 CLI 前确认工作目录，并提供本地环境诊断
 
 ## 工程结构
 
@@ -49,7 +50,20 @@ cd finder_menu_extern
 ```
 
 脚本会构建通用 App、进行 Ad-hoc 签名、备份已有版本、安装到
-`~/Applications`，注册 Finder 扩展并启动 RightClick。
+`~/Applications`，注册 Finder 扩展并启动 RightClick。旧版本会压缩到
+`~/Library/Application Support/RightClick/Backups`，不会在 Applications
+目录留下同 Bundle ID 的扩展副本。
+
+如果升级后 Finder 仍显示旧菜单，可在 RightClick 中点击“重启 Finder”。
+
+## 安全与诊断
+
+- `rightclick://` 只接受固定的 `codex` / `claude` 工具标识
+- 工作目录必须是现有的绝对文件夹路径
+- 默认在启动 CLI 前显示工具、终端和工作目录确认
+- 路径通过 `osascript` 参数传递，不会插入 AppleScript 源码
+- 设置页会检测 Finder 扩展、编辑器、iTerm2 与 CLI
+- 主窗口可复制诊断信息，便于提交 Issue
 
 ## 开发
 
@@ -71,26 +85,30 @@ xcodebuild -project RightClick.xcodeproj \
   test
 ```
 
-本地生成 DMG：
+本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.1.0 ./scripts/build-release.sh
+VERSION=0.2.0 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。
+构建脚本会验证签名、Bundle ID、宿主/扩展版本、`arm64`/`x86_64`
+架构以及 DMG 挂载内容。
 
 ## 发布
 
-推送 `v` 开头的 Tag 会触发 GitHub Actions，自动构建 Ad-hoc 签名的通用
-DMG、生成校验文件并创建 GitHub Release：
+每次推送和 Pull Request 都会运行编译与单元测试。推送 `v` 开头的 Tag
+会在测试通过后构建并验证 Ad-hoc 签名的通用 DMG、生成校验文件并创建
+GitHub Release：
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 没有 Developer ID 时，macOS 会要求用户首次手动允许打开。Homebrew 或安装脚本
 不能安全消除此限制。本项目不会自动移除 quarantine 属性。
 
 更多设计与里程碑见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 和
-[docs/ROADMAP.md](docs/ROADMAP.md)。
+[docs/ROADMAP.md](docs/ROADMAP.md)。发布前的真实环境验证步骤见
+[docs/TESTING.md](docs/TESTING.md)。

@@ -17,6 +17,7 @@
 		5B49569EBA1E9528D5B5F018 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E4749E7D55BE88F7397F35 /* AppModel.swift */; };
 		71E701CA58A0DA8B61C9EA6C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B165B70C5575CF81EE1AE7F7 /* SettingsView.swift */; };
 		75E36BB1E430614EBC91681C /* FinderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1BE9A934567D43F5488B14 /* FinderSync.swift */; };
+		7E190D62E09D55A3C2D195EB /* AppDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA93CC2C2D78CF5533BB9135 /* AppDiagnostics.swift */; };
 		84FC137ADCC2949D19B55967 /* ActionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7299E52324848B5CC0E1CD18 /* ActionExecutor.swift */; };
 		9E532FC8F84BC0421631F804 /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
 		A0C86492645226D2CF94FCA0 /* CLIInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84148B02F7F318AD2AD90ADD /* CLIInvocationTests.swift */; };
@@ -131,6 +132,7 @@
 		A622FFA01AC38A389944D8D4 /* FileCreator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCreator.swift; sourceTree = "<group>"; };
 		A68AA4C0E0FA472C54F55ED1 /* SelectionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionContext.swift; sourceTree = "<group>"; };
 		B165B70C5575CF81EE1AE7F7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BA93CC2C2D78CF5533BB9135 /* AppDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiagnostics.swift; sourceTree = "<group>"; };
 		BB1BE9A934567D43F5488B14 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		C7D5B1DDABAF04AEA0F0B397 /* RightClick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RightClick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E443EF553D797AE2521933E9 /* FileTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTemplate.swift; sourceTree = "<group>"; };
@@ -197,6 +199,7 @@
 			isa = PBXGroup;
 			children = (
 				7299E52324848B5CC0E1CD18 /* ActionExecutor.swift */,
+				BA93CC2C2D78CF5533BB9135 /* AppDiagnostics.swift */,
 				A5E4749E7D55BE88F7397F35 /* AppModel.swift */,
 				9FD7F83B07E605091F56E6D3 /* ContentView.swift */,
 				A0BC918B1EB142D3FA66DC8C /* RightClickApp.swift */,
@@ -420,6 +423,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84FC137ADCC2949D19B55967 /* ActionExecutor.swift in Sources */,
+				7E190D62E09D55A3C2D195EB /* AppDiagnostics.swift in Sources */,
 				5B49569EBA1E9528D5B5F018 /* AppModel.swift in Sources */,
 				A83BF1C191764624D565794F /* ContentView.swift in Sources */,
 				545803F894D40A1C38EA4ED8 /* RightClickApp.swift in Sources */,
@@ -530,7 +534,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -551,7 +555,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -694,7 +698,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -709,7 +713,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

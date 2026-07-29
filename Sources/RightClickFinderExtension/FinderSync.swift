@@ -18,12 +18,31 @@ final class FinderSync: FIFinderSync {
         let context = currentContext
 
         if menuKind == .contextualMenuForItems {
-            menu.addItem(actionItem(.copyPath))
-            menu.addItem(actionItem(.copyFilename))
+            let hasSelection = !context.effectiveURLs.isEmpty
+            menu.addItem(actionItem(.copyPath, isEnabled: hasSelection))
+            menu.addItem(actionItem(.copyFilename, isEnabled: hasSelection))
             menu.addItem(.separator())
-            menu.addItem(actionItem(.openInVSCode))
-            menu.addItem(actionItem(.openInCodex))
-            menu.addItem(runSubmenu())
+            menu.addItem(
+                actionItem(
+                    .openInVSCode,
+                    isEnabled: hasSelection && isApplicationInstalled(
+                        bundleIdentifiers: ["com.microsoft.VSCode"],
+                        applicationNames: ["Visual Studio Code"]
+                    )
+                )
+            )
+            menu.addItem(
+                actionItem(
+                    .openInCodex,
+                    isEnabled: hasSelection && isApplicationInstalled(
+                        bundleIdentifiers: ["com.openai.codex"],
+                        applicationNames: ["Codex"]
+                    )
+                )
+            )
+            menu.addItem(
+                runSubmenu(isEnabled: context.workingDirectory != nil)
+            )
         }
 
         if menuKind == .contextualMenuForContainer ||
@@ -44,7 +63,10 @@ final class FinderSync: FIFinderSync {
         )
     }
 
-    private func actionItem(_ action: RightClickAction) -> NSMenuItem {
+    private func actionItem(
+        _ action: RightClickAction,
+        isEnabled: Bool = true
+    ) -> NSMenuItem {
         let item = NSMenuItem(
             title: action.title,
             action: #selector(performAction(_:)),
@@ -52,15 +74,17 @@ final class FinderSync: FIFinderSync {
         )
         item.target = self
         item.representedObject = ActionBox(action)
+        item.isEnabled = isEnabled
         return item
     }
 
-    private func runSubmenu() -> NSMenuItem {
+    private func runSubmenu(isEnabled: Bool) -> NSMenuItem {
         let root = NSMenuItem(title: "在终端中运行", action: nil, keyEquivalent: "")
         let submenu = NSMenu(title: root.title)
-        submenu.addItem(actionItem(.runCodexCLI))
-        submenu.addItem(actionItem(.runClaudeCode))
+        submenu.addItem(actionItem(.runCodexCLI, isEnabled: isEnabled))
+        submenu.addItem(actionItem(.runClaudeCode, isEnabled: isEnabled))
         root.submenu = submenu
+        root.isEnabled = isEnabled
         return root
     }
 
@@ -88,7 +112,8 @@ final class FinderSync: FIFinderSync {
                 copy(ClipboardText.filenames(for: context.effectiveURLs))
             case let .createFile(template):
                 guard let directory = context.creationDirectory else { return }
-                _ = try fileCreator.create(template, in: directory)
+                let createdURL = try fileCreator.create(template, in: directory)
+                NSWorkspace.shared.activateFileViewerSelecting([createdURL])
             case .openInVSCode:
                 try open(
                     context.effectiveURLs,
@@ -102,12 +127,13 @@ final class FinderSync: FIFinderSync {
                     applicationNames: ["Codex"]
                 )
             case .runCodexCLI:
-                openHost(for: .codex, context: context)
+                try openHost(for: .codex, context: context)
             case .runClaudeCode:
-                openHost(for: .claude, context: context)
+                try openHost(for: .claude, context: context)
             }
         } catch {
             NSLog("RightClick action failed: %@", error.localizedDescription)
+            Self.present(message: error.localizedDescription)
         }
     }
 
@@ -127,7 +153,13 @@ final class FinderSync: FIFinderSync {
             workspace.urlForApplication(withBundleIdentifier: $0)
         }.first
         let conventionalURL = applicationNames.lazy
-            .map { URL(fileURLWithPath: "/Applications/\($0).app") }
+            .flatMap { name in
+                [
+                    URL(fileURLWithPath: "/Applications/\(name).app"),
+                    FileManager.default.homeDirectoryForCurrentUser
+                        .appendingPathComponent("Applications/\(name).app")
+                ]
+            }
             .first { FileManager.default.fileExists(atPath: $0.path) }
 
         guard let applicationURL = installedURL ?? conventionalURL else {
@@ -142,31 +174,76 @@ final class FinderSync: FIFinderSync {
             urls,
             withApplicationAt: applicationURL,
             configuration: configuration
-        )
+        ) { _, error in
+            guard let error else { return }
+            NSLog("RightClick open failed: %@", error.localizedDescription)
+            FinderSync.present(message: error.localizedDescription)
+        }
     }
 
     private func openHost(
         for command: CLICommand,
         context: SelectionContext
-    ) {
+    ) throws {
         guard let directory = context.workingDirectory,
               let deepLink = CLIInvocation(
                   command: command,
                   workingDirectory: directory
               ).deepLink else {
-            return
+            throw FinderActionError.invalidWorkingDirectory
         }
-        NSWorkspace.shared.open(deepLink)
+        guard NSWorkspace.shared.open(deepLink) else {
+            throw FinderActionError.hostApplicationUnavailable
+        }
+    }
+
+    private func isApplicationInstalled(
+        bundleIdentifiers: [String],
+        applicationNames: [String]
+    ) -> Bool {
+        let workspace = NSWorkspace.shared
+        if bundleIdentifiers.contains(where: {
+            workspace.urlForApplication(withBundleIdentifier: $0) != nil
+        }) {
+            return true
+        }
+
+        return applicationNames.contains {
+            FileManager.default.fileExists(
+                atPath: "/Applications/\($0).app"
+            ) || FileManager.default.fileExists(
+                atPath: FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Applications/\($0).app").path
+            )
+        }
+    }
+
+    private static func present(message: String) {
+        DispatchQueue.main.async {
+            NSSound.beep()
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "RightClick 操作失败"
+            alert.informativeText = message
+            alert.addButton(withTitle: "好")
+            alert.runModal()
+        }
     }
 }
 
 private enum FinderActionError: LocalizedError {
     case applicationNotFound(String)
+    case invalidWorkingDirectory
+    case hostApplicationUnavailable
 
     var errorDescription: String? {
         switch self {
         case let .applicationNotFound(name):
             "未找到 \(name)，请先安装应用。"
+        case .invalidWorkingDirectory:
+            "无法确定有效的工作目录。"
+        case .hostApplicationUnavailable:
+            "无法启动 RightClick，请确认 App 仍位于 Applications 文件夹中。"
         }
     }
 }

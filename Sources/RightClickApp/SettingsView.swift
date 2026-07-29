@@ -6,17 +6,62 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Picker("默认终端", selection: $model.terminalProfile) {
-                ForEach(TerminalProfile.allCases, id: \.self) { terminal in
-                    Text(terminal.title).tag(terminal)
+            Section("终端") {
+                Picker("默认终端", selection: $model.terminalProfile) {
+                    ForEach(TerminalProfile.allCases, id: \.self) { terminal in
+                        Text(terminal.title).tag(terminal)
+                    }
+                }
+
+                Toggle("运行 CLI 前确认工作目录", isOn: $model.confirmCLIExecution)
+            }
+
+            Section("环境诊断") {
+                ForEach(model.diagnostics) { item in
+                    LabeledContent {
+                        Text(item.detail)
+                            .foregroundStyle(
+                                item.passed ? Color.secondary : Color.orange
+                            )
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    } label: {
+                        Label(
+                            item.title,
+                            systemImage: item.passed
+                                ? "checkmark.circle.fill"
+                                : "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(
+                            item.passed ? Color.green : Color.orange
+                        )
+                    }
+                }
+
+                HStack {
+                    Button("重新检测") {
+                        Task { await model.refreshDiagnostics() }
+                    }
+                    .disabled(model.isRefreshingDiagnostics)
+
+                    if model.isRefreshingDiagnostics {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+
+                    Spacer()
+
+                    Button("复制诊断信息") {
+                        model.copyDiagnostics()
+                    }
                 }
             }
 
-            LabeledContent("Codex CLI 命令", value: "codex")
-            LabeledContent("Claude Code 命令", value: "claude")
-
             Section {
-                Text("首次运行终端命令时，macOS 可能询问是否允许 RightClick 控制 Terminal 或 iTerm2。")
+                Text(
+                    "首次运行终端命令时，macOS 可能询问是否允许 "
+                        + "RightClick 控制 Terminal 或 iTerm2。"
+                )
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

@@ -20,7 +20,7 @@ public struct SelectionContext: Equatable, Sendable {
 
         if selectedURLs.count == 1,
            let selected = selectedURLs.first,
-           selected.hasDirectoryPath {
+           isDirectory(selected) {
             return selected
         }
 
@@ -29,11 +29,29 @@ public struct SelectionContext: Equatable, Sendable {
 
     public var workingDirectory: URL? {
         guard let first = effectiveURLs.first else { return nil }
-        return first.hasDirectoryPath ? first : first.deletingLastPathComponent()
+        return isDirectory(first) ? first : first.deletingLastPathComponent()
     }
 
     private func directoryRepresented(by url: URL?) -> URL? {
         guard let url else { return nil }
-        return url.hasDirectoryPath ? url : url.deletingLastPathComponent()
+        return isDirectory(url) ? url : url.deletingLastPathComponent()
+    }
+
+    private func isDirectory(_ url: URL) -> Bool {
+        if let value = try? url.resourceValues(
+            forKeys: [.isDirectoryKey]
+        ).isDirectory {
+            return value
+        }
+
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(
+            atPath: url.path,
+            isDirectory: &isDirectory
+        ) {
+            return isDirectory.boolValue
+        }
+
+        return url.hasDirectoryPath
     }
 }

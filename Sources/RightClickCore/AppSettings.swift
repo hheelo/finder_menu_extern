@@ -5,6 +5,7 @@ public final class AppSettings: @unchecked Sendable {
 
     private enum Key {
         static let terminalProfile = "terminalProfile"
+        static let confirmCLIExecution = "confirmCLIExecution"
     }
 
     private let defaults: UserDefaults
@@ -20,6 +21,15 @@ public final class AppSettings: @unchecked Sendable {
         }
         set {
             defaults.set(newValue.rawValue, forKey: Key.terminalProfile)
+        }
+    }
+
+    public var confirmCLIExecution: Bool {
+        get {
+            defaults.object(forKey: Key.confirmCLIExecution) as? Bool ?? true
+        }
+        set {
+            defaults.set(newValue, forKey: Key.confirmCLIExecution)
         }
     }
 }

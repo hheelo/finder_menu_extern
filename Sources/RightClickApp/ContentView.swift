@@ -50,6 +50,10 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
+                Button("重启 Finder") {
+                    model.restartFinder()
+                }
+
                 Label(
                     model.extensionEnabled
                         ? "Finder 扩展已启用"
@@ -70,6 +74,9 @@ struct ContentView: View {
                 Label(model.lastStatus, systemImage: "checkmark.circle")
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("复制诊断信息") {
+                    model.copyDiagnostics()
+                }
                 if let lastError = model.lastError {
                     Text(lastError)
                         .foregroundStyle(.red)
@@ -78,6 +85,31 @@ struct ContentView: View {
             }
         }
         .padding(28)
+        .alert(
+            "启动 CLI？",
+            isPresented: Binding(
+                get: { model.pendingInvocation != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        model.cancelPendingInvocation()
+                    }
+                }
+            ),
+            presenting: model.pendingInvocation
+        ) { _ in
+            Button("取消", role: .cancel) {
+                model.cancelPendingInvocation()
+            }
+            Button("启动") {
+                model.confirmPendingInvocation()
+            }
+        } message: { invocation in
+            Text(
+                "将在 \(model.terminalProfile.title) 中运行 "
+                    + "\(invocation.command.title)：\n"
+                    + invocation.workingDirectory.path
+            )
+        }
     }
 }
 

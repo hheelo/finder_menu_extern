@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and test
+        run: |
+          xcodebuild \
+            -project RightClick.xcodeproj \
+            -scheme RightClick \
+            -configuration Debug \
+            -derivedDataPath .build/CIDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            test

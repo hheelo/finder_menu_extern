@@ -16,7 +16,7 @@
 - [x] Terminal / iTerm2 启动 Codex CLI / Claude Code
 - [x] 扩展启用状态和系统设置入口
 - [ ] 在全新用户环境中完成 Finder 端到端验证
-- [ ] 菜单操作失败时展示用户可见通知
+- [x] 菜单操作失败时展示用户可见提示
 - [ ] 确认 Codex App 的正式 Bundle ID，并增加自动探测
 
 ## M2：无证书分发
@@ -25,8 +25,23 @@
 - [x] DMG 与 SHA-256 打包
 - [x] 一键本地安装脚本
 - [x] Tag 驱动的 GitHub Release 工作流
+- [x] 升级时注销旧扩展，并将旧 App 压缩到非应用目录
+- [x] PR / Main CI 与 Release 测试门禁
+- [x] 自动验证签名、Bundle ID、版本、Universal 2 和 DMG 内容
 - [ ] 提供 Homebrew Cask
 - [ ] 在 Intel Mac 上完成安装验证
+
+## M2.5：安装与稳定性
+
+- [x] 严格校验 CLI 深链接和工作目录
+- [x] 通过参数向 AppleScript 传递命令
+- [x] 终端启动移出主线程
+- [x] CLI 启动前确认
+- [x] Finder 操作失败提示与不可用菜单置灰
+- [x] 环境诊断与诊断报告复制
+- [x] 新建文件后在 Finder 中选中
+- [x] 使用文件资源属性判断目录
+- [ ] 按 `docs/TESTING.md` 完成干净机器验证矩阵
 
 ## M3：可配置版本
 
@@ -40,6 +55,6 @@
 ## M4：稳定分发
 
 - [ ] Developer ID 签名、公证和 Sparkle 更新
-- [ ] 完整的分步首次启动向导与权限诊断
+- [ ] 完整的分步首次启动向导
 - [ ] 崩溃与请求日志（默认本地）
 - [ ] UI 自动化和签名后 smoke test

@@ -17,8 +17,8 @@ struct ActionExecutor {
     func execute(
         _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile
-    ) throws {
-        try run(
+    ) async throws {
+        try await run(
             invocation.command,
             directory: invocation.workingDirectory,
             terminalProfile: terminalProfile
@@ -29,49 +29,53 @@ struct ActionExecutor {
         _ command: CLICommand,
         directory: URL,
         terminalProfile: TerminalProfile
-    ) throws {
+    ) async throws {
         let shellCommand = ShellCommandBuilder.command(command, in: directory)
         let script = appleScript(
-            terminalProfile: terminalProfile,
-            shellCommand: shellCommand
+            terminalProfile: terminalProfile
         )
-        let process = Process()
-        let errorPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", script]
-        process.standardError = errorPipe
-        try process.run()
-        process.waitUntilExit()
+        try await Task.detached(priority: .userInitiated) {
+            let process = Process()
+            let errorPipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", script, "--", shellCommand]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = errorPipe
+            try process.run()
+            process.waitUntilExit()
 
-        guard process.terminationStatus == 0 else {
-            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(decoding: data, as: UTF8.self)
-            throw ActionExecutorError.processFailed(message)
-        }
+            guard process.terminationStatus == 0 else {
+                let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let message = String(decoding: data, as: UTF8.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                throw ActionExecutorError.processFailed(
+                    message.isEmpty ? "osascript 返回状态 \(process.terminationStatus)" : message
+                )
+            }
+        }.value
     }
 
     private func appleScript(
-        terminalProfile: TerminalProfile,
-        shellCommand: String
+        terminalProfile: TerminalProfile
     ) -> String {
-        let escaped = shellCommand
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-
         switch terminalProfile {
         case .terminal:
             return """
-            tell application "Terminal"
-                activate
-                do script "\(escaped)"
-            end tell
+            on run argv
+                tell application "Terminal"
+                    activate
+                    do script (item 1 of argv)
+                end tell
+            end run
             """
         case .iTerm:
             return """
-            tell application "iTerm2"
-                activate
-                create window with default profile command "\(escaped)"
-            end tell
+            on run argv
+                tell application "iTerm2"
+                    activate
+                    create window with default profile command (item 1 of argv)
+                end tell
+            end run
             """
         }
     }

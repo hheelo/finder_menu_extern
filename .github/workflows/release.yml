@@ -16,10 +16,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Test
+        run: |
+          xcodebuild \
+            -project RightClick.xcodeproj \
+            -scheme RightClick \
+            -configuration Debug \
+            -derivedDataPath .build/CIReleaseTests \
+            CODE_SIGNING_ALLOWED=NO \
+            test
 
-      - name: Build ad-hoc signed DMG
+      - name: Build and verify ad-hoc signed DMG
         env:
           VERSION: ${{ github.ref_name }}
         run: ./scripts/build-release.sh

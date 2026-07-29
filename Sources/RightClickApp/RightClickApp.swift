@@ -14,6 +14,7 @@ struct RightClickApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         model.refreshExtensionStatus()
+                        Task { await model.refreshDiagnostics() }
                     }
                 }
         }
@@ -22,7 +23,7 @@ struct RightClickApp: App {
         Settings {
             SettingsView()
                 .environmentObject(model)
-                .frame(width: 460, height: 260)
+                .frame(width: 560, height: 520)
         }
     }
 }

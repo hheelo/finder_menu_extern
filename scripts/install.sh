@@ -7,6 +7,9 @@ project_dir="${script_dir:h}"
 derived_data="${project_dir}/.build/InstallDerivedData"
 install_dir="${HOME}/Applications"
 installed_app="${install_dir}/RightClick.app"
+installed_extension="${installed_app}/Contents/PlugIns/RightClickFinderExtension.appex"
+backup_dir="${HOME}/Library/Application Support/RightClick/Backups"
+launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 cd "${project_dir}"
 
@@ -41,15 +44,27 @@ codesign --verify --deep --strict "${built_app}"
 mkdir -p "${install_dir}"
 
 if [[ -d "${installed_app}" ]]; then
-    backup_app="${install_dir}/RightClick.backup-$(date +%Y%m%d-%H%M%S).app"
-    echo "→ 备份现有版本到 ${backup_app}"
-    mv "${installed_app}" "${backup_app}"
+    mkdir -p "${backup_dir}"
+    backup_zip="${backup_dir}/RightClick-$(date +%Y%m%d-%H%M%S).zip"
+    echo "→ 注销并归档现有版本"
+    pluginkit -r "${installed_extension}" >/dev/null 2>&1 || true
+    "${launch_services}" -u "${installed_app}" >/dev/null 2>&1 || true
+    ditto -c -k --sequesterRsrc --keepParent \
+        "${installed_app}" \
+        "${backup_zip}"
+    unzip -tq "${backup_zip}"
+
+    if [[ "${installed_app}" != "${HOME}/Applications/RightClick.app" ]]; then
+        echo "拒绝移除非预期路径：${installed_app}" >&2
+        exit 1
+    fi
+    rm -rf "${installed_app}"
+    echo "  旧版本备份：${backup_zip}"
 fi
 
 echo "→ 安装到 ${installed_app}"
 ditto "${built_app}" "${installed_app}"
 
-launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 "${launch_services}" -f "${installed_app}"
 pluginkit -a "${installed_app}/Contents/PlugIns/RightClickFinderExtension.appex"
 
@@ -58,3 +73,4 @@ open "${installed_app}"
 
 echo
 echo "安装完成。请在 RightClick 中点击“启用 Finder 扩展”。"
+echo "如果 Finder 仍显示旧菜单，请在 App 中点击“重启 Finder”。"
