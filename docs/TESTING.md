@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.2.0 ./scripts/build-release.sh
+VERSION=0.2.1 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -23,6 +23,7 @@ VERSION=0.2.0 ./scripts/build-release.sh
 - 从 GitHub Release 下载 DMG，而不是使用本地构建产物
 - 验证 SHA-256 文件
 - 将 RightClick 拖入 Applications
+- 确认 Finder、Dock 和系统设置中显示正式 App 图标
 - 确认 Gatekeeper 首次阻止时，可以通过“隐私与安全性 → 仍要打开”放行
 - 在 App 中打开扩展设置并启用 RightClick Finder Extension
 - 在桌面、用户目录和一个含空格/中文/单引号的目录中检查右键菜单
@@ -31,6 +32,7 @@ VERSION=0.2.0 ./scripts/build-release.sh
 - 测试 VS Code / Codex App 存在与缺失两种状态
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
 - 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
+- 关闭“运行 CLI 前切到前台确认”，确认 Finder 启动 CLI 时 RightClick 不抢前台
 - 从浏览器手动打开无效 `rightclick://` 链接，确认不会启动 CLI
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
 - 升级后重启 Finder，确认加载的是新扩展

@@ -41,6 +41,9 @@
 - [x] 环境诊断与诊断报告复制
 - [x] 新建文件后在 Finder 中选中
 - [x] 使用文件资源属性判断目录
+- [x] 原生 macOS App 图标
+- [x] Finder 菜单明确提供 Terminal / iTerm2 打开目录
+- [x] CLI 宿主非激活后台启动
 - [ ] 按 `docs/TESTING.md` 完成干净机器验证矩阵
 
 ## M3：可配置版本

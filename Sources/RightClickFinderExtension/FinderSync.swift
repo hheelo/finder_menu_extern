@@ -41,6 +41,9 @@ final class FinderSync: FIFinderSync {
                 )
             )
             menu.addItem(
+                terminalSubmenu(isEnabled: context.workingDirectory != nil)
+            )
+            menu.addItem(
                 runSubmenu(isEnabled: context.workingDirectory != nil)
             )
         }
@@ -79,10 +82,38 @@ final class FinderSync: FIFinderSync {
     }
 
     private func runSubmenu(isEnabled: Bool) -> NSMenuItem {
-        let root = NSMenuItem(title: "在终端中运行", action: nil, keyEquivalent: "")
+        let root = NSMenuItem(
+            title: "运行 AI CLI",
+            action: nil,
+            keyEquivalent: ""
+        )
         let submenu = NSMenu(title: root.title)
         submenu.addItem(actionItem(.runCodexCLI, isEnabled: isEnabled))
         submenu.addItem(actionItem(.runClaudeCode, isEnabled: isEnabled))
+        root.submenu = submenu
+        root.isEnabled = isEnabled
+        return root
+    }
+
+    private func terminalSubmenu(isEnabled: Bool) -> NSMenuItem {
+        let root = NSMenuItem(
+            title: "在终端中打开",
+            action: nil,
+            keyEquivalent: ""
+        )
+        let submenu = NSMenu(title: root.title)
+        submenu.addItem(
+            actionItem(
+                .openInTerminal(.terminal),
+                isEnabled: isEnabled && isTerminalInstalled(.terminal)
+            )
+        )
+        submenu.addItem(
+            actionItem(
+                .openInTerminal(.iTerm),
+                isEnabled: isEnabled && isTerminalInstalled(.iTerm)
+            )
+        )
         root.submenu = submenu
         root.isEnabled = isEnabled
         return root
@@ -126,6 +157,16 @@ final class FinderSync: FIFinderSync {
                     bundleIdentifiers: ["com.openai.codex"],
                     applicationNames: ["Codex"]
                 )
+            case let .openInTerminal(profile):
+                guard let directory = context.workingDirectory else {
+                    throw FinderActionError.invalidWorkingDirectory
+                }
+                let application = terminalApplication(for: profile)
+                try open(
+                    [directory],
+                    bundleIdentifiers: application.bundleIdentifiers,
+                    applicationNames: application.names
+                )
             case .runCodexCLI:
                 try openHost(for: .codex, context: context)
             case .runClaudeCode:
@@ -149,20 +190,10 @@ final class FinderSync: FIFinderSync {
         applicationNames: [String]
     ) throws {
         let workspace = NSWorkspace.shared
-        let installedURL = bundleIdentifiers.lazy.compactMap {
-            workspace.urlForApplication(withBundleIdentifier: $0)
-        }.first
-        let conventionalURL = applicationNames.lazy
-            .flatMap { name in
-                [
-                    URL(fileURLWithPath: "/Applications/\(name).app"),
-                    FileManager.default.homeDirectoryForCurrentUser
-                        .appendingPathComponent("Applications/\(name).app")
-                ]
-            }
-            .first { FileManager.default.fileExists(atPath: $0.path) }
-
-        guard let applicationURL = installedURL ?? conventionalURL else {
+        guard let applicationURL = applicationURL(
+            bundleIdentifiers: bundleIdentifiers,
+            applicationNames: applicationNames
+        ) else {
             throw FinderActionError.applicationNotFound(
                 applicationNames.first ?? "应用"
             )
@@ -192,8 +223,22 @@ final class FinderSync: FIFinderSync {
               ).deepLink else {
             throw FinderActionError.invalidWorkingDirectory
         }
-        guard NSWorkspace.shared.open(deepLink) else {
+        let workspace = NSWorkspace.shared
+        guard let hostURL = workspace.urlForApplication(toOpen: deepLink) else {
             throw FinderActionError.hostApplicationUnavailable
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        configuration.addsToRecentItems = false
+        workspace.open(
+            [deepLink],
+            withApplicationAt: hostURL,
+            configuration: configuration
+        ) { _, error in
+            guard let error else { return }
+            NSLog("RightClick host launch failed: %@", error.localizedDescription)
+            FinderSync.present(message: error.localizedDescription)
         }
     }
 
@@ -201,21 +246,56 @@ final class FinderSync: FIFinderSync {
         bundleIdentifiers: [String],
         applicationNames: [String]
     ) -> Bool {
+        applicationURL(
+            bundleIdentifiers: bundleIdentifiers,
+            applicationNames: applicationNames
+        ) != nil
+    }
+
+    private func applicationURL(
+        bundleIdentifiers: [String],
+        applicationNames: [String]
+    ) -> URL? {
         let workspace = NSWorkspace.shared
-        if bundleIdentifiers.contains(where: {
-            workspace.urlForApplication(withBundleIdentifier: $0) != nil
-        }) {
-            return true
+        if let installed = bundleIdentifiers.lazy.compactMap({
+            workspace.urlForApplication(withBundleIdentifier: $0)
+        }).first {
+            return installed
         }
 
-        return applicationNames.contains {
-            FileManager.default.fileExists(
-                atPath: "/Applications/\($0).app"
-            ) || FileManager.default.fileExists(
-                atPath: FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent("Applications/\($0).app").path
-            )
+        let roots = [
+            URL(fileURLWithPath: "/Applications", isDirectory: true),
+            URL(
+                fileURLWithPath: "/System/Applications/Utilities",
+                isDirectory: true
+            ),
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Applications", isDirectory: true)
+        ]
+        return roots.lazy.flatMap { root in
+            applicationNames.map {
+                root.appendingPathComponent("\($0).app", isDirectory: true)
+            }
+        }.first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    private func terminalApplication(
+        for profile: TerminalProfile
+    ) -> (bundleIdentifiers: [String], names: [String]) {
+        switch profile {
+        case .terminal:
+            (["com.apple.Terminal"], ["Terminal"])
+        case .iTerm:
+            (["com.googlecode.iterm2"], ["iTerm", "iTerm2"])
         }
+    }
+
+    private func isTerminalInstalled(_ profile: TerminalProfile) -> Bool {
+        let application = terminalApplication(for: profile)
+        return isApplicationInstalled(
+            bundleIdentifiers: application.bundleIdentifiers,
+            applicationNames: application.names
+        )
     }
 
     private static func present(message: String) {

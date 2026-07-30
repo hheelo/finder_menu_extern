@@ -5,6 +5,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
     case copyFilename
     case openInVSCode
     case openInCodex
+    case openInTerminal(TerminalProfile)
     case runCodexCLI
     case runClaudeCode
     case createFile(FileTemplate)
@@ -15,6 +16,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .copyFilename: "复制文件名"
         case .openInVSCode: "用 VS Code 打开"
         case .openInCodex: "用 Codex 打开"
+        case let .openInTerminal(profile): "在 \(profile.title) 中打开"
         case .runCodexCLI: "在终端运行 Codex CLI"
         case .runClaudeCode: "在终端运行 Claude Code"
         case let .createFile(template): template.title

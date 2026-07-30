@@ -33,7 +33,7 @@ struct ContentView: View {
                     FeatureRow(
                         icon: "terminal",
                         title: "终端",
-                        detail: "在项目目录运行 Codex CLI 或 Claude Code"
+                        detail: "用 Terminal / iTerm2 打开，或运行 AI CLI"
                     )
                     FeatureRow(
                         icon: "doc.badge.plus",

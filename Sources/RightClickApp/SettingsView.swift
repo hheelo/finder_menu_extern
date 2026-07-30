@@ -13,7 +13,10 @@ struct SettingsView: View {
                     }
                 }
 
-                Toggle("运行 CLI 前确认工作目录", isOn: $model.confirmCLIExecution)
+                Toggle(
+                    "运行 CLI 前切到前台确认",
+                    isOn: $model.confirmCLIExecution
+                )
             }
 
             Section("环境诊断") {
@@ -60,7 +63,8 @@ struct SettingsView: View {
             Section {
                 Text(
                     "首次运行终端命令时，macOS 可能询问是否允许 "
-                        + "RightClick 控制 Terminal 或 iTerm2。"
+                        + "RightClick 控制 Terminal 或 iTerm2。关闭确认时，"
+                        + "Finder 操作不会将 RightClick 切到前台。"
                 )
                     .font(.callout)
                     .foregroundStyle(.secondary)

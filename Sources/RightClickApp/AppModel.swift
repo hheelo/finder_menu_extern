@@ -47,8 +47,11 @@ final class AppModel: ObservableObject {
         }
 
         if confirmCLIExecution {
+            NSApp.unhide(nil)
+            NSApp.activate(ignoringOtherApps: true)
             pendingInvocation = invocation
         } else {
+            NSApp.hide(nil)
             execute(invocation)
         }
     }
@@ -109,6 +112,8 @@ final class AppModel: ObservableObject {
                 lastStatus = "已启动 \(invocation.command.title)"
             } catch {
                 lastError = error.localizedDescription
+                NSApp.unhide(nil)
+                NSApp.activate(ignoringOtherApps: true)
             }
         }
     }

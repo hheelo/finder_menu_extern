@@ -26,7 +26,7 @@ public final class AppSettings: @unchecked Sendable {
 
     public var confirmCLIExecution: Bool {
         get {
-            defaults.object(forKey: Key.confirmCLIExecution) as? Bool ?? true
+            defaults.object(forKey: Key.confirmCLIExecution) as? Bool ?? false
         }
         set {
             defaults.set(newValue, forKey: Key.confirmCLIExecution)
