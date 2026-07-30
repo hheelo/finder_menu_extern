@@ -11,6 +11,20 @@ derived_data="${project_dir}/.build/ReleaseDerivedData"
 staging_dir="${release_root}/staging"
 output_dir="${release_root}/output"
 dmg_name="RightClick-${version}.dmg"
+built_app="${derived_data}/Build/Products/Release/RightClick.app"
+built_extension="${built_app}/Contents/PlugIns/RightClickFinderExtension.appex"
+staged_app="${staging_dir}/RightClick.app"
+staged_extension="${staged_app}/Contents/PlugIns/RightClickFinderExtension.appex"
+
+unregister_build_extensions() {
+    if [[ -d "${built_extension}" ]]; then
+        pluginkit -r "${built_extension}" >/dev/null 2>&1 || true
+    fi
+    if [[ -d "${staged_extension}" ]]; then
+        pluginkit -r "${staged_extension}" >/dev/null 2>&1 || true
+    fi
+}
+trap unregister_build_extensions EXIT
 
 if [[ "${release_root}" != "${project_dir}/.build/release" ]]; then
     echo "拒绝清理非预期目录：${release_root}" >&2
@@ -38,10 +52,9 @@ xcodebuild \
     CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     build
 
-built_app="${derived_data}/Build/Products/Release/RightClick.app"
 "${project_dir}/scripts/verify-app.sh" "${built_app}"
 
-ditto "${built_app}" "${staging_dir}/RightClick.app"
+ditto "${built_app}" "${staged_app}"
 ln -s /Applications "${staging_dir}/Applications"
 
 hdiutil create \
@@ -57,6 +70,15 @@ hdiutil create \
 )
 
 "${project_dir}/scripts/verify-dmg.sh" "${output_dir}/${dmg_name}"
+
+unregister_build_extensions
+if [[ "${derived_data}" != "${project_dir}/.build/ReleaseDerivedData" ||
+      "${staging_dir}" != "${project_dir}/.build/release/staging" ]]; then
+    echo "拒绝清理非预期构建目录" >&2
+    exit 1
+fi
+rm -rf "${derived_data}" "${staging_dir}"
+trap - EXIT
 
 echo "Release 产物："
 echo "  ${output_dir}/${dmg_name}"

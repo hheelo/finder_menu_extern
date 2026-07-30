@@ -12,6 +12,10 @@ mount_point="$(mktemp -d "${TMPDIR:-/tmp}/rightclick-dmg.XXXXXX")"
 attached=false
 
 cleanup() {
+    mounted_extension="${mount_point}/RightClick.app/Contents/PlugIns/RightClickFinderExtension.appex"
+    if [[ -d "${mounted_extension}" ]]; then
+        pluginkit -r "${mounted_extension}" >/dev/null 2>&1 || true
+    fi
     if [[ "${attached}" == true ]]; then
         hdiutil detach "${mount_point}" -quiet || true
     fi

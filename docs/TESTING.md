@@ -36,6 +36,8 @@ VERSION=0.2.1 ./scripts/build-release.sh
 - 从浏览器手动打开无效 `rightclick://` 链接，确认不会启动 CLI
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
 - 升级后重启 Finder，确认加载的是新扩展
+- 运行 `pluginkit -m -A -D -v -i com.hheelo.RightClick.FinderExtension`，
+  确认只列出 Applications 中的一份扩展
 
 ## 存储位置
 

@@ -8,8 +8,17 @@ derived_data="${project_dir}/.build/InstallDerivedData"
 install_dir="${HOME}/Applications"
 installed_app="${install_dir}/RightClick.app"
 installed_extension="${installed_app}/Contents/PlugIns/RightClickFinderExtension.appex"
+built_app="${derived_data}/Build/Products/Release/RightClick.app"
+built_extension="${built_app}/Contents/PlugIns/RightClickFinderExtension.appex"
 backup_dir="${HOME}/Library/Application Support/RightClick/Backups"
 launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
+unregister_build_extension() {
+    if [[ -d "${built_extension}" ]]; then
+        pluginkit -r "${built_extension}" >/dev/null 2>&1 || true
+    fi
+}
+trap unregister_build_extension EXIT
 
 cd "${project_dir}"
 
@@ -34,7 +43,6 @@ xcodebuild \
     CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     build
 
-built_app="${derived_data}/Build/Products/Release/RightClick.app"
 if [[ ! -d "${built_app}" ]]; then
     echo "未找到构建产物：${built_app}" >&2
     exit 1
@@ -70,6 +78,14 @@ pluginkit -a "${installed_app}/Contents/PlugIns/RightClickFinderExtension.appex"
 
 echo "→ 启动 RightClick"
 open "${installed_app}"
+
+unregister_build_extension
+if [[ "${derived_data}" != "${project_dir}/.build/InstallDerivedData" ]]; then
+    echo "拒绝清理非预期构建目录：${derived_data}" >&2
+    exit 1
+fi
+rm -rf "${derived_data}"
+trap - EXIT
 
 echo
 echo "安装完成。请在 RightClick 中点击“启用 Finder 扩展”。"
