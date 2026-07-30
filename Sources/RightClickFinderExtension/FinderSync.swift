@@ -20,41 +20,62 @@ final class FinderSync: FIFinderSync {
             String(describing: menuKind)
         )
         let menu = NSMenu(title: "RightClick")
-        let context = currentContext
+        let context = context(for: menuKind)
+        let supportsContextActions =
+            menuKind == .contextualMenuForContainer ||
+            menuKind == .contextualMenuForItems ||
+            menuKind == .contextualMenuForSidebar
 
-        if menuKind == .contextualMenuForItems ||
-            menuKind == .contextualMenuForSidebar {
+        if supportsContextActions {
             let hasSelection = !context.effectiveURLs.isEmpty
-            menu.addItem(actionItem(.copyPath, isEnabled: hasSelection))
-            menu.addItem(actionItem(.copyFilename, isEnabled: hasSelection))
+            menu.addItem(
+                actionItem(
+                    .copyPath,
+                    context: context,
+                    isEnabled: hasSelection
+                )
+            )
+            menu.addItem(
+                actionItem(
+                    .copyFilename,
+                    context: context,
+                    isEnabled: hasSelection
+                )
+            )
             menu.addItem(.separator())
             menu.addItem(
                 actionItem(
                     .openInVSCode,
+                    context: context,
                     isEnabled: hasSelection
                 )
             )
             menu.addItem(
                 actionItem(
                     .openInCodex,
+                    context: context,
                     isEnabled: hasSelection
                 )
             )
             menu.addItem(
-                terminalSubmenu(isEnabled: context.workingDirectory != nil)
+                terminalSubmenu(
+                    context: context,
+                    isEnabled: context.workingDirectory != nil
+                )
             )
             menu.addItem(
-                runSubmenu(isEnabled: context.workingDirectory != nil)
+                runSubmenu(
+                    context: context,
+                    isEnabled: context.workingDirectory != nil
+                )
             )
         }
 
-        if menuKind == .contextualMenuForContainer ||
-            menuKind == .contextualMenuForItems ||
-            menuKind == .contextualMenuForSidebar {
+        if supportsContextActions {
             if !menu.items.isEmpty {
                 menu.addItem(.separator())
             }
-            let newFile = newFileSubmenu()
+            let newFile = newFileSubmenu(context: context)
             newFile.isEnabled = context.creationDirectory != nil
             menu.addItem(newFile)
         }
@@ -66,15 +87,21 @@ final class FinderSync: FIFinderSync {
         return menu.items.isEmpty ? nil : menu
     }
 
-    private var currentContext: SelectionContext {
-        SelectionContext(
-            selectedURLs: controller.selectedItemURLs() ?? [],
+    private func context(for menuKind: FIMenuKind) -> SelectionContext {
+        let usesTargetedURL =
+            menuKind == .contextualMenuForContainer ||
+            menuKind == .contextualMenuForSidebar
+        return SelectionContext(
+            selectedURLs: usesTargetedURL
+                ? []
+                : controller.selectedItemURLs() ?? [],
             targetedURL: controller.targetedURL()
         )
     }
 
     private func actionItem(
         _ action: RightClickAction,
+        context: SelectionContext,
         isEnabled: Bool = true
     ) -> NSMenuItem {
         let item = NSMenuItem(
@@ -83,26 +110,44 @@ final class FinderSync: FIFinderSync {
             keyEquivalent: ""
         )
         item.target = self
-        item.representedObject = ActionBox(action)
+        item.representedObject = ActionBox(action, context: context)
         item.isEnabled = isEnabled
         return item
     }
 
-    private func runSubmenu(isEnabled: Bool) -> NSMenuItem {
+    private func runSubmenu(
+        context: SelectionContext,
+        isEnabled: Bool
+    ) -> NSMenuItem {
         let root = NSMenuItem(
             title: "运行 AI CLI",
             action: nil,
             keyEquivalent: ""
         )
         let submenu = NSMenu(title: root.title)
-        submenu.addItem(actionItem(.runCodexCLI, isEnabled: isEnabled))
-        submenu.addItem(actionItem(.runClaudeCode, isEnabled: isEnabled))
+        submenu.addItem(
+            actionItem(
+                .runCodexCLI,
+                context: context,
+                isEnabled: isEnabled
+            )
+        )
+        submenu.addItem(
+            actionItem(
+                .runClaudeCode,
+                context: context,
+                isEnabled: isEnabled
+            )
+        )
         root.submenu = submenu
         root.isEnabled = isEnabled
         return root
     }
 
-    private func terminalSubmenu(isEnabled: Bool) -> NSMenuItem {
+    private func terminalSubmenu(
+        context: SelectionContext,
+        isEnabled: Bool
+    ) -> NSMenuItem {
         let root = NSMenuItem(
             title: "在终端中打开",
             action: nil,
@@ -112,12 +157,14 @@ final class FinderSync: FIFinderSync {
         submenu.addItem(
             actionItem(
                 .openInTerminal(.terminal),
+                context: context,
                 isEnabled: isEnabled
             )
         )
         submenu.addItem(
             actionItem(
                 .openInTerminal(.iTerm),
+                context: context,
                 isEnabled: isEnabled
             )
         )
@@ -126,21 +173,24 @@ final class FinderSync: FIFinderSync {
         return root
     }
 
-    private func newFileSubmenu() -> NSMenuItem {
+    private func newFileSubmenu(context: SelectionContext) -> NSMenuItem {
         let root = NSMenuItem(title: "新建文件", action: nil, keyEquivalent: "")
         let submenu = NSMenu(title: root.title)
         for template in FileTemplate.allCases {
-            submenu.addItem(actionItem(.createFile(template)))
+            submenu.addItem(
+                actionItem(.createFile(template), context: context)
+            )
         }
         root.submenu = submenu
         return root
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {
-        guard let action = (sender.representedObject as? ActionBox)?.action else {
+        guard let actionBox = sender.representedObject as? ActionBox else {
             return
         }
-        let context = currentContext
+        let action = actionBox.action
+        let context = actionBox.context
 
         do {
             switch action {
@@ -319,8 +369,10 @@ private enum FinderActionError: LocalizedError {
 
 private final class ActionBox: NSObject {
     let action: RightClickAction
+    let context: SelectionContext
 
-    init(_ action: RightClickAction) {
+    init(_ action: RightClickAction, context: SelectionContext) {
         self.action = action
+        self.context = context
     }
 }
