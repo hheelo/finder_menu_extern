@@ -11,9 +11,14 @@ final class FinderSync: FIFinderSync {
         controller.directoryURLs = [
             URL(fileURLWithPath: "/", isDirectory: true)
         ]
+        NSLog("RightClick Finder extension initialized")
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
+        NSLog(
+            "RightClick menu requested: %@",
+            String(describing: menuKind)
+        )
         let menu = NSMenu(title: "RightClick")
         let context = currentContext
 
@@ -25,19 +30,13 @@ final class FinderSync: FIFinderSync {
             menu.addItem(
                 actionItem(
                     .openInVSCode,
-                    isEnabled: hasSelection && isApplicationInstalled(
-                        bundleIdentifiers: ["com.microsoft.VSCode"],
-                        applicationNames: ["Visual Studio Code"]
-                    )
+                    isEnabled: hasSelection
                 )
             )
             menu.addItem(
                 actionItem(
                     .openInCodex,
-                    isEnabled: hasSelection && isApplicationInstalled(
-                        bundleIdentifiers: ["com.openai.codex"],
-                        applicationNames: ["Codex"]
-                    )
+                    isEnabled: hasSelection
                 )
             )
             menu.addItem(
@@ -50,12 +49,18 @@ final class FinderSync: FIFinderSync {
 
         if menuKind == .contextualMenuForContainer ||
             menuKind == .contextualMenuForItems {
-            menu.addItem(.separator())
+            if !menu.items.isEmpty {
+                menu.addItem(.separator())
+            }
             let newFile = newFileSubmenu()
             newFile.isEnabled = context.creationDirectory != nil
             menu.addItem(newFile)
         }
 
+        NSLog(
+            "RightClick menu returned %@ items",
+            String(menu.items.count)
+        )
         return menu.items.isEmpty ? nil : menu
     }
 
@@ -105,13 +110,13 @@ final class FinderSync: FIFinderSync {
         submenu.addItem(
             actionItem(
                 .openInTerminal(.terminal),
-                isEnabled: isEnabled && isTerminalInstalled(.terminal)
+                isEnabled: isEnabled
             )
         )
         submenu.addItem(
             actionItem(
                 .openInTerminal(.iTerm),
-                isEnabled: isEnabled && isTerminalInstalled(.iTerm)
+                isEnabled: isEnabled
             )
         )
         root.submenu = submenu
@@ -242,16 +247,6 @@ final class FinderSync: FIFinderSync {
         }
     }
 
-    private func isApplicationInstalled(
-        bundleIdentifiers: [String],
-        applicationNames: [String]
-    ) -> Bool {
-        applicationURL(
-            bundleIdentifiers: bundleIdentifiers,
-            applicationNames: applicationNames
-        ) != nil
-    }
-
     private func applicationURL(
         bundleIdentifiers: [String],
         applicationNames: [String]
@@ -288,14 +283,6 @@ final class FinderSync: FIFinderSync {
         case .iTerm:
             (["com.googlecode.iterm2"], ["iTerm", "iTerm2"])
         }
-    }
-
-    private func isTerminalInstalled(_ profile: TerminalProfile) -> Bool {
-        let application = terminalApplication(for: profile)
-        return isApplicationInstalled(
-            bundleIdentifiers: application.bundleIdentifiers,
-            applicationNames: application.names
-        )
     }
 
     private static func present(message: String) {

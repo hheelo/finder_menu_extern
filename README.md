@@ -91,7 +91,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.2.1 ./scripts/build-release.sh
+VERSION=0.2.2 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。
@@ -105,8 +105,8 @@ VERSION=0.2.1 ./scripts/build-release.sh
 GitHub Release：
 
 ```sh
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 没有 Developer ID 时，macOS 会要求用户首次手动允许打开。Homebrew 或安装脚本
