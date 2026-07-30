@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.2.2 ./scripts/build-release.sh
+VERSION=0.2.3 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -35,7 +35,8 @@ VERSION=0.2.2 ./scripts/build-release.sh
 - 关闭“运行 CLI 前切到前台确认”，确认 Finder 启动 CLI 时 RightClick 不抢前台
 - 从浏览器手动打开无效 `rightclick://` 链接，确认不会启动 CLI
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
-- 升级后重启 Finder，确认加载的是新扩展
+- 保持 Finder 运行并升级旧版本；启动新 App 后确认 Finder 自动退出并重新打开，
+  且右键菜单加载的是新扩展
 - 运行 `pluginkit -m -A -D -v -i com.hheelo.RightClick.FinderExtension`，
   确认只列出 Applications 中的一份扩展
 

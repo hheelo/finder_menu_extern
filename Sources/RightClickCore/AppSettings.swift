@@ -6,6 +6,7 @@ public final class AppSettings: @unchecked Sendable {
     private enum Key {
         static let terminalProfile = "terminalProfile"
         static let confirmCLIExecution = "confirmCLIExecution"
+        static let finderSessionBuild = "finderSessionBuild"
     }
 
     private let defaults: UserDefaults
@@ -31,5 +32,10 @@ public final class AppSettings: @unchecked Sendable {
         set {
             defaults.set(newValue, forKey: Key.confirmCLIExecution)
         }
+    }
+
+    public var finderSessionBuild: String? {
+        get { defaults.string(forKey: Key.finderSessionBuild) }
+        set { defaults.set(newValue, forKey: Key.finderSessionBuild) }
     }
 }

@@ -4,7 +4,7 @@ set -euo pipefail
 
 script_dir="${0:A:h}"
 project_dir="${script_dir:h}"
-version="${VERSION:-0.2.2}"
+version="${VERSION:-0.2.3}"
 version="${version#v}"
 release_root="${project_dir}/.build/release"
 derived_data="${project_dir}/.build/ReleaseDerivedData"

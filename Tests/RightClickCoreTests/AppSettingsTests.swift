@@ -23,4 +23,17 @@ struct AppSettingsTests {
                 == "在 iTerm2 中打开"
         )
     }
+
+    @Test
+    func finderSessionBuildPersists() throws {
+        let suiteName = "RightClickTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.finderSessionBuild == nil)
+
+        settings.finderSessionBuild = "5"
+        #expect(settings.finderSessionBuild == "5")
+    }
 }

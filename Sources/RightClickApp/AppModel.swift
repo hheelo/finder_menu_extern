@@ -38,6 +38,10 @@ final class AppModel: ObservableObject {
         } else {
             extensionEnabled = false
         }
+
+        if extensionEnabled {
+            refreshFinderSessionIfNeeded()
+        }
     }
 
     func handle(url: URL) {
@@ -88,15 +92,7 @@ final class AppModel: ObservableObject {
     }
 
     func restartFinder() {
-        guard let finder = NSWorkspace.shared.runningApplications.first(
-            where: { $0.bundleIdentifier == "com.apple.finder" }
-        ), finder.terminate() else {
-            lastError = "无法重启 Finder，请退出登录后重试。"
-            return
-        }
-
-        lastStatus = "正在重启 Finder"
-        lastError = nil
+        restartFinder(successStatus: "Finder 已重新启动")
     }
 
     private func execute(_ invocation: CLIInvocation) {
@@ -114,6 +110,80 @@ final class AppModel: ObservableObject {
                 lastError = error.localizedDescription
                 NSApp.unhide(nil)
                 NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
+
+    private func refreshFinderSessionIfNeeded() {
+        guard let build = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleVersion"
+        ) as? String,
+        AppSettings.shared.finderSessionBuild != build else {
+            return
+        }
+
+        restartFinder(
+            successStatus: "已为当前版本重新加载 Finder"
+        ) {
+            AppSettings.shared.finderSessionBuild = build
+        }
+    }
+
+    private func restartFinder(
+        successStatus: String,
+        onSuccess: @escaping @MainActor () -> Void = {}
+    ) {
+        let finder = NSWorkspace.shared.runningApplications.first(
+            where: { $0.bundleIdentifier == "com.apple.finder" }
+        )
+        if let finder, !finder.terminate() {
+            lastError = "无法重启 Finder，请退出登录后重试。"
+            return
+        }
+
+        lastStatus = "正在重启 Finder"
+        lastError = nil
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            if let finder {
+                for _ in 0..<30 where !finder.isTerminated {
+                    try? await Task.sleep(for: .milliseconds(100))
+                }
+                guard finder.isTerminated else {
+                    lastError = "Finder 未能退出，请退出登录后重试。"
+                    return
+                }
+            }
+
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = false
+            configuration.addsToRecentItems = false
+            let finderURL = URL(
+                fileURLWithPath:
+                    "/System/Library/CoreServices/Finder.app",
+                isDirectory: true
+            )
+
+            do {
+                try await withCheckedThrowingContinuation {
+                    (continuation: CheckedContinuation<Void, Error>) in
+                    NSWorkspace.shared.openApplication(
+                        at: finderURL,
+                        configuration: configuration
+                    ) { _, error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
+                        }
+                    }
+                }
+                lastStatus = successStatus
+                onSuccess()
+            } catch {
+                lastError = "无法重新打开 Finder：\(error.localizedDescription)"
             }
         }
     }

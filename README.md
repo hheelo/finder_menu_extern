@@ -58,6 +58,8 @@ cd finder_menu_extern
 RightClick Finder Extension。
 
 如果升级后 Finder 仍显示旧菜单，可在 RightClick 中点击“重启 Finder”。
+从 v0.2.3 开始，RightClick 会在启用扩展后为每个新构建自动重启一次
+Finder，避免覆盖升级后继续使用旧扩展会话。
 
 ## 安全与诊断
 
@@ -91,7 +93,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.2.2 ./scripts/build-release.sh
+VERSION=0.2.3 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。
@@ -105,8 +107,8 @@ VERSION=0.2.2 ./scripts/build-release.sh
 GitHub Release：
 
 ```sh
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.2.3
+git push origin v0.2.3
 ```
 
 没有 Developer ID 时，macOS 会要求用户首次手动允许打开。Homebrew 或安装脚本
