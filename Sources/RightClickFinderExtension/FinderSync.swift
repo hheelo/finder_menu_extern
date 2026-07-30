@@ -22,7 +22,8 @@ final class FinderSync: FIFinderSync {
         let menu = NSMenu(title: "RightClick")
         let context = currentContext
 
-        if menuKind == .contextualMenuForItems {
+        if menuKind == .contextualMenuForItems ||
+            menuKind == .contextualMenuForSidebar {
             let hasSelection = !context.effectiveURLs.isEmpty
             menu.addItem(actionItem(.copyPath, isEnabled: hasSelection))
             menu.addItem(actionItem(.copyFilename, isEnabled: hasSelection))
@@ -48,7 +49,8 @@ final class FinderSync: FIFinderSync {
         }
 
         if menuKind == .contextualMenuForContainer ||
-            menuKind == .contextualMenuForItems {
+            menuKind == .contextualMenuForItems ||
+            menuKind == .contextualMenuForSidebar {
             if !menu.items.isEmpty {
                 menu.addItem(.separator())
             }
