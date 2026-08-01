@@ -21,6 +21,29 @@ struct SelectionContextTests {
     }
 
     @Test
+    func usesParentDirectoryWhenMultipleItemsAreSelected() {
+        let folder = URL(fileURLWithPath: "/tmp/example", isDirectory: true)
+        let sibling = URL(fileURLWithPath: "/tmp/other.txt")
+        let context = SelectionContext(
+            selectedURLs: [folder, sibling],
+            targetedURL: nil
+        )
+
+        #expect(context.effectiveURLs == [folder, sibling])
+        #expect(context.creationDirectory?.path == "/tmp")
+        #expect(context.workingDirectory?.path == "/tmp/example")
+    }
+
+    @Test
+    func hasNoDirectoriesWithoutSelectionOrTarget() {
+        let context = SelectionContext(selectedURLs: [], targetedURL: nil)
+
+        #expect(context.effectiveURLs.isEmpty)
+        #expect(context.creationDirectory == nil)
+        #expect(context.workingDirectory == nil)
+    }
+
+    @Test
     func quotesShellPathsSafely() {
         let value = ShellCommandBuilder.quote("/tmp/Alice's Project")
         #expect(value == "'/tmp/Alice'\\''s Project'")

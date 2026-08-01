@@ -25,7 +25,10 @@ app_id="$(plutil -extract CFBundleIdentifier raw -o - "${app_path}/Contents/Info
 extension_id="$(plutil -extract CFBundleIdentifier raw -o - "${extension_path}/Contents/Info.plist")"
 app_version="$(plutil -extract CFBundleShortVersionString raw -o - "${app_path}/Contents/Info.plist")"
 extension_version="$(plutil -extract CFBundleShortVersionString raw -o - "${extension_path}/Contents/Info.plist")"
+app_build="$(plutil -extract CFBundleVersion raw -o - "${app_path}/Contents/Info.plist")"
+extension_build="$(plutil -extract CFBundleVersion raw -o - "${extension_path}/Contents/Info.plist")"
 icon_name="$(plutil -extract CFBundleIconName raw -o - "${app_path}/Contents/Info.plist")"
+apple_events_usage="$(plutil -extract NSAppleEventsUsageDescription raw -o - "${app_path}/Contents/Info.plist" 2>/dev/null || true)"
 
 if [[ "${app_id}" != "com.hheelo.RightClick" ]]; then
     echo "宿主 Bundle ID 不正确：${app_id}" >&2
@@ -37,6 +40,29 @@ if [[ "${extension_id}" != "com.hheelo.RightClick.FinderExtension" ]]; then
 fi
 if [[ "${app_version}" != "${extension_version}" ]]; then
     echo "宿主与扩展版本不一致：${app_version} / ${extension_version}" >&2
+    exit 1
+fi
+if [[ "${app_build}" != "${extension_build}" ]]; then
+    echo "宿主与扩展构建号不一致：${app_build} / ${extension_build}" >&2
+    exit 1
+fi
+# 构建号必须随发布递增，否则升级后宿主不会重新加载 Finder。
+if [[ ! "${app_build}" =~ ^[0-9]+$ ]] || (( app_build <= 0 )); then
+    echo "构建号不是正整数：${app_build}" >&2
+    exit 1
+fi
+if [[ -n "${EXPECT_VERSION:-}" && "${app_version}" != "${EXPECT_VERSION}" ]]; then
+    echo "版本号与预期不符：${app_version}，预期 ${EXPECT_VERSION}" >&2
+    exit 1
+fi
+if [[ -n "${EXPECT_BUILD:-}" && "${app_build}" != "${EXPECT_BUILD}" ]]; then
+    echo "构建号与预期不符：${app_build}，预期 ${EXPECT_BUILD}" >&2
+    exit 1
+fi
+# App 通过 osascript 控制 Terminal / iTerm2，缺少用途说明时授权弹窗没有理由，
+# 且启用硬化运行时后会被系统拒绝。
+if [[ -z "${apple_events_usage}" ]]; then
+    echo "Info.plist 缺少 NSAppleEventsUsageDescription" >&2
     exit 1
 fi
 if [[ "${icon_name}" != "AppIcon" ]]; then
@@ -59,4 +85,4 @@ for binary in "${binaries[@]}"; do
     fi
 done
 
-echo "✓ App 验证通过：${app_version}，Universal 2，Ad-hoc 签名有效"
+echo "✓ App 验证通过：${app_version} (${app_build})，Universal 2，Ad-hoc 签名有效"

@@ -4,12 +4,8 @@ public enum TerminalProfile: String, CaseIterable, Codable, Sendable {
     case terminal
     case iTerm
 
-    public var title: String {
-        switch self {
-        case .terminal: "Terminal"
-        case .iTerm: "iTerm2"
-        }
-    }
+    /// 与 `ExternalApplication` 共用显示名，避免两处各写一份。
+    public var title: String { application.title }
 }
 
 public enum CLICommand: String, CaseIterable, Codable, Hashable, Sendable {

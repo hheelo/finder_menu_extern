@@ -115,18 +115,31 @@ final class AppModel: ObservableObject {
     }
 
     private func refreshFinderSessionIfNeeded() {
-        guard let build = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleVersion"
-        ) as? String,
-        AppSettings.shared.finderSessionBuild != build else {
+        guard let version = Self.bundleVersion,
+              AppSettings.shared.finderSessionBuild != version else {
             return
         }
 
         restartFinder(
             successStatus: "已为当前版本重新加载 Finder"
         ) {
-            AppSettings.shared.finderSessionBuild = build
+            AppSettings.shared.finderSessionBuild = version
         }
+    }
+
+    /// 同时包含短版本号和构建号：只看 `CFBundleVersion` 的话，一旦某次发布
+    /// 忘记递增构建号，升级后就不会重新加载 Finder，用户仍看到旧菜单。
+    private static var bundleVersion: String? {
+        let info = Bundle.main
+        guard let build = info.object(
+            forInfoDictionaryKey: "CFBundleVersion"
+        ) as? String else {
+            return nil
+        }
+        let short = info.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "0"
+        return "\(short) (\(build))"
     }
 
     private func restartFinder(

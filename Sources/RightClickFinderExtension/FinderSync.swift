@@ -15,84 +15,76 @@ final class FinderSync: FIFinderSync {
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
-        NSLog(
-            "RightClick menu requested: %@",
-            String(describing: menuKind)
-        )
-        let menu = NSMenu(title: "RightClick")
-        let context = context(for: menuKind)
-        let supportsContextActions =
-            menuKind == .contextualMenuForContainer ||
-            menuKind == .contextualMenuForItems ||
-            menuKind == .contextualMenuForSidebar
-
-        if supportsContextActions {
-            let hasSelection = !context.effectiveURLs.isEmpty
-            menu.addItem(
-                actionItem(
-                    .copyPath,
-                    context: context,
-                    isEnabled: hasSelection
-                )
+        guard let placement = MenuPlacement(menuKind),
+              placement.providesContextActions else {
+            NSLog(
+                "RightClick menu skipped: %@",
+                String(describing: menuKind)
             )
-            menu.addItem(
-                actionItem(
-                    .copyFilename,
-                    context: context,
-                    isEnabled: hasSelection
-                )
-            )
-            menu.addItem(.separator())
-            menu.addItem(
-                actionItem(
-                    .openInVSCode,
-                    context: context,
-                    isEnabled: hasSelection
-                )
-            )
-            menu.addItem(
-                actionItem(
-                    .openInCodex,
-                    context: context,
-                    isEnabled: hasSelection
-                )
-            )
-            menu.addItem(
-                terminalSubmenu(
-                    context: context,
-                    isEnabled: context.workingDirectory != nil
-                )
-            )
-            menu.addItem(
-                runSubmenu(
-                    context: context,
-                    isEnabled: context.workingDirectory != nil
-                )
-            )
+            return nil
         }
 
-        if supportsContextActions {
-            if !menu.items.isEmpty {
-                menu.addItem(.separator())
-            }
-            let newFile = newFileSubmenu(context: context)
-            newFile.isEnabled = context.creationDirectory != nil
-            menu.addItem(newFile)
+        let context = context(for: placement)
+        let nodes = RightClickMenu.nodes(
+            placement: placement,
+            context: context
+        )
+        guard !nodes.isEmpty else { return nil }
+
+        let menu = Self.makeMenu(title: "RightClick")
+        for node in nodes {
+            menu.addItem(item(for: node, context: context))
         }
 
+        // 空白处/边栏右键完全依赖 targetedURL：它一旦为 nil，选区上下文就全空，
+        // 菜单虽然返回了但每一项都是灰的。把判定依据一并记下来，
+        // 好区分「Finder 没调用扩展」和「调用了但拿不到目标目录」。
         NSLog(
-            "RightClick menu returned %@ items",
-            String(menu.items.count)
+            "RightClick menu built: %@",
+            "placement=\(placement) selected=\(context.selectedURLs.count) "
+                + "targeted=\(context.targetedURL != nil) "
+                + "effective=\(context.effectiveURLs.count) "
+                + "workingDir=\(context.workingDirectory != nil) "
+                + "creationDir=\(context.creationDirectory != nil) "
+                + "items=\(menu.items.count)"
         )
-        return menu.items.isEmpty ? nil : menu
+        return menu
     }
 
-    private func context(for menuKind: FIMenuKind) -> SelectionContext {
-        let usesTargetedURL =
-            menuKind == .contextualMenuForContainer ||
-            menuKind == .contextualMenuForSidebar
-        return SelectionContext(
-            selectedURLs: usesTargetedURL
+    /// `NSMenu` 默认开启 `autoenablesItems`，会按「target 是否响应 action」
+    /// 重新计算启用状态，从而覆盖这里手工设置的 `isEnabled`，让本该置灰的
+    /// 菜单项仍然可点。菜单全部由这里构造，统一关掉自动启用。
+    private static func makeMenu(title: String) -> NSMenu {
+        let menu = NSMenu(title: title)
+        menu.autoenablesItems = false
+        return menu
+    }
+
+    /// 把 Core 描述的菜单结构渲染成 AppKit 菜单项。
+    private func item(
+        for node: RightClickMenuNode,
+        context: SelectionContext
+    ) -> NSMenuItem {
+        switch node {
+        case .separator:
+            return .separator()
+        case let .action(action, isEnabled):
+            return actionItem(action, context: context, isEnabled: isEnabled)
+        case let .submenu(title, isEnabled, items):
+            let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            let submenu = Self.makeMenu(title: title)
+            for child in items {
+                submenu.addItem(item(for: child, context: context))
+            }
+            root.submenu = submenu
+            root.isEnabled = isEnabled
+            return root
+        }
+    }
+
+    private func context(for placement: MenuPlacement) -> SelectionContext {
+        SelectionContext(
+            selectedURLs: placement.usesTargetedURLOnly
                 ? []
                 : controller.selectedItemURLs() ?? [],
             targetedURL: controller.targetedURL()
@@ -115,76 +107,6 @@ final class FinderSync: FIFinderSync {
         return item
     }
 
-    private func runSubmenu(
-        context: SelectionContext,
-        isEnabled: Bool
-    ) -> NSMenuItem {
-        let root = NSMenuItem(
-            title: "运行 AI CLI",
-            action: nil,
-            keyEquivalent: ""
-        )
-        let submenu = NSMenu(title: root.title)
-        submenu.addItem(
-            actionItem(
-                .runCodexCLI,
-                context: context,
-                isEnabled: isEnabled
-            )
-        )
-        submenu.addItem(
-            actionItem(
-                .runClaudeCode,
-                context: context,
-                isEnabled: isEnabled
-            )
-        )
-        root.submenu = submenu
-        root.isEnabled = isEnabled
-        return root
-    }
-
-    private func terminalSubmenu(
-        context: SelectionContext,
-        isEnabled: Bool
-    ) -> NSMenuItem {
-        let root = NSMenuItem(
-            title: "在终端中打开",
-            action: nil,
-            keyEquivalent: ""
-        )
-        let submenu = NSMenu(title: root.title)
-        submenu.addItem(
-            actionItem(
-                .openInTerminal(.terminal),
-                context: context,
-                isEnabled: isEnabled
-            )
-        )
-        submenu.addItem(
-            actionItem(
-                .openInTerminal(.iTerm),
-                context: context,
-                isEnabled: isEnabled
-            )
-        )
-        root.submenu = submenu
-        root.isEnabled = isEnabled
-        return root
-    }
-
-    private func newFileSubmenu(context: SelectionContext) -> NSMenuItem {
-        let root = NSMenuItem(title: "新建文件", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: root.title)
-        for template in FileTemplate.allCases {
-            submenu.addItem(
-                actionItem(.createFile(template), context: context)
-            )
-        }
-        root.submenu = submenu
-        return root
-    }
-
     @objc private func performAction(_ sender: NSMenuItem) {
         guard let actionBox = sender.representedObject as? ActionBox else {
             return
@@ -203,27 +125,14 @@ final class FinderSync: FIFinderSync {
                 let createdURL = try fileCreator.create(template, in: directory)
                 NSWorkspace.shared.activateFileViewerSelecting([createdURL])
             case .openInVSCode:
-                try open(
-                    context.effectiveURLs,
-                    bundleIdentifiers: ["com.microsoft.VSCode"],
-                    applicationNames: ["Visual Studio Code"]
-                )
+                try open(context.effectiveURLs, with: .visualStudioCode)
             case .openInCodex:
-                try open(
-                    context.effectiveURLs,
-                    bundleIdentifiers: ["com.openai.codex"],
-                    applicationNames: ["Codex"]
-                )
+                try open(context.effectiveURLs, with: .codex)
             case let .openInTerminal(profile):
                 guard let directory = context.workingDirectory else {
                     throw FinderActionError.invalidWorkingDirectory
                 }
-                let application = terminalApplication(for: profile)
-                try open(
-                    [directory],
-                    bundleIdentifiers: application.bundleIdentifiers,
-                    applicationNames: application.names
-                )
+                try open([directory], with: profile.application)
             case .runCodexCLI:
                 try openHost(for: .codex, context: context)
             case .runClaudeCode:
@@ -243,17 +152,15 @@ final class FinderSync: FIFinderSync {
 
     private func open(
         _ urls: [URL],
-        bundleIdentifiers: [String],
-        applicationNames: [String]
+        with application: ExternalApplication
     ) throws {
         let workspace = NSWorkspace.shared
-        guard let applicationURL = applicationURL(
-            bundleIdentifiers: bundleIdentifiers,
-            applicationNames: applicationNames
+        guard let applicationURL = application.url(
+            bundleIdentifierLookup: {
+                workspace.urlForApplication(withBundleIdentifier: $0)
+            }
         ) else {
-            throw FinderActionError.applicationNotFound(
-                applicationNames.first ?? "应用"
-            )
+            throw FinderActionError.applicationNotFound(application.title)
         }
 
         let configuration = NSWorkspace.OpenConfiguration()
@@ -299,44 +206,6 @@ final class FinderSync: FIFinderSync {
         }
     }
 
-    private func applicationURL(
-        bundleIdentifiers: [String],
-        applicationNames: [String]
-    ) -> URL? {
-        let workspace = NSWorkspace.shared
-        if let installed = bundleIdentifiers.lazy.compactMap({
-            workspace.urlForApplication(withBundleIdentifier: $0)
-        }).first {
-            return installed
-        }
-
-        let roots = [
-            URL(fileURLWithPath: "/Applications", isDirectory: true),
-            URL(
-                fileURLWithPath: "/System/Applications/Utilities",
-                isDirectory: true
-            ),
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Applications", isDirectory: true)
-        ]
-        return roots.lazy.flatMap { root in
-            applicationNames.map {
-                root.appendingPathComponent("\($0).app", isDirectory: true)
-            }
-        }.first { FileManager.default.fileExists(atPath: $0.path) }
-    }
-
-    private func terminalApplication(
-        for profile: TerminalProfile
-    ) -> (bundleIdentifiers: [String], names: [String]) {
-        switch profile {
-        case .terminal:
-            (["com.apple.Terminal"], ["Terminal"])
-        case .iTerm:
-            (["com.googlecode.iterm2"], ["iTerm", "iTerm2"])
-        }
-    }
-
     private static func present(message: String) {
         DispatchQueue.main.async {
             NSSound.beep()
@@ -346,6 +215,19 @@ final class FinderSync: FIFinderSync {
             alert.informativeText = message
             alert.addButton(withTitle: "好")
             alert.runModal()
+        }
+    }
+}
+
+private extension MenuPlacement {
+    /// `FIMenuKind` 只在扩展里可见，映射留在这一层，Core 保持与 Finder 无关。
+    init?(_ menuKind: FIMenuKind) {
+        switch menuKind {
+        case .contextualMenuForItems: self = .items
+        case .contextualMenuForContainer: self = .container
+        case .contextualMenuForSidebar: self = .sidebar
+        case .toolbarItemMenu: self = .toolbar
+        @unknown default: return nil
         }
     }
 }

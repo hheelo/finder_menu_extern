@@ -1,0 +1,96 @@
+import Foundation
+
+/// 一个需要在系统里定位的外部 App。
+///
+/// Bundle ID、可执行名和搜索路径集中定义在这里：Finder 扩展的菜单动作和宿主
+/// App 的环境诊断此前各有一份实现，搜索路径还不一致，会出现「诊断说没装、
+/// 菜单却能打开」这种互相矛盾的结果。
+public struct ExternalApplication: Equatable, Sendable {
+    public let title: String
+    public let bundleIdentifiers: [String]
+    public let names: [String]
+
+    public init(title: String, bundleIdentifiers: [String], names: [String]) {
+        self.title = title
+        self.bundleIdentifiers = bundleIdentifiers
+        self.names = names
+    }
+
+    /// 按 Bundle ID 找不到时回退搜索的目录。
+    ///
+    /// 注意：`homeDirectoryForCurrentUser` 在沙箱化的 Finder 扩展里指向容器，
+    /// 因此 `~/Applications` 这一项对扩展基本无效；Bundle ID 查询才是主路径，
+    /// 目录搜索只是 LaunchServices 数据库缺条目时的兜底。
+    public static let searchRoots: [URL] = [
+        URL(fileURLWithPath: "/Applications", isDirectory: true),
+        URL(fileURLWithPath: "/Applications/Utilities", isDirectory: true),
+        URL(fileURLWithPath: "/System/Applications", isDirectory: true),
+        URL(fileURLWithPath: "/System/Applications/Utilities", isDirectory: true),
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications", isDirectory: true)
+    ]
+
+    /// 定位 App。
+    ///
+    /// Bundle ID 查询需要 AppKit（`NSWorkspace`），而 Core 不依赖 AppKit，
+    /// 所以由调用方以闭包注入，目录回退和搜索顺序留在这里统一实现。
+    public func url(
+        bundleIdentifierLookup: (String) -> URL?,
+        fileManager: FileManager = .default
+    ) -> URL? {
+        if let installed = bundleIdentifiers.lazy
+            .compactMap(bundleIdentifierLookup)
+            .first {
+            return installed
+        }
+
+        return candidateURLs.first {
+            fileManager.fileExists(atPath: $0.path)
+        }
+    }
+
+    /// 目录回退时按「搜索路径 × 名称」展开的候选路径，顺序即优先级。
+    public var candidateURLs: [URL] {
+        Self.searchRoots.flatMap { root in
+            names.map {
+                root.appendingPathComponent("\($0).app", isDirectory: true)
+            }
+        }
+    }
+}
+
+public extension ExternalApplication {
+    static let visualStudioCode = ExternalApplication(
+        title: "Visual Studio Code",
+        bundleIdentifiers: ["com.microsoft.VSCode"],
+        names: ["Visual Studio Code"]
+    )
+
+    // TODO: Codex App 的正式 Bundle ID 仍待确认（见 docs/ROADMAP.md M1）。
+    static let codex = ExternalApplication(
+        title: "Codex",
+        bundleIdentifiers: ["com.openai.codex"],
+        names: ["Codex"]
+    )
+
+    static let terminal = ExternalApplication(
+        title: "Terminal",
+        bundleIdentifiers: ["com.apple.Terminal"],
+        names: ["Terminal"]
+    )
+
+    static let iTerm = ExternalApplication(
+        title: "iTerm2",
+        bundleIdentifiers: ["com.googlecode.iterm2"],
+        names: ["iTerm", "iTerm2"]
+    )
+}
+
+public extension TerminalProfile {
+    var application: ExternalApplication {
+        switch self {
+        case .terminal: .terminal
+        case .iTerm: .iTerm
+        }
+    }
+}

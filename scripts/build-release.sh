@@ -6,6 +6,18 @@ script_dir="${0:A:h}"
 project_dir="${script_dir:h}"
 version="${VERSION:-0.2.5}"
 version="${version#v}"
+
+# CFBundleVersion 必须逐次发布单调递增：宿主 App 用「短版本号 + 构建号」
+# 判断升级后是否需要重新加载 Finder，而 LaunchServices 也依赖它区分版本。
+# 从 semver 推导，例如 0.2.5 → 205、1.0.0 → 10000（要求各段小于 100）。
+build_number="$(printf '%s' "${version}" | awk -F'[.-]' '{
+    printf "%d", ($1 * 10000) + ($2 * 100) + $3
+}')"
+if [[ ! "${build_number}" =~ ^[0-9]+$ ]] || (( build_number <= 0 )); then
+    echo "无法从版本号推导构建号：${version}" >&2
+    exit 1
+fi
+
 release_root="${project_dir}/.build/release"
 derived_data="${project_dir}/.build/ReleaseDerivedData"
 staging_dir="${release_root}/staging"
@@ -43,6 +55,7 @@ xcodebuild \
     -configuration Release \
     -derivedDataPath "${derived_data}" \
     MARKETING_VERSION="${version}" \
+    CURRENT_PROJECT_VERSION="${build_number}" \
     ARCHS="arm64 x86_64" \
     ONLY_ACTIVE_ARCH=NO \
     CODE_SIGN_STYLE=Manual \
@@ -52,7 +65,8 @@ xcodebuild \
     CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     build
 
-"${project_dir}/scripts/verify-app.sh" "${built_app}"
+EXPECT_VERSION="${version}" EXPECT_BUILD="${build_number}" \
+    "${project_dir}/scripts/verify-app.sh" "${built_app}"
 
 ditto "${built_app}" "${staged_app}"
 ln -s /Applications "${staging_dir}/Applications"

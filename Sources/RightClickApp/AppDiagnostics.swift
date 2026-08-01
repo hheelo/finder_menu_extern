@@ -14,22 +14,9 @@ enum AppDiagnostics {
         async let codexPath = executablePath(for: .codex)
         async let claudePath = executablePath(for: .claude)
 
-        let workspace = NSWorkspace.shared
-        let vscode = applicationURL(
-            bundleIdentifiers: ["com.microsoft.VSCode"],
-            names: ["Visual Studio Code"],
-            workspace: workspace
-        )
-        let codexApp = applicationURL(
-            bundleIdentifiers: ["com.openai.codex"],
-            names: ["Codex"],
-            workspace: workspace
-        )
-        let iTerm = applicationURL(
-            bundleIdentifiers: ["com.googlecode.iterm2"],
-            names: ["iTerm", "iTerm2"],
-            workspace: workspace
-        )
+        let vscode = applicationURL(for: .visualStudioCode)
+        let codexApp = applicationURL(for: .codex)
+        let iTerm = applicationURL(for: .iTerm)
 
         let resolvedCodexPath = await codexPath
         let resolvedClaudePath = await claudePath
@@ -98,54 +85,89 @@ enum AppDiagnostics {
         )
     }
 
+    /// 与 Finder 扩展的菜单动作共用 `ExternalApplication` 的查找规则，
+    /// 避免出现「诊断说没装、菜单却能打开」这类互相矛盾的结果。
     private static func applicationURL(
-        bundleIdentifiers: [String],
-        names: [String],
-        workspace: NSWorkspace
+        for application: ExternalApplication
     ) -> URL? {
-        let installed = bundleIdentifiers.lazy.compactMap {
-            workspace.urlForApplication(withBundleIdentifier: $0)
-        }.first
-        if let installed {
-            return installed
-        }
-
-        return names.lazy
-            .flatMap { name in
-                [
-                    URL(fileURLWithPath: "/Applications/\(name).app"),
-                    FileManager.default.homeDirectoryForCurrentUser
-                        .appendingPathComponent("Applications/\(name).app")
-                ]
+        let workspace = NSWorkspace.shared
+        return application.url(
+            bundleIdentifierLookup: {
+                workspace.urlForApplication(withBundleIdentifier: $0)
             }
-            .first { FileManager.default.fileExists(atPath: $0.path) }
+        )
     }
 
     private static func executablePath(
         for command: CLICommand
     ) async -> String? {
+        let output = await loginShellOutput(
+            script: "command -v -- \(command.rawValue) 2>/dev/null"
+        )
+
+        // 登录 shell 会 source 用户的 rc 文件，其中的横幅/提示同样会写到
+        // stdout，因此不能把整段输出当成路径，只取最后一行非空内容。
+        let path = output?
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .last?
+            .trimmingCharacters(in: .whitespaces) ?? ""
+        return path.isEmpty ? nil : path
+    }
+
+    /// 在用户的登录 shell 中执行脚本。
+    ///
+    /// 必须带超时：rc 文件挂起（等待输入、慢速网络探测等）会让调用方的
+    /// `isRefreshingDiagnostics` 永远停在 `true`，之后所有诊断刷新都被挡掉。
+    private static func loginShellOutput(
+        script: String,
+        timeout: Duration = .seconds(5)
+    ) async -> String? {
         await Task.detached(priority: .utility) {
             let process = Process()
             let outputPipe = Pipe()
             process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            process.arguments = [
-                "-lic",
-                "command -v -- \(command.rawValue) 2>/dev/null"
-            ]
+            // 保留 -i：很多用户把 PATH 写在只有交互式 shell 才加载的 .zshrc 里。
+            process.arguments = ["-lic", script]
+            // 交互式 shell 不应该从宿主 App 继承 stdin 并阻塞在读取上。
+            process.standardInput = FileHandle.nullDevice
             process.standardOutput = outputPipe
             process.standardError = FileHandle.nullDevice
 
             do {
                 try process.run()
-                process.waitUntilExit()
-                guard process.terminationStatus == 0 else { return nil }
-                let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                let path = String(decoding: data, as: UTF8.self)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                return path.isEmpty ? nil : path
             } catch {
                 return nil
             }
+
+            let watchdog = Task {
+                try? await Task.sleep(for: timeout)
+                guard !Task.isCancelled else { return }
+                ProcessBox(process).terminate()
+            }
+            defer { watchdog.cancel() }
+
+            // 先读到 EOF 再等退出：rc 文件的输出可能填满管道缓冲区，
+            // 那时先 waitUntilExit 会双方互等而死锁。
+            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+
+            guard process.terminationStatus == 0 else { return nil }
+            return String(decoding: data, as: UTF8.self)
         }.value
+    }
+}
+
+/// `Process` 不是 `Sendable`，但从其他线程调用 `terminate()` 是安全的，
+/// 这里只为把超时看守跨并发域传递而做最小封装。
+private final class ProcessBox: @unchecked Sendable {
+    private let process: Process
+
+    init(_ process: Process) {
+        self.process = process
+    }
+
+    func terminate() {
+        guard process.isRunning else { return }
+        process.terminate()
     }
 }

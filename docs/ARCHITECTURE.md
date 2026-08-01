@@ -5,6 +5,7 @@
 ### RightClickFinderExtension
 
 - 向 Finder 提供项目菜单与文件夹背景菜单
+- 把 `RightClickCore` 描述的菜单结构渲染成 `NSMenu`，本身不决定菜单内容
 - 只在 `menu(for:)` 和菜单回调期间读取 `selectedItemURLs` / `targetedURL`
 - 直接完成剪贴板、文件创建以及打开 VS Code / Codex
 - 直接用 Terminal / iTerm2 打开所选目录或文件所在目录
@@ -22,6 +23,9 @@
 
 - 不依赖 AppKit，可被宿主 App、扩展和测试复用
 - 定义动作、文件模板、选区语义、CLI 链接和普通 App 设置
+- 描述菜单结构：菜单位置 → 菜单项、分组与置灰规则，可脱离 Finder 单独测试
+- 定义外部 App（VS Code / Codex / Terminal / iTerm2）的 Bundle ID 与查找顺序，
+  菜单动作与环境诊断共用同一份规则
 - 集中处理文件名冲突、URL 编码和 shell 参数转义
 
 ## 安全边界
