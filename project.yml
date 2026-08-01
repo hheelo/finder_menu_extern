@@ -12,12 +12,17 @@ settings:
     # 构建号由 scripts/build-release.sh 从 tag 推导（major*10000+minor*100+patch）
     # 并在发布构建时覆盖；这里的值要与 MARKETING_VERSION 保持一致，
     # 让本地 install.sh 构建出的版本号和发布版一致。
-    CURRENT_PROJECT_VERSION: 400
-    MARKETING_VERSION: 0.4.0
+    CURRENT_PROJECT_VERSION: 500
+    MARKETING_VERSION: 0.5.0
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true
     CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: true
+
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.9.4
 
 targets:
   RightClickCore:
@@ -43,6 +48,9 @@ targets:
         embed: true
       - target: RightClickFinderExtension
         embed: true
+      # 只有宿主需要更新能力；扩展沙箱化且由 Finder 加载，不参与更新
+      - package: Sparkle
+        product: Sparkle
     info:
       path: Configuration/RightClick-Info.plist
       properties:
@@ -56,6 +64,12 @@ targets:
         LSUIElement: true
         NSAppleEventsUsageDescription: RightClick 需要控制 Terminal 或 iTerm2，才能在所选目录中运行 Codex CLI / Claude Code。
         NSPrincipalClass: NSApplication
+        # 始终指向最新一次发布的资产，发新版无需改动此处
+        SUFeedURL: https://github.com/hheelo/finder_menu_extern/releases/latest/download/appcast.xml
+        SUPublicEDKey: zSS8u0opcEchcZsZKN37gHgs60sOf+c/bOiwyejzX9I=
+        # 不做定时检查：宿主经常被深链无声唤起，那种时候弹更新框会很突兀。
+        # 只有用户自己打开 App 时才后台查一次，另有手动「检查更新」按钮。
+        SUEnableAutomaticChecks: false
         CFBundleURLTypes:
           - CFBundleURLName: com.hheelo.RightClick.command
             CFBundleURLSchemes:

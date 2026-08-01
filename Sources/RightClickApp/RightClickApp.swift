@@ -16,10 +16,14 @@ let appLogger = Logger(
 /// 窗口只是收起而非关闭，`AppModel` 需要展示确认框或错误时能直接把它请回来。
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// 是否由用户自己启动（而非为处理深链）。决定要不要检查更新。
+    private(set) var isUserLaunch = true
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let isDefaultLaunch = notification.userInfo?[
             NSApplication.launchIsDefaultUserInfoKey
         ] as? Bool ?? true
+        isUserLaunch = isDefaultLaunch
         appLogger.notice(
             "启动完成 用户主动启动=\(isDefaultLaunch, privacy: .public)"
         )
@@ -77,14 +81,21 @@ enum WindowPresenter {
 struct RightClickApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = AppModel()
+    @State private var updater = UpdaterController()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(updater: updater)
                 .environmentObject(model)
                 .frame(minWidth: 640, minHeight: 440)
                 .onOpenURL { model.handle(url: $0) }
+                .task {
+                    // 只在用户自己打开 App 时查一次；深链唤起时不查，
+                    // 否则会在用户点「用 VS Code 打开」时冒出更新界面。
+                    guard delegate.isUserLaunch else { return }
+                    updater.checkInBackground()
+                }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         model.refreshExtensionStatus()

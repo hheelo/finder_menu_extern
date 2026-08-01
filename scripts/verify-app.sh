@@ -10,12 +10,14 @@ fi
 
 extension_path="${app_path}/Contents/PlugIns/RightClickFinderExtension.appex"
 core_path="${app_path}/Contents/Frameworks/RightClickCore.framework"
+sparkle_path="${app_path}/Contents/Frameworks/Sparkle.framework"
 icon_path="${app_path}/Contents/Resources/AppIcon.icns"
 
 if [[ ! -d "${extension_path}" ||
       ! -d "${core_path}" ||
+      ! -d "${sparkle_path}" ||
       ! -f "${icon_path}" ]]; then
-    echo "App 缺少 Finder 扩展、RightClickCore.framework 或 AppIcon" >&2
+    echo "App 缺少 Finder 扩展、RightClickCore/Sparkle.framework 或 AppIcon" >&2
     exit 1
 fi
 
@@ -29,6 +31,8 @@ app_build="$(plutil -extract CFBundleVersion raw -o - "${app_path}/Contents/Info
 extension_build="$(plutil -extract CFBundleVersion raw -o - "${extension_path}/Contents/Info.plist")"
 icon_name="$(plutil -extract CFBundleIconName raw -o - "${app_path}/Contents/Info.plist")"
 apple_events_usage="$(plutil -extract NSAppleEventsUsageDescription raw -o - "${app_path}/Contents/Info.plist" 2>/dev/null || true)"
+feed_url="$(plutil -extract SUFeedURL raw -o - "${app_path}/Contents/Info.plist" 2>/dev/null || true)"
+public_key="$(plutil -extract SUPublicEDKey raw -o - "${app_path}/Contents/Info.plist" 2>/dev/null || true)"
 
 if [[ "${app_id}" != "com.hheelo.RightClick" ]]; then
     echo "宿主 Bundle ID 不正确：${app_id}" >&2
@@ -65,6 +69,16 @@ if [[ -z "${apple_events_usage}" ]]; then
     echo "Info.plist 缺少 NSAppleEventsUsageDescription" >&2
     exit 1
 fi
+# 更新源与公钥缺一不可：公钥缺失时 Sparkle 会拒绝一切更新，
+# 而占位或错误的公钥会让所有已安装用户永久卡在当前版本。
+if [[ -z "${feed_url}" ]]; then
+    echo "Info.plist 缺少 SUFeedURL" >&2
+    exit 1
+fi
+if [[ "${public_key}" != "zSS8u0opcEchcZsZKN37gHgs60sOf+c/bOiwyejzX9I=" ]]; then
+    echo "SUPublicEDKey 不是预期的公钥：${public_key}" >&2
+    exit 1
+fi
 if [[ "${icon_name}" != "AppIcon" ]]; then
     echo "AppIcon 配置不正确：${icon_name}" >&2
     exit 1
@@ -74,6 +88,9 @@ binaries=(
     "${app_path}/Contents/MacOS/RightClick"
     "${extension_path}/Contents/MacOS/RightClickFinderExtension"
     "${core_path}/Versions/A/RightClickCore"
+    "${sparkle_path}/Sparkle"
+    # 真正执行更新安装的助手；单架构会让另一半用户的更新失败
+    "${sparkle_path}/Autoupdate"
 )
 
 for binary in "${binaries[@]}"; do

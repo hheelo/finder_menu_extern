@@ -41,5 +41,11 @@
 	<string>RightClick 需要控制 Terminal 或 iTerm2，才能在所选目录中运行 Codex CLI / Claude Code。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/hheelo/finder_menu_extern/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>zSS8u0opcEchcZsZKN37gHgs60sOf+c/bOiwyejzX9I=</string>
 </dict>
 </plist>

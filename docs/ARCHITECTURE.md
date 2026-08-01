@@ -29,6 +29,8 @@
   时同样回退，避免 AppleScript 对着不存在的应用报错。「在终端中打开」与
   「运行 AI CLI」共用这一套解析
 - 提供本地环境诊断和 Finder 重启入口
+- 内置 Sparkle 应用内更新：只在用户主动启动时后台查一次，不做定时检查，
+  深链唤起时不查（否则会在用户操作文件时弹出更新界面）
 
 ### RightClickCore
 
@@ -53,6 +55,10 @@
 - shell 工作目录使用单引号转义
 - 宿主在后台等待 `osascript`，扩展进程不等待终端或编辑器
 - 不自动移除 macOS quarantine 属性
+- 更新包由 EdDSA 私钥签名，`SUPublicEDKey` 是对应公钥；该体系与 Apple 证书
+  无关，Ad-hoc 签名也能安全校验。私钥只经标准输入进入 CI，不写入命令行参数
+- 发布前流水线用同一把私钥验回签名，签名无效则拒绝发布
+- Sparkle 工具包按固定版本与 SHA-256 下载，防止签名工具本身被替换
 
 ## 无证书分发
 
@@ -79,3 +85,7 @@
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证
+- 没有 Developer ID 就无法轮换 EdDSA 密钥（轮换需要证书建立信任链）。
+  私钥丢失或泄露等于永久失去对存量用户的更新能力
+- Sparkle 下载的更新包不带 quarantine（已实测：curl 下载同一 DMG 只有
+  `com.apple.provenance`），因此只有首次安装需要放行一次

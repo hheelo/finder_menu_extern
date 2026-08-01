@@ -2,6 +2,7 @@ import SwiftUI
 import RightClickCore
 
 struct ContentView: View {
+    let updater: UpdaterController
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
@@ -33,7 +34,7 @@ struct ContentView: View {
                     FeatureRow(
                         icon: "terminal",
                         title: "终端",
-                        detail: "用 Terminal / iTerm2 打开，或运行 AI CLI"
+                        detail: "在终端打开（优先 iTerm2），或运行 AI CLI"
                     )
                     FeatureRow(
                         icon: "doc.badge.plus",
@@ -74,6 +75,9 @@ struct ContentView: View {
                 Label(model.lastStatus, systemImage: "checkmark.circle")
                     .foregroundStyle(.secondary)
                 Spacer()
+                Button("检查更新") {
+                    updater.checkForUpdates()
+                }
                 Button("复制诊断信息") {
                     model.copyDiagnostics()
                 }

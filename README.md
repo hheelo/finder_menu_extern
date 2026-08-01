@@ -42,6 +42,16 @@ Group、开发团队或 provisioning profile。
 3. 点击“仍要打开”
 4. 回到 RightClick，点击“启用 Finder 扩展”
 
+### 更新
+
+从 v0.5.0 起，RightClick 内置应用内更新：打开 App 点「检查更新」即可，
+不需要再下载 DMG、不需要拖拽、也不会再出现「来源不明」提示——
+Sparkle 下载的更新包不带 macOS 隔离属性，Gatekeeper 不会介入。
+用户自己打开 App 时会自动后台查一次；被 Finder 菜单唤起时不查，
+避免在你操作文件时冒出更新界面。
+
+更新包用 EdDSA 密钥签名校验，与 Ad-hoc 签名并行工作。
+
 ### 一键本地安装
 
 已安装 Xcode 的开发者可以运行：

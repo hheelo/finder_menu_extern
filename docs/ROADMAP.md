@@ -57,7 +57,8 @@
 
 ## M4：稳定分发
 
-- [ ] Developer ID 签名、公证和 Sparkle 更新
+- [x] Sparkle 应用内更新（EdDSA 签名，无需 Developer ID）
+- [ ] Developer ID 签名与公证
 - [ ] 完整的分步首次启动向导
 - [ ] 崩溃与请求日志（默认本地）
 - [ ] UI 自动化和签名后 smoke test
