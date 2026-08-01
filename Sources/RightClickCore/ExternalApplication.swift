@@ -6,11 +6,19 @@ import Foundation
 /// App 的环境诊断此前各有一份实现，搜索路径还不一致，会出现「诊断说没装、
 /// 菜单却能打开」这种互相矛盾的结果。
 public struct ExternalApplication: Equatable, Sendable {
+    /// 深链里用来指代这个 App 的稳定标识，不随显示名变化。
+    public let identifier: String
     public let title: String
     public let bundleIdentifiers: [String]
     public let names: [String]
 
-    public init(title: String, bundleIdentifiers: [String], names: [String]) {
+    public init(
+        identifier: String,
+        title: String,
+        bundleIdentifiers: [String],
+        names: [String]
+    ) {
+        self.identifier = identifier
         self.title = title
         self.bundleIdentifiers = bundleIdentifiers
         self.names = names
@@ -61,6 +69,7 @@ public struct ExternalApplication: Equatable, Sendable {
 
 public extension ExternalApplication {
     static let visualStudioCode = ExternalApplication(
+        identifier: "vscode",
         title: "Visual Studio Code",
         bundleIdentifiers: ["com.microsoft.VSCode"],
         names: ["Visual Studio Code"]
@@ -68,22 +77,39 @@ public extension ExternalApplication {
 
     // TODO: Codex App 的正式 Bundle ID 仍待确认（见 docs/ROADMAP.md M1）。
     static let codex = ExternalApplication(
+        identifier: "codex",
         title: "Codex",
         bundleIdentifiers: ["com.openai.codex"],
         names: ["Codex"]
     )
 
     static let terminal = ExternalApplication(
+        identifier: "terminal",
         title: "Terminal",
         bundleIdentifiers: ["com.apple.Terminal"],
         names: ["Terminal"]
     )
 
     static let iTerm = ExternalApplication(
+        identifier: "iterm",
         title: "iTerm2",
         bundleIdentifiers: ["com.googlecode.iterm2"],
         names: ["iTerm", "iTerm2"]
     )
+
+    /// 深链只接受这里列出的 App，避免宿主被诱导去启动任意程序。
+    static let known: [ExternalApplication] = [
+        .visualStudioCode, .codex, .terminal, .iTerm
+    ]
+
+    init?(identifier: String) {
+        guard let match = Self.known.first(
+            where: { $0.identifier == identifier }
+        ) else {
+            return nil
+        }
+        self = match
+    }
 }
 
 public extension TerminalProfile {

@@ -7,16 +7,19 @@
 - 向 Finder 提供项目菜单与文件夹背景菜单
 - 把 `RightClickCore` 描述的菜单结构渲染成 `NSMenu`，本身不决定菜单内容
 - 只在 `menu(for:)` 和菜单回调期间读取 `selectedItemURLs` / `targetedURL`
-- 直接完成剪贴板、文件创建以及打开 VS Code / Codex
-- 直接用 Terminal / iTerm2 打开所选目录或文件所在目录
-- 通过 `rightclick://run?tool=...&cwd=...` 唤起宿主 App 运行 CLI
-- 操作不可用时将菜单置灰，失败时显示本地提示
+- 直接完成剪贴板与文件创建（这两件事在扩展内即可完成）
+- 不启动任何外部 App：扩展被沙箱化，`NSWorkspace` 指定 App 启动会被拒绝，
+  「用 X 打开」与「运行 CLI」一律编码成深链交给宿主
+- 通过 `rightclick://run?tool=...&cwd=...` 请求宿主运行 CLI
+- 通过 `rightclick://open?app=...&path=...` 请求宿主用指定 App 打开
+- 操作不可用时将菜单置灰；失败只记日志，不弹窗（见「已知系统约束」）
 
 ### RightClick
 
 - 提供启用指引、扩展状态、终端选择和错误状态
 - 严格解析 CLI 深链接；默认后台执行，可选前台确认启动目录
 - 使用 `osascript` 参数控制用户选择的终端，不拼接脚本源码
+- 代扩展执行外部 App 的启动，并在失败时向用户呈现错误
 - 提供本地环境诊断和 Finder 重启入口
 
 ### RightClickCore
@@ -31,6 +34,9 @@
 ## 安全边界
 
 - 不把完整 shell 命令塞进 URL；URL 只携带固定工具标识与工作目录
+- `rightclick://open` 只接受白名单内的 App 标识（见 `ExternalApplication.known`），
+  宿主不会被诱导去启动任意程序
+- 打开目标必须全部是已存在的绝对路径，只要有一个不存在就整体拒绝
 - 使用 `URLComponents` 编码路径，宿主只接受唯一的 `tool` / `cwd` 参数
 - 工作目录必须是已存在的绝对目录；用户可开启启动前确认
 - Finder 使用非激活配置唤起宿主，避免 RightClick 抢占前台
@@ -55,6 +61,10 @@
 - Finder Sync 只在 `directoryURLs` 覆盖的目录显示项目菜单
 - 当前默认监控 `/`，面向直接分发；之后应允许用户缩小范围
 - Finder 扩展必须在系统设置中由用户显式启用
+- 扩展内绝不能用 `NSAlert.runModal()`：模态会占住扩展主线程，而 `menu(for:)`
+  也在主线程上，一旦弹出右键菜单将永久不再出现
+- 扩展的 `NSLog` 只写 stderr 且被丢弃，排查一律用 `os.Logger`，
+  级别不低于 `notice`（`info` 默认不落盘）
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证

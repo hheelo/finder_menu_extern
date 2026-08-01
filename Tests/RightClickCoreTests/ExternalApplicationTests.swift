@@ -32,6 +32,7 @@ struct ExternalApplicationTests {
     @Test
     func returnsNilForAnAbsentApplication() {
         let absent = ExternalApplication(
+            identifier: "nope",
             title: "Nope",
             bundleIdentifiers: ["com.example.absent"],
             names: ["Definitely Not Installed \(UUID().uuidString)"]

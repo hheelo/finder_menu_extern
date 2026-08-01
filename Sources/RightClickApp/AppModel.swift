@@ -45,11 +45,21 @@ final class AppModel: ObservableObject {
     }
 
     func handle(url: URL) {
-        guard let invocation = CLIInvocation(deepLink: url) else {
-            lastError = "已拒绝无效的启动链接：工作目录必须是现有文件夹。"
+        if let invocation = CLIInvocation(deepLink: url) {
+            handle(invocation)
             return
         }
 
+        // 沙箱化的扩展不能启动其他 App，「用 X 打开」由宿主代为执行。
+        if let invocation = OpenInvocation(deepLink: url) {
+            handle(invocation)
+            return
+        }
+
+        lastError = "已拒绝无效的启动链接：工作目录必须是现有文件夹。"
+    }
+
+    private func handle(_ invocation: CLIInvocation) {
         if confirmCLIExecution {
             NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -58,6 +68,48 @@ final class AppModel: ObservableObject {
             NSApp.hide(nil)
             execute(invocation)
         }
+    }
+
+    private func handle(_ invocation: OpenInvocation) {
+        NSApp.hide(nil)
+        lastError = nil
+
+        let workspace = NSWorkspace.shared
+        guard let applicationURL = invocation.application.url(
+            bundleIdentifierLookup: {
+                workspace.urlForApplication(withBundleIdentifier: $0)
+            }
+        ) else {
+            lastStatus = "等待 Finder 操作"
+            reportOpenFailure(
+                "未找到 \(invocation.application.title)，请先安装应用。"
+            )
+            return
+        }
+
+        lastStatus = "正在用 \(invocation.application.title) 打开…"
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        Task { [weak self] in
+            do {
+                _ = try await workspace.open(
+                    invocation.targets,
+                    withApplicationAt: applicationURL,
+                    configuration: configuration
+                )
+                self?.lastStatus = "已用 \(invocation.application.title) 打开"
+            } catch {
+                self?.reportOpenFailure(error.localizedDescription)
+            }
+        }
+    }
+
+    /// 扩展里不能弹窗（模态会堵死它的主线程），失败提示统一由宿主呈现。
+    private func reportOpenFailure(_ message: String) {
+        lastError = message
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func cancelPendingInvocation() {

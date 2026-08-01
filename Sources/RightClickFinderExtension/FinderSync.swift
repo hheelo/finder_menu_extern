@@ -162,8 +162,12 @@ final class FinderSync: FIFinderSync {
                 try openHost(for: .claude, context: context)
             }
         } catch {
-            logger.error("动作执行失败：\(error.localizedDescription, privacy: .public)")
-            Self.present(message: error.localizedDescription)
+            // 绝不在扩展里弹模态框：`NSAlert.runModal()` 会占住扩展的主线程，
+            // 而 `menu(for:)` 也在主线程上，一旦弹出右键菜单就再也不出现。
+            // 错误只记日志，需要提示用户时由宿主 App 负责。
+            logger.error(
+                "动作执行失败：\(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 
@@ -173,30 +177,22 @@ final class FinderSync: FIFinderSync {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
+    /// 交给宿主去启动目标 App。
+    ///
+    /// 扩展被沙箱化，`NSWorkspace.open(_:withApplicationAt:)` 会以
+    /// 「杂项错误」失败（日志里可见 LaunchServices 立刻返回错误）。而打开
+    /// URL 是沙箱允许的，所以统一用深链把请求交给未沙箱的宿主执行。
     private func open(
         _ urls: [URL],
         with application: ExternalApplication
     ) throws {
-        let workspace = NSWorkspace.shared
-        guard let applicationURL = application.url(
-            bundleIdentifierLookup: {
-                workspace.urlForApplication(withBundleIdentifier: $0)
-            }
-        ) else {
-            throw FinderActionError.applicationNotFound(application.title)
+        guard let deepLink = OpenInvocation(
+            application: application,
+            targets: urls
+        ).deepLink else {
+            throw FinderActionError.invalidTarget
         }
-
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        workspace.open(
-            urls,
-            withApplicationAt: applicationURL,
-            configuration: configuration
-        ) { _, error in
-            guard let error else { return }
-            logger.error("打开应用失败：\(error.localizedDescription, privacy: .public)")
-            FinderSync.present(message: error.localizedDescription)
-        }
+        try openHost(with: deepLink)
     }
 
     private func openHost(
@@ -210,35 +206,15 @@ final class FinderSync: FIFinderSync {
               ).deepLink else {
             throw FinderActionError.invalidWorkingDirectory
         }
-        let workspace = NSWorkspace.shared
-        guard let hostURL = workspace.urlForApplication(toOpen: deepLink) else {
-            throw FinderActionError.hostApplicationUnavailable
-        }
-
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false
-        configuration.addsToRecentItems = false
-        workspace.open(
-            [deepLink],
-            withApplicationAt: hostURL,
-            configuration: configuration
-        ) { _, error in
-            guard let error else { return }
-            logger.error("唤起宿主失败：\(error.localizedDescription, privacy: .public)")
-            FinderSync.present(message: error.localizedDescription)
-        }
+        try openHost(with: deepLink)
     }
 
-    private static func present(message: String) {
-        DispatchQueue.main.async {
-            NSSound.beep()
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = "RightClick 操作失败"
-            alert.informativeText = message
-            alert.addButton(withTitle: "好")
-            alert.runModal()
+    /// 只用 `open(_ url:)`：指定 App 去启动在沙箱里会被拒绝，打开 URL 不会。
+    private func openHost(with deepLink: URL) throws {
+        guard NSWorkspace.shared.open(deepLink) else {
+            throw FinderActionError.hostApplicationUnavailable
         }
+        logger.notice("已交给宿主处理")
     }
 }
 
@@ -256,14 +232,14 @@ private extension MenuPlacement {
 }
 
 private enum FinderActionError: LocalizedError {
-    case applicationNotFound(String)
+    case invalidTarget
     case invalidWorkingDirectory
     case hostApplicationUnavailable
 
     var errorDescription: String? {
         switch self {
-        case let .applicationNotFound(name):
-            "未找到 \(name)，请先安装应用。"
+        case .invalidTarget:
+            "所选项目无法作为打开目标。"
         case .invalidWorkingDirectory:
             "无法确定有效的工作目录。"
         case .hostApplicationUnavailable:
