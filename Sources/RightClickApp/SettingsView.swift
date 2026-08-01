@@ -8,10 +8,14 @@ struct SettingsView: View {
         Form {
             Section("终端") {
                 Picker("默认终端", selection: $model.terminalProfile) {
-                    ForEach(TerminalProfile.allCases, id: \.self) { terminal in
+                    ForEach(TerminalProfile.selectableCases, id: \.self) { terminal in
                         Text(terminal.title).tag(terminal)
                     }
                 }
+                Text("「在终端中打开」与「运行 AI CLI」都使用这里的选择。"
+                    + "选自动时优先 iTerm2；未安装 iTerm2 时回退到 Terminal。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 Toggle(
                     "运行 CLI 前切到前台确认",

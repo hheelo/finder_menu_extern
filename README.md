@@ -4,7 +4,7 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 
 - 复制所选文件的路径或文件名（支持多选）
 - 用 Visual Studio Code 或 Codex 打开
-- 用 Terminal / iTerm2 打开目录，或运行 Codex CLI / Claude Code
+- 在终端打开目录，或运行 Codex CLI / Claude Code；默认优先 iTerm2，未安装则用 Terminal
 - 新建 TXT、Markdown、Python、Shell、HTML、JSON、CSV 文件
 - 支持文件、文件夹、窗口空白处、桌面和 Finder 侧边栏
 - CLI 默认后台启动 RightClick，可选前台确认工作目录

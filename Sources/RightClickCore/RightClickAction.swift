@@ -5,7 +5,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
     case copyFilename
     case openInVSCode
     case openInCodex
-    case openInTerminal(TerminalProfile)
+    case openInTerminal
     case runCodexCLI
     case runClaudeCode
     case createFile(FileTemplate)
@@ -16,7 +16,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .copyFilename: "复制文件名"
         case .openInVSCode: "用 VS Code 打开"
         case .openInCodex: "用 Codex 打开"
-        case let .openInTerminal(profile): "在 \(profile.title) 中打开"
+        case .openInTerminal: "在终端中打开"
         case .runCodexCLI: "在终端运行 Codex CLI"
         case .runClaudeCode: "在终端运行 Claude Code"
         case let .createFile(template): template.title
@@ -29,8 +29,7 @@ public extension RightClickAction {
     ///
     /// 新增动作请追加到末尾，不要插入中间：已发出的菜单项可能仍带着旧 tag。
     static let allMenuActions: [RightClickAction] =
-        [.copyPath, .copyFilename, .openInVSCode, .openInCodex]
-        + TerminalProfile.allCases.map { .openInTerminal($0) }
+        [.copyPath, .copyFilename, .openInVSCode, .openInCodex, .openInTerminal]
         + [.runCodexCLI, .runClaudeCode]
         + FileTemplate.allCases.map { .createFile($0) }
 

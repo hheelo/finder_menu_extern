@@ -17,11 +17,16 @@ struct AppSettingsTests {
     }
 
     @Test
-    func iTermActionHasAnExplicitMenuTitle() {
-        #expect(
-            RightClickAction.openInTerminal(.iTerm).title
-                == "在 iTerm2 中打开"
-        )
+    func terminalProfileDefaultsToAutomatic() throws {
+        let suiteName = "RightClickTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.terminalProfile == .automatic)
+
+        settings.terminalProfile = .terminal
+        #expect(settings.terminalProfile == .terminal)
     }
 
     @Test

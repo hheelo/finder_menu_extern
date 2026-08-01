@@ -52,6 +52,13 @@ final class AppModel: ObservableObject {
             return
         }
 
+        // 用哪个终端由宿主解析：扩展读不到「默认终端」设置。
+        if let invocation = TerminalInvocation(deepLink: url) {
+            appLogger.notice("收到深链 类型=terminal")
+            handle(invocation)
+            return
+        }
+
         // 沙箱化的扩展不能启动其他 App，「用 X 打开」由宿主代为执行。
         if let invocation = OpenInvocation(deepLink: url) {
             appLogger.notice(
@@ -104,11 +111,48 @@ final class AppModel: ObservableObject {
                     withApplicationAt: applicationURL,
                     configuration: configuration
                 )
+                appLogger.notice(
+                    "打开成功 app=\(invocation.application.identifier, privacy: .public)"
+                )
                 self?.lastStatus = "已用 \(invocation.application.title) 打开"
             } catch {
                 self?.reportOpenFailure(error.localizedDescription)
             }
         }
+    }
+
+    private func handle(_ invocation: TerminalInvocation) {
+        let application = resolvedTerminalApplication()
+        handle(
+            OpenInvocation(
+                application: application,
+                targets: [invocation.workingDirectory]
+            )
+        )
+    }
+
+    /// 把用户设置解析成一个确定安装了的终端。
+    ///
+    /// 用 `NSWorkspace.open(_:withApplicationAt:)` 打开目录，而不是走 AppleScript：
+    /// 后者需要自动化权限，而「在终端中打开」本身不需要，不该为它触发授权弹窗。
+    private func resolvedTerminalApplication() -> ExternalApplication {
+        resolvedTerminalProfile().resolvedApplication
+    }
+
+    private func resolvedTerminalProfile() -> TerminalProfile {
+        let workspace = NSWorkspace.shared
+        let resolved = terminalProfile.resolved { application in
+            application.url(
+                bundleIdentifierLookup: {
+                    workspace.urlForApplication(withBundleIdentifier: $0)
+                }
+            ) != nil
+        }
+        appLogger.notice("""
+            终端已解析 设置=\(self.terminalProfile.rawValue, privacy: .public) \
+            实际=\(resolved.rawValue, privacy: .public)
+            """)
+        return resolved
     }
 
     /// 扩展里不能弹窗（模态会堵死它的主线程），失败提示统一由宿主呈现。
@@ -161,7 +205,7 @@ final class AppModel: ObservableObject {
             do {
                 try await executor.execute(
                     invocation,
-                    terminalProfile: terminalProfile
+                    terminalProfile: resolvedTerminalProfile()
                 )
                 lastStatus = "已启动 \(invocation.command.title)"
             } catch {

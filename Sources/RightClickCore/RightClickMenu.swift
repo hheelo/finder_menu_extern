@@ -55,13 +55,9 @@ public enum RightClickMenu {
             .separator,
             .action(.openInVSCode, isEnabled: hasSelection),
             .action(.openInCodex, isEnabled: hasSelection),
-            .submenu(
-                title: "在终端中打开",
-                isEnabled: hasWorkingDirectory,
-                items: TerminalProfile.allCases.map {
-                    .action(.openInTerminal($0), isEnabled: hasWorkingDirectory)
-                }
-            ),
+            // 用哪个终端由宿主按用户设置解析（扩展读不到那个设置），
+            // 所以这里只有一个动作，不再列出具体终端。
+            .action(.openInTerminal, isEnabled: hasWorkingDirectory),
             .submenu(
                 title: "运行 AI CLI",
                 isEnabled: hasWorkingDirectory,

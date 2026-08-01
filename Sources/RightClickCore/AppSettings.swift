@@ -18,7 +18,7 @@ public final class AppSettings: @unchecked Sendable {
     public var terminalProfile: TerminalProfile {
         get {
             defaults.string(forKey: Key.terminalProfile)
-                .flatMap(TerminalProfile.init(rawValue:)) ?? .terminal
+                .flatMap(TerminalProfile.init(rawValue:)) ?? .automatic
         }
         set {
             defaults.set(newValue.rawValue, forKey: Key.terminalProfile)

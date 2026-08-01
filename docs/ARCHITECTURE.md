@@ -12,6 +12,8 @@
   「用 X 打开」与「运行 CLI」一律编码成深链交给宿主
 - 通过 `rightclick://run?tool=...&cwd=...` 请求宿主运行 CLI
 - 通过 `rightclick://open?app=...&path=...` 请求宿主用指定 App 打开
+- 通过 `rightclick://terminal?cwd=...` 请求宿主在该目录打开终端。用哪个终端
+  由宿主解析：扩展有独立的 UserDefaults 且 App Group 已移除，读不到用户设置
 - 操作不可用时将菜单置灰；失败只记日志，不弹窗（见「已知系统约束」）
 
 ### RightClick
@@ -23,6 +25,9 @@
 - 严格解析 CLI 深链接；默认后台执行，可选前台确认启动目录
 - 使用 `osascript` 参数控制用户选择的终端，不拼接脚本源码
 - 代扩展执行外部 App 的启动，并在失败时向用户呈现错误
+- 解析终端：默认优先 iTerm2，未安装时回退 Terminal；显式选中 iTerm2 但未安装
+  时同样回退，避免 AppleScript 对着不存在的应用报错。「在终端中打开」与
+  「运行 AI CLI」共用这一套解析
 - 提供本地环境诊断和 Finder 重启入口
 
 ### RightClickCore

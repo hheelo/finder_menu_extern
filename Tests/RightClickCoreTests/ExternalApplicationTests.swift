@@ -51,11 +51,31 @@ struct ExternalApplicationTests {
     }
 
     @Test
-    func terminalProfilesShareTheApplicationTitle() {
-        for profile in TerminalProfile.allCases {
-            #expect(profile.title == profile.application.title)
-        }
-        #expect(TerminalProfile.iTerm.application == .iTerm)
-        #expect(TerminalProfile.terminal.application == .terminal)
+    func explicitTerminalProfilesShareTheApplicationTitle() {
+        #expect(TerminalProfile.terminal.title == ExternalApplication.terminal.title)
+        #expect(TerminalProfile.iTerm.title == ExternalApplication.iTerm.title)
+        #expect(TerminalProfile.automatic.title == "自动（优先 iTerm2）")
+    }
+
+    /// 优先 iTerm2；没装 iTerm2 时——包括用户显式选了它——都要回退到 Terminal，
+    /// 否则 AppleScript 会对着不存在的应用报错。
+    @Test
+    func resolvesTerminalWithFallback() {
+        let withITerm: (ExternalApplication) -> Bool = { _ in true }
+        let withoutITerm: (ExternalApplication) -> Bool = { $0 != .iTerm }
+
+        #expect(TerminalProfile.automatic.resolved(isInstalled: withITerm) == .iTerm)
+        #expect(TerminalProfile.automatic.resolved(isInstalled: withoutITerm) == .terminal)
+        #expect(TerminalProfile.iTerm.resolved(isInstalled: withoutITerm) == .terminal)
+        #expect(TerminalProfile.terminal.resolved(isInstalled: withITerm) == .terminal)
+
+        #expect(
+            TerminalProfile.automatic.resolved(isInstalled: withITerm)
+                .resolvedApplication == .iTerm
+        )
+        #expect(
+            TerminalProfile.automatic.resolved(isInstalled: withoutITerm)
+                .resolvedApplication == .terminal
+        )
     }
 }

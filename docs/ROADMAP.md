@@ -17,7 +17,7 @@
 - [x] 扩展启用状态和系统设置入口
 - [ ] 在全新用户环境中完成 Finder 端到端验证
 - [x] 菜单操作失败时展示用户可见提示
-- [ ] 确认 Codex App 的正式 Bundle ID，并增加自动探测
+- [x] 确认 Codex App 的 Bundle ID（`com.openai.codex` 即 ChatGPT.app）
 
 ## M2：无证书分发
 

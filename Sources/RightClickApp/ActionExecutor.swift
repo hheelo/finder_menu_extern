@@ -59,7 +59,9 @@ struct ActionExecutor {
         terminalProfile: TerminalProfile
     ) -> String {
         switch terminalProfile {
-        case .terminal:
+        // 调用方保证已解析过；`.automatic` 兜底走 Terminal，
+        // 它一定存在，不会对着未安装的应用发 AppleScript。
+        case .automatic, .terminal:
             return """
             on run argv
                 tell application "Terminal"

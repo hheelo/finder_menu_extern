@@ -48,7 +48,6 @@ struct RightClickMenuTests {
         #expect(nodes.contains(.action(.copyPath, isEnabled: true)))
         #expect(nodes.contains(.action(.openInVSCode, isEnabled: true)))
         #expect(enabledSubmenu(named: "新建文件", in: nodes))
-        #expect(enabledSubmenu(named: "在终端中打开", in: nodes))
         #expect(enabledSubmenu(named: "运行 AI CLI", in: nodes))
     }
 
@@ -61,10 +60,9 @@ struct RightClickMenuTests {
             submenuItems(named: "新建文件", in: nodes)?.count
                 == FileTemplate.allCases.count
         )
-        #expect(
-            submenuItems(named: "在终端中打开", in: nodes)?.count
-                == TerminalProfile.allCases.count
-        )
+        // 终端不再是子菜单：具体用哪个由宿主解析，菜单只提供一个动作。
+        #expect(submenuItems(named: "在终端中打开", in: nodes) == nil)
+        #expect(nodes.contains(.action(.openInTerminal, isEnabled: true)))
     }
 
     /// 复制类动作在文件上可用，但新建文件要落到父目录。

@@ -151,11 +151,15 @@ final class FinderSync: FIFinderSync {
                 try open(context.effectiveURLs, with: .visualStudioCode)
             case .openInCodex:
                 try open(context.effectiveURLs, with: .codex)
-            case let .openInTerminal(profile):
-                guard let directory = context.workingDirectory else {
+            case .openInTerminal:
+                guard let directory = context.workingDirectory,
+                      let deepLink = TerminalInvocation(
+                          workingDirectory: directory
+                      ).deepLink else {
                     throw FinderActionError.invalidWorkingDirectory
                 }
-                try open([directory], with: profile.application)
+                // 用哪个终端由宿主决定：扩展读不到用户设置。
+                try openHost(with: deepLink)
             case .runCodexCLI:
                 try openHost(for: .codex, context: context)
             case .runClaudeCode:

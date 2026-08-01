@@ -113,12 +113,3 @@ public extension ExternalApplication {
         self = match
     }
 }
-
-public extension TerminalProfile {
-    var application: ExternalApplication {
-        switch self {
-        case .terminal: .terminal
-        case .iTerm: .iTerm
-        }
-    }
-}
