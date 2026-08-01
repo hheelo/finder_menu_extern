@@ -47,7 +47,7 @@ struct SettingsView: View {
 
                 HStack {
                     Button("重新检测") {
-                        Task { await model.refreshDiagnostics() }
+                        Task { await model.refreshDiagnostics(force: true) }
                     }
                     .disabled(model.isRefreshingDiagnostics)
 

@@ -85,8 +85,10 @@
 - iTerm2 的 AppleScript `create window ... command X` 不经过 shell，`X` 含
   `&&` 之类操作符会直接失败且连窗口都建不起来（返回 missing value）。
   必须先建默认 profile 的会话再 `write text`，与 Terminal 的 `do script` 等价
-- 深链送达已在运行的宿主会激活它，系统随后可能把先前收起的窗口重新显示
-  出来——重新显示发生在处理函数返回之后，所以必须在下一个 runloop 再收一次
+- SwiftUI 为投递 `onOpenURL` 会新建窗口，即使已有窗口开着也照建不误。因此
+  深链处理必须按「窗口编号」逐个比对：原本可见的保持不动，期间新出现的收掉。
+  只看「之前有没有窗口」不够，会漏掉「窗口开着又多出一个」的情形。
+  新窗口可能在处理函数返回之后才创建，所以下一个 runloop 还要再查一次
 - `applicationShouldHandleReopen` 一律返回 false：返回 true 会让 AppKit
   执行默认行为再开一个窗口。也不能因「本进程是无声启动」就拒绝 reopen，
   用户可能在宿主被深链唤起后才去双击 App

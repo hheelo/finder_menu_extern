@@ -74,44 +74,78 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// 否则窗口会出现在其他应用后面，用户看不到。
 @MainActor
 enum WindowPresenter {
-    /// 一旦请出过窗口就不再自动收起，避免与启动期的收起逻辑打架。
-    private(set) static var isPresentationRequested = false
+    /// 请出窗口的次数。用计数而非布尔，是为了判断「某段处理期间是否有人
+    /// 要求显示窗口」——布尔latch 一旦置真就永远禁用收起逻辑。
+    private static var presentationCount = 0
+
+    /// 启动期收起窗口时用：本进程是否曾显式请出过窗口。
+    static var isPresentationRequested: Bool { presentationCount > 0 }
 
     /// 本进程是为处理深链而启动的（而非用户主动打开）。
     static var isHeadlessSession = false
 
-    /// 深链送到已在运行的宿主时，系统会激活它，先前收起的窗口可能被重新显示。
-    /// 无声会话里每处理一次深链都要再收一次，否则用户每点一次功能都看到窗口闪。
-    /// 激活发生在本轮之后，所以下一个 runloop 再收。
-    static func hideIfHeadless() {
-        guard isHeadlessSession, !isPresentationRequested else {
-            appLogger.notice(
-                "跳过收起 无声会话=\(isHeadlessSession, privacy: .public) 已请出=\(isPresentationRequested, privacy: .public)"
-            )
-            return
-        }
-        let hide = {
-            let visible = NSApp.windows.filter { $0.isVisible }
-            for window in visible { window.orderOut(nil) }
-            appLogger.notice(
-                "无声会话收起窗口 数量=\(visible.count, privacy: .public)"
-            )
-        }
-        hide()
-        DispatchQueue.main.async {
-            guard !isPresentationRequested else { return }
-            hide()
-        }
-    }
-
     static func bringToFront() {
-        isPresentationRequested = true
+        presentationCount += 1
         NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
         NSApp.windows
             .first { $0.contentViewController != nil }?
             .makeKeyAndOrderFront(nil)
         appLogger.notice("已请出窗口")
+    }
+
+    /// 处理深链不应该让任何原本不可见的窗口变得可见。
+    ///
+    /// 实测：SwiftUI 为了投递 `onOpenURL` 会**新建**一个窗口，即使已经有窗口
+    /// 开着也照建不误——用户每用一次右键功能就看到 App 弹出来。所以判据不是
+    /// 「进程怎么启动的」，也不是「之前有没有窗口」，而是逐个窗口比对：
+    /// 原本就可见的保持不动，处理期间新出现的一律收掉。
+    ///
+    /// 期间若有人主动要求显示（报错、CLI 确认），以那个要求为准。
+    static func withPreservedVisibility(_ body: () -> Void) {
+        let before = Set(
+            NSApp.windows.filter { $0.isVisible }.map(\.windowNumber)
+        )
+        let countBefore = presentationCount
+        body()
+
+        suppressWindows(appearedSince: before, presentationCount: countBefore)
+        // 窗口可能在本轮之后才被创建（实测确实如此）。
+        Task { @MainActor in
+            suppressWindows(
+                appearedSince: before,
+                presentationCount: countBefore
+            )
+        }
+    }
+
+    private static func suppressWindows(
+        appearedSince previous: Set<Int>,
+        presentationCount count: Int
+    ) {
+        guard presentationCount == count else { return }
+        let appeared = NSApp.windows.filter {
+            $0.isVisible && !previous.contains($0.windowNumber)
+        }
+        guard !appeared.isEmpty else { return }
+
+        for window in appeared {
+            // 留一个收起备用，供之后报错或 CLI 确认时请回前台；
+            // 其余直接关闭，否则每条深链都堆积一个隐藏窗口，
+            // 而每个新窗口都会带来一次环境诊断（两个登录 shell）。
+            if hasHiddenWindow {
+                window.close()
+            } else {
+                window.orderOut(nil)
+            }
+        }
+        appLogger.notice(
+            "收起深链新开的窗口 数量=\(appeared.count, privacy: .public)"
+        )
+    }
+
+    private static var hasHiddenWindow: Bool {
+        NSApp.windows.contains { !$0.isVisible && $0.contentViewController != nil }
     }
 }
 

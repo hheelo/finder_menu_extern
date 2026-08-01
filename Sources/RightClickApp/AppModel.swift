@@ -46,10 +46,15 @@ final class AppModel: ObservableObject {
     }
 
     func handle(url: URL) {
+        WindowPresenter.withPreservedVisibility {
+            self.dispatch(deepLink: url)
+        }
+    }
+
+    private func dispatch(deepLink url: URL) {
         if let invocation = CLIInvocation(deepLink: url) {
             appLogger.notice("收到深链 类型=cli")
             handle(invocation)
-            WindowPresenter.hideIfHeadless()
             return
         }
 
@@ -57,7 +62,6 @@ final class AppModel: ObservableObject {
         if let invocation = TerminalInvocation(deepLink: url) {
             appLogger.notice("收到深链 类型=terminal")
             handle(invocation)
-            WindowPresenter.hideIfHeadless()
             return
         }
 
@@ -67,7 +71,6 @@ final class AppModel: ObservableObject {
                 "收到深链 类型=open 目标数=\(invocation.targets.count, privacy: .public)"
             )
             handle(invocation)
-            WindowPresenter.hideIfHeadless()
             return
         }
 
@@ -175,8 +178,17 @@ final class AppModel: ObservableObject {
         execute(invocation)
     }
 
-    func refreshDiagnostics() async {
+    /// 每次刷新要起两个登录 shell，成本不低；而深链会让 SwiftUI 新建窗口，
+    /// 视图重新出现就会再触发一次。加个节流，避免频繁重跑。
+    private var lastDiagnosticsRefresh: ContinuousClock.Instant?
+
+    func refreshDiagnostics(force: Bool = false) async {
         guard !isRefreshingDiagnostics else { return }
+        if !force, let last = lastDiagnosticsRefresh,
+           ContinuousClock().now - last < .seconds(30) {
+            return
+        }
+        lastDiagnosticsRefresh = ContinuousClock().now
         isRefreshingDiagnostics = true
         diagnostics = await AppDiagnostics.collect(
             extensionEnabled: extensionEnabled
