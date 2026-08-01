@@ -120,11 +120,12 @@ final class AppModel: ObservableObject {
             return
         }
 
-        restartFinder(
-            successStatus: "已为当前版本重新加载 Finder"
-        ) {
-            AppSettings.shared.finderSessionBuild = version
-        }
+        // 先落标记再重启：这一步只应在每次升级后尝试一次。如果标记留到重启
+        // 成功后才写，重启路径上的任何崩溃或挂起都会在下次启动时原样重演，
+        // 把 App 变成永远打不开的死循环（0.2.6 就是这样）。重启真的失败时
+        // 用户仍可用界面上的「重启 Finder」按钮手动重试。
+        AppSettings.shared.finderSessionBuild = version
+        restartFinder(successStatus: "已为当前版本重新加载 Finder")
     }
 
     /// 同时包含短版本号和构建号：只看 `CFBundleVersion` 的话，一旦某次发布
@@ -142,10 +143,7 @@ final class AppModel: ObservableObject {
         return "\(short) (\(build))"
     }
 
-    private func restartFinder(
-        successStatus: String,
-        onSuccess: @escaping @MainActor () -> Void = {}
-    ) {
+    private func restartFinder(successStatus: String) {
         let finder = NSWorkspace.shared.runningApplications.first(
             where: { $0.bundleIdentifier == "com.apple.finder" }
         )
@@ -180,21 +178,14 @@ final class AppModel: ObservableObject {
             )
 
             do {
-                try await withCheckedThrowingContinuation {
-                    (continuation: CheckedContinuation<Void, Error>) in
-                    NSWorkspace.shared.openApplication(
-                        at: finderURL,
-                        configuration: configuration
-                    ) { _, error in
-                        if let error {
-                            continuation.resume(throwing: error)
-                        } else {
-                            continuation.resume()
-                        }
-                    }
-                }
+                // 必须用 async API：completionHandler 版本的闭包会继承
+                // AppModel 的 @MainActor 隔离，而 LaunchServices 在自己的
+                // 队列上回调，Swift 6 的运行时隔离断言会直接让进程 SIGTRAP。
+                _ = try await NSWorkspace.shared.openApplication(
+                    at: finderURL,
+                    configuration: configuration
+                )
                 lastStatus = successStatus
-                onSuccess()
             } catch {
                 lastError = "无法重新打开 Finder：\(error.localizedDescription)"
             }
