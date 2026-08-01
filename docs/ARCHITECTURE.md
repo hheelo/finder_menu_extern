@@ -82,6 +82,14 @@
 - URL 事件先于 `applicationDidFinishLaunching` 到达。附属应用在启动期收起窗口时
   必须检查窗口是否已被显式请出，否则确认框与错误提示会被立刻收走而永不可见
 - `com.openai.codex` 实际是 ChatGPT.app 的 Bundle ID
+- iTerm2 的 AppleScript `create window ... command X` 不经过 shell，`X` 含
+  `&&` 之类操作符会直接失败且连窗口都建不起来（返回 missing value）。
+  必须先建默认 profile 的会话再 `write text`，与 Terminal 的 `do script` 等价
+- 深链送达已在运行的宿主会激活它，系统随后可能把先前收起的窗口重新显示
+  出来——重新显示发生在处理函数返回之后，所以必须在下一个 runloop 再收一次
+- `applicationShouldHandleReopen` 一律返回 false：返回 true 会让 AppKit
+  执行默认行为再开一个窗口。也不能因「本进程是无声启动」就拒绝 reopen，
+  用户可能在宿主被深链唤起后才去双击 App
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证

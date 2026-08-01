@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApplication.launchIsDefaultUserInfoKey
         ] as? Bool ?? true
         isUserLaunch = isDefaultLaunch
+        WindowPresenter.isHeadlessSession = !isDefaultLaunch
         appLogger.notice(
             "启动完成 用户主动启动=\(isDefaultLaunch, privacy: .public)"
         )
@@ -49,13 +50,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// 附属应用没有 Dock 图标，用户再次双击 App 时靠这里把窗口请回来。
+    ///
+    /// 注意不能因为「本进程是无声启动的」就一律拒绝 reopen：用户完全可能在
+    /// 宿主已被深链唤起后再去双击 App，那时必须给出窗口。
     func applicationShouldHandleReopen(
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        guard !flag else { return true }
+        appLogger.notice(
+            "收到 reopen 有可见窗口=\(flag, privacy: .public) 无声会话=\(WindowPresenter.isHeadlessSession, privacy: .public)"
+        )
+        // 一律返回 false：窗口的显示与否完全由这里决定。
+        // 返回 true 会让 AppKit 执行默认行为，即再开一个窗口——
+        // 深链送达已开着窗口的宿主时就会多出一个一模一样的窗口。
+        // 已有可见窗口时什么都不做：激活由系统负责，无需我们插手。
+        guard !flag else { return false }
         WindowPresenter.bringToFront()
-        return true
+        return false
     }
 }
 
@@ -65,6 +76,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum WindowPresenter {
     /// 一旦请出过窗口就不再自动收起，避免与启动期的收起逻辑打架。
     private(set) static var isPresentationRequested = false
+
+    /// 本进程是为处理深链而启动的（而非用户主动打开）。
+    static var isHeadlessSession = false
+
+    /// 深链送到已在运行的宿主时，系统会激活它，先前收起的窗口可能被重新显示。
+    /// 无声会话里每处理一次深链都要再收一次，否则用户每点一次功能都看到窗口闪。
+    /// 激活发生在本轮之后，所以下一个 runloop 再收。
+    static func hideIfHeadless() {
+        guard isHeadlessSession, !isPresentationRequested else {
+            appLogger.notice(
+                "跳过收起 无声会话=\(isHeadlessSession, privacy: .public) 已请出=\(isPresentationRequested, privacy: .public)"
+            )
+            return
+        }
+        let hide = {
+            let visible = NSApp.windows.filter { $0.isVisible }
+            for window in visible { window.orderOut(nil) }
+            appLogger.notice(
+                "无声会话收起窗口 数量=\(visible.count, privacy: .public)"
+            )
+        }
+        hide()
+        DispatchQueue.main.async {
+            guard !isPresentationRequested else { return }
+            hide()
+        }
+    }
 
     static func bringToFront() {
         isPresentationRequested = true

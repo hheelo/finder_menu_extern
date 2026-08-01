@@ -49,6 +49,7 @@ final class AppModel: ObservableObject {
         if let invocation = CLIInvocation(deepLink: url) {
             appLogger.notice("收到深链 类型=cli")
             handle(invocation)
+            WindowPresenter.hideIfHeadless()
             return
         }
 
@@ -56,6 +57,7 @@ final class AppModel: ObservableObject {
         if let invocation = TerminalInvocation(deepLink: url) {
             appLogger.notice("收到深链 类型=terminal")
             handle(invocation)
+            WindowPresenter.hideIfHeadless()
             return
         }
 
@@ -65,6 +67,7 @@ final class AppModel: ObservableObject {
                 "收到深链 类型=open 目标数=\(invocation.targets.count, privacy: .public)"
             )
             handle(invocation)
+            WindowPresenter.hideIfHeadless()
             return
         }
 
@@ -207,8 +210,14 @@ final class AppModel: ObservableObject {
                     invocation,
                     terminalProfile: resolvedTerminalProfile()
                 )
+                appLogger.notice(
+                    "CLI 启动成功 tool=\(invocation.command.rawValue, privacy: .public)"
+                )
                 lastStatus = "已启动 \(invocation.command.title)"
             } catch {
+                appLogger.error(
+                    "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
+                )
                 lastError = error.localizedDescription
                 WindowPresenter.bringToFront()
             }

@@ -71,11 +71,16 @@ struct ActionExecutor {
             end run
             """
         case .iTerm:
+            // iTerm2 的 `command` 参数不经过 shell，直接把
+            // `cd '...' && codex` 交给它会失败，连窗口都建不起来
+            // （实测返回 missing value）。所以先建一个正常的 shell 会话，
+            // 再把命令写进去——与 Terminal 的 `do script` 语义一致。
             return """
             on run argv
                 tell application "iTerm2"
                     activate
-                    create window with default profile command (item 1 of argv)
+                    set newWindow to (create window with default profile)
+                    tell current session of newWindow to write text (item 1 of argv)
                 end tell
             end run
             """

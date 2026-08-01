@@ -213,12 +213,33 @@ final class FinderSync: FIFinderSync {
         try openHost(with: deepLink)
     }
 
-    /// 只用 `open(_ url:)`：指定 App 去启动在沙箱里会被拒绝，打开 URL 不会。
+    /// 只用 `open(_ url:)` 系列：指定 App 去启动在沙箱里会被拒绝，打开 URL 不会。
+    ///
+    /// 关键是不要激活宿主。宿主只是代为执行动作，一旦被带到前台，
+    /// 系统会把它先前收起的窗口重新显示出来——用户每点一次功能就看到窗口闪一下。
     private func openHost(with deepLink: URL) throws {
-        guard NSWorkspace.shared.open(deepLink) else {
-            throw FinderActionError.hostApplicationUnavailable
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        configuration.addsToRecentItems = false
+
+        NSWorkspace.shared.open(
+            deepLink,
+            configuration: configuration
+        ) { application, error in
+            guard let error else {
+                logger.notice("已交给宿主处理（未激活）")
+                return
+            }
+            logger.error(
+                "不激活方式唤起宿主失败，回退：\(error.localizedDescription, privacy: .public)"
+            )
+            // 万一带配置的调用在沙箱里被拒，退回最朴素的形式：
+            // 宁可让窗口闪一下，也不能让功能失效。
+            _ = application
+            if !NSWorkspace.shared.open(deepLink) {
+                logger.error("回退唤起宿主也失败")
+            }
         }
-        logger.notice("已交给宿主处理")
     }
 }
 
