@@ -12,8 +12,8 @@ settings:
     # 构建号由 scripts/build-release.sh 从 tag 推导（major*10000+minor*100+patch）
     # 并在发布构建时覆盖；这里的值要与 MARKETING_VERSION 保持一致，
     # 让本地 install.sh 构建出的版本号和发布版一致。
-    CURRENT_PROJECT_VERSION: 207
-    MARKETING_VERSION: 0.2.7
+    CURRENT_PROJECT_VERSION: 208
+    MARKETING_VERSION: 0.2.8
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true

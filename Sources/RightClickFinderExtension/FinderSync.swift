@@ -1,6 +1,18 @@
 @preconcurrency import AppKit
 @preconcurrency import FinderSync
 import RightClickCore
+import os
+
+/// 用 `os.Logger` 而不是 `NSLog`：`NSLog` 只写到 stderr，扩展由 launchd
+/// 启动、stderr 被丢弃，`log show` 查不到，等于没有排查手段。
+///
+/// 统一用 `notice` 及以上级别：`info` 级别默认不落盘，事后 `log show` 查不到。
+/// 排查命令：
+/// `log show --last 10m --predicate 'subsystem == "com.hheelo.RightClick"'`
+private let logger = Logger(
+    subsystem: "com.hheelo.RightClick",
+    category: "extension"
+)
 
 final class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
@@ -11,15 +23,14 @@ final class FinderSync: FIFinderSync {
         controller.directoryURLs = [
             URL(fileURLWithPath: "/", isDirectory: true)
         ]
-        NSLog("RightClick Finder extension initialized")
+        logger.notice("Finder 扩展已初始化")
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
         guard let placement = MenuPlacement(menuKind),
               placement.providesContextActions else {
-            NSLog(
-                "RightClick menu skipped: %@",
-                String(describing: menuKind)
+            logger.notice(
+                "跳过菜单，位置=\(String(describing: menuKind), privacy: .public)"
             )
             return nil
         }
@@ -33,21 +44,21 @@ final class FinderSync: FIFinderSync {
 
         let menu = Self.makeMenu(title: "RightClick")
         for node in nodes {
-            menu.addItem(item(for: node, context: context))
+            menu.addItem(item(for: node))
         }
 
         // 空白处/边栏右键完全依赖 targetedURL：它一旦为 nil，选区上下文就全空，
         // 菜单虽然返回了但每一项都是灰的。把判定依据一并记下来，
         // 好区分「Finder 没调用扩展」和「调用了但拿不到目标目录」。
-        NSLog(
-            "RightClick menu built: %@",
-            "placement=\(placement) selected=\(context.selectedURLs.count) "
-                + "targeted=\(context.targetedURL != nil) "
-                + "effective=\(context.effectiveURLs.count) "
-                + "workingDir=\(context.workingDirectory != nil) "
-                + "creationDir=\(context.creationDirectory != nil) "
-                + "items=\(menu.items.count)"
-        )
+        logger.notice("""
+            菜单已构建 位置=\(String(describing: placement), privacy: .public) \
+            已选=\(context.selectedURLs.count, privacy: .public) \
+            有目标=\(context.targetedURL != nil, privacy: .public) \
+            生效=\(context.effectiveURLs.count, privacy: .public) \
+            工作目录=\(context.workingDirectory != nil, privacy: .public) \
+            新建目录=\(context.creationDirectory != nil, privacy: .public) \
+            项数=\(menu.items.count, privacy: .public)
+            """)
         return menu
     }
 
@@ -61,20 +72,17 @@ final class FinderSync: FIFinderSync {
     }
 
     /// 把 Core 描述的菜单结构渲染成 AppKit 菜单项。
-    private func item(
-        for node: RightClickMenuNode,
-        context: SelectionContext
-    ) -> NSMenuItem {
+    private func item(for node: RightClickMenuNode) -> NSMenuItem {
         switch node {
         case .separator:
             return .separator()
         case let .action(action, isEnabled):
-            return actionItem(action, context: context, isEnabled: isEnabled)
+            return actionItem(action, isEnabled: isEnabled)
         case let .submenu(title, isEnabled, items):
             let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let submenu = Self.makeMenu(title: title)
             for child in items {
-                submenu.addItem(item(for: child, context: context))
+                submenu.addItem(item(for: child))
             }
             root.submenu = submenu
             root.isEnabled = isEnabled
@@ -91,9 +99,18 @@ final class FinderSync: FIFinderSync {
         )
     }
 
+    /// 点击时重新读取选区。菜单项经 Finder 往返后带不回构建期的上下文，
+    /// 只能在这里重新问一次控制器。空白处右键时 `selectedItemURLs` 本就为空，
+    /// 会自然回落到 `targetedURL`，与构建菜单时的语义一致。
+    private func currentContext() -> SelectionContext {
+        SelectionContext(
+            selectedURLs: controller.selectedItemURLs() ?? [],
+            targetedURL: controller.targetedURL()
+        )
+    }
+
     private func actionItem(
         _ action: RightClickAction,
-        context: SelectionContext,
         isEnabled: Bool = true
     ) -> NSMenuItem {
         let item = NSMenuItem(
@@ -102,18 +119,24 @@ final class FinderSync: FIFinderSync {
             keyEquivalent: ""
         )
         item.target = self
-        item.representedObject = ActionBox(action, context: context)
+        item.tag = action.menuTag
         item.isEnabled = isEnabled
         return item
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {
-        guard let actionBox = sender.representedObject as? ActionBox else {
+        guard let action = RightClickAction(menuTag: sender.tag) else {
+            logger.error(
+                "菜单项未携带可识别的动作，tag=\(sender.tag, privacy: .public)"
+            )
             return
         }
-        let action = actionBox.action
-        let context = actionBox.context
-
+        let context = currentContext()
+        logger.notice("""
+            执行动作 tag=\(sender.tag, privacy: .public) \
+            生效=\(context.effectiveURLs.count, privacy: .public) \
+            工作目录=\(context.workingDirectory != nil, privacy: .public)
+            """)
         do {
             switch action {
             case .copyPath:
@@ -139,7 +162,7 @@ final class FinderSync: FIFinderSync {
                 try openHost(for: .claude, context: context)
             }
         } catch {
-            NSLog("RightClick action failed: %@", error.localizedDescription)
+            logger.error("动作执行失败：\(error.localizedDescription, privacy: .public)")
             Self.present(message: error.localizedDescription)
         }
     }
@@ -171,7 +194,7 @@ final class FinderSync: FIFinderSync {
             configuration: configuration
         ) { _, error in
             guard let error else { return }
-            NSLog("RightClick open failed: %@", error.localizedDescription)
+            logger.error("打开应用失败：\(error.localizedDescription, privacy: .public)")
             FinderSync.present(message: error.localizedDescription)
         }
     }
@@ -201,7 +224,7 @@ final class FinderSync: FIFinderSync {
             configuration: configuration
         ) { _, error in
             guard let error else { return }
-            NSLog("RightClick host launch failed: %@", error.localizedDescription)
+            logger.error("唤起宿主失败：\(error.localizedDescription, privacy: .public)")
             FinderSync.present(message: error.localizedDescription)
         }
     }
@@ -249,12 +272,3 @@ private enum FinderActionError: LocalizedError {
     }
 }
 
-private final class ActionBox: NSObject {
-    let action: RightClickAction
-    let context: SelectionContext
-
-    init(_ action: RightClickAction, context: SelectionContext) {
-        self.action = action
-        self.context = context
-    }
-}

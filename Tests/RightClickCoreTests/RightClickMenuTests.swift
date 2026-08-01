@@ -86,6 +86,54 @@ struct RightClickMenuTests {
         )
     }
 
+    /// 菜单项跨进程往返只能携带 tag，动作必须能无损编解码，
+    /// 否则回调里认不出动作，点击会被静默丢弃。
+    @Test
+    func everyActionRoundTripsThroughItsMenuTag() {
+        for action in RightClickAction.allMenuActions {
+            let tag = action.menuTag
+            #expect(tag > 0, "\(action.title) 的 tag 不能是 0")
+            #expect(RightClickAction(menuTag: tag) == action)
+        }
+    }
+
+    @Test
+    func rejectsTagsOutsideTheKnownRange() {
+        #expect(RightClickAction(menuTag: 0) == nil)
+        #expect(RightClickAction(menuTag: -1) == nil)
+        #expect(
+            RightClickAction(
+                menuTag: RightClickAction.allMenuActions.count + 1
+            ) == nil
+        )
+    }
+
+    /// 菜单里出现的每个动作都必须在 allMenuActions 里有编号。
+    @Test
+    func menuOnlyOffersEncodableActions() {
+        let context = SelectionContext(selectedURLs: [], targetedURL: folder)
+        var checked = 0
+
+        func verify(_ nodes: [RightClickMenuNode]) {
+            for node in nodes {
+                switch node {
+                case let .action(action, _):
+                    #expect(action.menuTag > 0, "\(action.title) 缺少编号")
+                    checked += 1
+                case let .submenu(_, _, items):
+                    verify(items)
+                case .separator:
+                    break
+                }
+            }
+        }
+
+        for placement in MenuPlacement.allCases {
+            verify(RightClickMenu.nodes(placement: placement, context: context))
+        }
+        #expect(checked > 0)
+    }
+
     private func submenuItems(
         named title: String,
         in nodes: [RightClickMenuNode]
