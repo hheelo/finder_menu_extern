@@ -31,6 +31,27 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: ./scripts/build-release.sh
 
+      - name: Sign update and generate appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          if [ -z "${SPARKLE_PRIVATE_KEY}" ]; then
+            echo "缺少 SPARKLE_PRIVATE_KEY，无法签名更新" >&2
+            exit 1
+          fi
+          version="${VERSION#v}"
+          # 构建号与 build-release.sh 用同一套推导，保持一致
+          build="$(printf '%s' "${version}" | awk -F'[.-]' '{
+              printf "%d", ($1 * 10000) + ($2 * 100) + $3
+          }')"
+          # 私钥只经标准输入传入，不进命令行参数（同机进程可见）
+          printf '%s' "${SPARKLE_PRIVATE_KEY}" | ./scripts/generate-appcast.sh \
+            ".build/release/output/RightClick-${version}.dmg" \
+            "${version}" \
+            "${build}" \
+            .build/release/output/appcast.xml
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -38,5 +59,6 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             .build/release/output/*.dmg \
             .build/release/output/*.sha256 \
+            .build/release/output/appcast.xml \
             --generate-notes \
             --title "RightClick ${GITHUB_REF_NAME}"
