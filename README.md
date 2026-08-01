@@ -8,6 +8,7 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 - 新建 TXT、Markdown、Python、Shell、HTML、JSON、CSV 文件
 - 支持文件、文件夹、窗口空白处、桌面和 Finder 侧边栏
 - CLI 默认后台启动 RightClick，可选前台确认工作目录
+- 宿主以附属应用运行，Dock 里不占图标；双击 App 即可打开设置与诊断
 - 原生 macOS App 图标与本地环境诊断
 
 ## 工程结构

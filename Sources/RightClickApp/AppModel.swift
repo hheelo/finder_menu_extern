@@ -1,6 +1,7 @@
 import AppKit
 import FinderSync
 import RightClickCore
+import os
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -46,32 +47,36 @@ final class AppModel: ObservableObject {
 
     func handle(url: URL) {
         if let invocation = CLIInvocation(deepLink: url) {
+            appLogger.notice("收到深链 类型=cli")
             handle(invocation)
             return
         }
 
         // 沙箱化的扩展不能启动其他 App，「用 X 打开」由宿主代为执行。
         if let invocation = OpenInvocation(deepLink: url) {
+            appLogger.notice(
+                "收到深链 类型=open 目标数=\(invocation.targets.count, privacy: .public)"
+            )
             handle(invocation)
             return
         }
 
+        appLogger.error("收到无法解析的深链")
         lastError = "已拒绝无效的启动链接：工作目录必须是现有文件夹。"
+        WindowPresenter.bringToFront()
     }
 
     private func handle(_ invocation: CLIInvocation) {
         if confirmCLIExecution {
-            NSApp.unhide(nil)
-            NSApp.activate(ignoringOtherApps: true)
             pendingInvocation = invocation
+            // 确认框挂在主窗口上；附属应用的窗口可能已被收起，必须先请回来。
+            WindowPresenter.bringToFront()
         } else {
-            NSApp.hide(nil)
             execute(invocation)
         }
     }
 
     private func handle(_ invocation: OpenInvocation) {
-        NSApp.hide(nil)
         lastError = nil
 
         let workspace = NSWorkspace.shared
@@ -81,6 +86,7 @@ final class AppModel: ObservableObject {
             }
         ) else {
             lastStatus = "等待 Finder 操作"
+            appLogger.error("目标 App 未安装")
             reportOpenFailure(
                 "未找到 \(invocation.application.title)，请先安装应用。"
             )
@@ -106,10 +112,10 @@ final class AppModel: ObservableObject {
     }
 
     /// 扩展里不能弹窗（模态会堵死它的主线程），失败提示统一由宿主呈现。
+    /// 宿主是附属应用，窗口平时收起，报错时必须显式请回前台。
     private func reportOpenFailure(_ message: String) {
         lastError = message
-        NSApp.unhide(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        WindowPresenter.bringToFront()
     }
 
     func cancelPendingInvocation() {
@@ -160,8 +166,7 @@ final class AppModel: ObservableObject {
                 lastStatus = "已启动 \(invocation.command.title)"
             } catch {
                 lastError = error.localizedDescription
-                NSApp.unhide(nil)
-                NSApp.activate(ignoringOtherApps: true)
+                WindowPresenter.bringToFront()
             }
         }
     }

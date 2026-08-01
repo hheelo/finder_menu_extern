@@ -35,6 +35,8 @@
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>LSUIElement</key>
+	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>RightClick 需要控制 Terminal 或 iTerm2，才能在所选目录中运行 Codex CLI / Claude Code。</string>
 	<key>NSPrincipalClass</key>

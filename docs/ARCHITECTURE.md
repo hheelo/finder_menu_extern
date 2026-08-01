@@ -16,6 +16,9 @@
 
 ### RightClick
 
+- 以 `LSUIElement` 附属应用运行：Dock 无图标，双击 App 打开窗口
+- 被深链唤起时不显示窗口（靠 `launchIsDefaultUserInfoKey` 区分启动来源），
+  但需要确认或报错时把窗口请回前台
 - 提供启用指引、扩展状态、终端选择和错误状态
 - 严格解析 CLI 深链接；默认后台执行，可选前台确认启动目录
 - 使用 `osascript` 参数控制用户选择的终端，不拼接脚本源码
@@ -65,6 +68,9 @@
   也在主线程上，一旦弹出右键菜单将永久不再出现
 - 扩展的 `NSLog` 只写 stderr 且被丢弃，排查一律用 `os.Logger`，
   级别不低于 `notice`（`info` 默认不落盘）
+- URL 事件先于 `applicationDidFinishLaunching` 到达。附属应用在启动期收起窗口时
+  必须检查窗口是否已被显式请出，否则确认框与错误提示会被立刻收走而永不可见
+- `com.openai.codex` 实际是 ChatGPT.app 的 Bundle ID
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证

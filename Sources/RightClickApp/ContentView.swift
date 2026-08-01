@@ -77,6 +77,11 @@ struct ContentView: View {
                 Button("复制诊断信息") {
                     model.copyDiagnostics()
                 }
+                // 附属应用没有 Dock 图标也没有菜单栏，必须给一个显式的退出入口，
+                // 否则用户只能去活动监视器里结束进程。
+                Button("退出 RightClick") {
+                    NSApp.terminate(nil)
+                }
                 if let lastError = model.lastError {
                     Text(lastError)
                         .foregroundStyle(.red)
