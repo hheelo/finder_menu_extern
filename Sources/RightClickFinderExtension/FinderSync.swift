@@ -44,7 +44,7 @@ final class FinderSync: FIFinderSync {
 
         let menu = Self.makeMenu(title: "RightClick")
         for node in nodes {
-            menu.addItem(item(for: node))
+            menu.addItem(item(for: node, placement: placement))
         }
 
         // 空白处/边栏右键完全依赖 targetedURL：它一旦为 nil，选区上下文就全空，
@@ -72,17 +72,24 @@ final class FinderSync: FIFinderSync {
     }
 
     /// 把 Core 描述的菜单结构渲染成 AppKit 菜单项。
-    private func item(for node: RightClickMenuNode) -> NSMenuItem {
+    private func item(
+        for node: RightClickMenuNode,
+        placement: MenuPlacement
+    ) -> NSMenuItem {
         switch node {
         case .separator:
             return .separator()
         case let .action(action, isEnabled):
-            return actionItem(action, isEnabled: isEnabled)
+            return actionItem(
+                action,
+                placement: placement,
+                isEnabled: isEnabled
+            )
         case let .submenu(title, isEnabled, items):
             let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let submenu = Self.makeMenu(title: title)
             for child in items {
-                submenu.addItem(item(for: child))
+                submenu.addItem(item(for: child, placement: placement))
             }
             root.submenu = submenu
             root.isEnabled = isEnabled
@@ -99,18 +106,9 @@ final class FinderSync: FIFinderSync {
         )
     }
 
-    /// 点击时重新读取选区。菜单项经 Finder 往返后带不回构建期的上下文，
-    /// 只能在这里重新问一次控制器。空白处右键时 `selectedItemURLs` 本就为空，
-    /// 会自然回落到 `targetedURL`，与构建菜单时的语义一致。
-    private func currentContext() -> SelectionContext {
-        SelectionContext(
-            selectedURLs: controller.selectedItemURLs() ?? [],
-            targetedURL: controller.targetedURL()
-        )
-    }
-
     private func actionItem(
         _ action: RightClickAction,
+        placement: MenuPlacement,
         isEnabled: Bool = true
     ) -> NSMenuItem {
         let item = NSMenuItem(
@@ -119,21 +117,28 @@ final class FinderSync: FIFinderSync {
             keyEquivalent: ""
         )
         item.target = self
-        item.tag = action.menuTag
+        item.tag = RightClickMenuItemPayload(
+            action: action,
+            placement: placement
+        ).menuTag
         item.isEnabled = isEnabled
         return item
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {
-        guard let action = RightClickAction(menuTag: sender.tag) else {
+        guard let payload = RightClickMenuItemPayload(menuTag: sender.tag) else {
             logger.error(
                 "菜单项未携带可识别的动作，tag=\(sender.tag, privacy: .public)"
             )
             return
         }
-        let context = currentContext()
+        let action = payload.action
+        // 菜单位置随 tag 一起往返。空白处和侧边栏必须继续忽略 Finder 窗口里
+        // 可能残留的选区，确保动作落在鼠标实际指向的目录。
+        let context = context(for: payload.placement)
         logger.notice("""
             执行动作 tag=\(sender.tag, privacy: .public) \
+            位置=\(String(describing: payload.placement), privacy: .public) \
             生效=\(context.effectiveURLs.count, privacy: .public) \
             工作目录=\(context.workingDirectory != nil, privacy: .public)
             """)
@@ -272,4 +277,3 @@ private enum FinderActionError: LocalizedError {
         }
     }
 }
-

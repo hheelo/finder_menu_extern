@@ -95,6 +95,32 @@ struct RightClickMenuTests {
         }
     }
 
+    /// 点击回调必须同时还原动作和菜单位置；尤其是空白处与侧边栏不能在点击时
+    /// 退化成项目菜单，否则 Finder 中残留的旧选区会成为错误的操作目标。
+    @Test
+    func everyActionAndPlacementRoundTripsThroughItsMenuTag() {
+        for placement in MenuPlacement.allCases {
+            for action in RightClickAction.allMenuActions {
+                let payload = RightClickMenuItemPayload(
+                    action: action,
+                    placement: placement
+                )
+                #expect(payload.menuTag > 0)
+                #expect(
+                    RightClickMenuItemPayload(menuTag: payload.menuTag)
+                        == payload
+                )
+            }
+        }
+    }
+
+    @Test
+    func rejectsInvalidCombinedMenuTags() {
+        #expect(RightClickMenuItemPayload(menuTag: 0) == nil)
+        #expect(RightClickMenuItemPayload(menuTag: 999_001) == nil)
+        #expect(RightClickMenuItemPayload(menuTag: 1_999) == nil)
+    }
+
     @Test
     func rejectsTagsOutsideTheKnownRange() {
         #expect(RightClickAction(menuTag: 0) == nil)

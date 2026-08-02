@@ -66,6 +66,8 @@ cd finder_menu_extern
 `~/Applications`，注册 Finder 扩展并启动 RightClick。旧版本会压缩到
 `~/Library/Application Support/RightClick/Backups`，不会在 Applications
 目录留下同 Bundle ID 的扩展副本。
+如果 `/Applications/RightClick.app` 已存在，脚本会在构建前停止并提示继续使用
+DMG/Sparkle 更新或先手动移除旧版本，避免系统同时发现两份 Finder 扩展。
 构建和 DMG 验证结束后也会注销并清理临时扩展，避免 Finder 同时发现多份
 RightClick Finder Extension。
 

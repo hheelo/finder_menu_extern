@@ -28,13 +28,17 @@ VERSION=0.2.5 ./scripts/build-release.sh
 - 在 App 中打开扩展设置并启用 RightClick Finder Extension
 - 在桌面文件、桌面空白处、Finder 文件、窗口空白处、侧边栏，以及一个
   含空格/中文/单引号的目录中检查右键菜单
+- 保持 Finder 窗口中另一个文件处于选中状态，再右键窗口空白处和侧边栏目录，
+  确认复制、打开、新建及终端动作都作用于右键目录而不是残留选区
 - 测试复制路径、复制文件名和多选
 - 逐一创建七种文件，确认同名文件不会覆盖
 - 测试 VS Code / Codex App 存在与缺失两种状态
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
 - 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
 - 关闭“运行 CLI 前切到前台确认”，确认 Finder 启动 CLI 时 RightClick 不抢前台
-- 从浏览器手动打开无效 `rightclick://` 链接，确认不会启动 CLI
+- 开启启动前确认并快速触发两个 CLI 动作，确认两个请求依次出现且不会互相覆盖
+- 从浏览器分别打开无效的 run、terminal、open 和未知 `rightclick://` 链接，确认
+  不会执行动作，并显示与请求类型对应的错误原因
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
 - 保持 Finder 运行并升级旧版本；启动新 App 后确认 Finder 自动退出并重新打开，
   且右键菜单加载的是新扩展

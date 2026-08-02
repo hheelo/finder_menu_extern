@@ -41,4 +41,24 @@ struct AppSettingsTests {
         settings.finderSessionBuild = "5"
         #expect(settings.finderSessionBuild == "5")
     }
+
+    @Test
+    func parsesLegacyPlugInKitElectionMarkers() {
+        let enabled = """
+              +    com.hheelo.RightClick.FinderExtension(502) /Applications/RightClick.app
+              -    com.example.Disabled(1) /Applications/Disabled.app
+            """
+        let debuggerEnabled = """
+              !    com.hheelo.RightClick.FinderExtension(502) /tmp/RightClick.app
+            """
+        let disabled = """
+              -    com.hheelo.RightClick.FinderExtension(502) /Applications/RightClick.app
+              =    com.hheelo.RightClick.FinderExtension(501) /tmp/RightClick.app
+            """
+
+        #expect(AppConstants.plugInKitOutputIndicatesEnabled(enabled))
+        #expect(AppConstants.plugInKitOutputIndicatesEnabled(debuggerEnabled))
+        #expect(!AppConstants.plugInKitOutputIndicatesEnabled(disabled))
+        #expect(!AppConstants.plugInKitOutputIndicatesEnabled(""))
+    }
 }

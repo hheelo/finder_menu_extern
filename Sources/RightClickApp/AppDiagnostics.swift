@@ -120,54 +120,18 @@ enum AppDiagnostics {
     /// `isRefreshingDiagnostics` 永远停在 `true`，之后所有诊断刷新都被挡掉。
     private static func loginShellOutput(
         script: String,
-        timeout: Duration = .seconds(5)
+        timeout: TimeInterval = 5
     ) async -> String? {
-        await Task.detached(priority: .utility) {
-            let process = Process()
-            let outputPipe = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            // 保留 -i：很多用户把 PATH 写在只有交互式 shell 才加载的 .zshrc 里。
-            process.arguments = ["-lic", script]
-            // 交互式 shell 不应该从宿主 App 继承 stdin 并阻塞在读取上。
-            process.standardInput = FileHandle.nullDevice
-            process.standardOutput = outputPipe
-            process.standardError = FileHandle.nullDevice
-
-            do {
-                try process.run()
-            } catch {
-                return nil
-            }
-
-            let watchdog = Task {
-                try? await Task.sleep(for: timeout)
-                guard !Task.isCancelled else { return }
-                ProcessBox(process).terminate()
-            }
-            defer { watchdog.cancel() }
-
-            // 先读到 EOF 再等退出：rc 文件的输出可能填满管道缓冲区，
-            // 那时先 waitUntilExit 会双方互等而死锁。
-            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-
-            guard process.terminationStatus == 0 else { return nil }
-            return String(decoding: data, as: UTF8.self)
-        }.value
-    }
-}
-
-/// `Process` 不是 `Sendable`，但从其他线程调用 `terminate()` 是安全的，
-/// 这里只为把超时看守跨并发域传递而做最小封装。
-private final class ProcessBox: @unchecked Sendable {
-    private let process: Process
-
-    init(_ process: Process) {
-        self.process = process
-    }
-
-    func terminate() {
-        guard process.isRunning else { return }
-        process.terminate()
+        // 保留 -i：很多用户把 PATH 写在只有交互式 shell 才加载的 .zshrc 里。
+        // ProcessRunner 用普通临时文件承接输出，即使 rc 脚本派生的子进程继续持有
+        // stdout，超时也不再等待管道 EOF。
+        guard let result = try? await ProcessRunner.run(
+            executableURL: URL(fileURLWithPath: "/bin/zsh"),
+            arguments: ["-lic", script],
+            timeout: timeout
+        ), result.terminationStatus == 0 else {
+            return nil
+        }
+        return result.standardOutput
     }
 }

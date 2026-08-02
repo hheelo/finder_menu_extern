@@ -75,6 +75,11 @@ struct ContentView: View {
                 Label(model.lastStatus, systemImage: "checkmark.circle")
                     .foregroundStyle(.secondary)
                 Spacer()
+                // LSUIElement 附属应用没有可依赖的常驻菜单栏，必须在主窗口里
+                // 提供明确入口，否则默认终端和 CLI 确认设置无法到达。
+                SettingsLink {
+                    Text("设置…")
+                }
                 Button("检查更新") {
                     updater.checkForUpdates()
                 }

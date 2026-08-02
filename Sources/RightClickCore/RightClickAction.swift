@@ -51,3 +51,53 @@ public extension RightClickAction {
         self = Self.allMenuActions[index]
     }
 }
+
+/// Finder 把菜单项送出扩展进程、再把点击送回来时，只能可靠保留整数 tag。
+/// 点击时不仅需要知道动作，还要知道菜单来自项目、空白处还是侧边栏；否则重新
+/// 读取 Finder 选区时，空白处/侧边栏动作可能误用窗口里残留的旧选区。
+public struct RightClickMenuItemPayload: Equatable, Sendable {
+    public let action: RightClickAction
+    public let placement: MenuPlacement
+
+    private static let actionStride = 1_000
+
+    public init(action: RightClickAction, placement: MenuPlacement) {
+        self.action = action
+        self.placement = placement
+    }
+
+    public var menuTag: Int {
+        placement.menuTagCode * Self.actionStride + action.menuTag
+    }
+
+    public init?(menuTag: Int) {
+        let placementCode = menuTag / Self.actionStride
+        let actionTag = menuTag % Self.actionStride
+        guard let placement = MenuPlacement(menuTagCode: placementCode),
+              let action = RightClickAction(menuTag: actionTag) else {
+            return nil
+        }
+        self.init(action: action, placement: placement)
+    }
+}
+
+private extension MenuPlacement {
+    var menuTagCode: Int {
+        switch self {
+        case .items: 1
+        case .container: 2
+        case .sidebar: 3
+        case .toolbar: 4
+        }
+    }
+
+    init?(menuTagCode: Int) {
+        switch menuTagCode {
+        case 1: self = .items
+        case 2: self = .container
+        case 3: self = .sidebar
+        case 4: self = .toolbar
+        default: return nil
+        }
+    }
+}

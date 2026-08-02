@@ -7,6 +7,7 @@ project_dir="${script_dir:h}"
 derived_data="${project_dir}/.build/InstallDerivedData"
 install_dir="${HOME}/Applications"
 installed_app="${install_dir}/RightClick.app"
+system_installed_app="/Applications/RightClick.app"
 installed_extension="${installed_app}/Contents/PlugIns/RightClickFinderExtension.appex"
 built_app="${derived_data}/Build/Products/Release/RightClick.app"
 built_extension="${built_app}/Contents/PlugIns/RightClickFinderExtension.appex"
@@ -21,6 +22,16 @@ unregister_build_extension() {
 trap unregister_build_extension EXIT
 
 cd "${project_dir}"
+
+# DMG 通常安装到 /Applications，而本脚本安装到 ~/Applications。两份相同
+# Bundle ID 的 Finder 扩展并存时，Finder 可能继续加载旧副本。不要擅自删除
+# 系统 Applications 中的 App；在耗时构建开始前中止并让用户明确选择一种方式。
+if [[ -d "${system_installed_app}" &&
+      "${system_installed_app}" != "${installed_app}" ]]; then
+    echo "检测到另一份 RightClick：${system_installed_app}" >&2
+    echo "为避免 Finder 扩展冲突，请先移除该版本，或继续使用 DMG/Sparkle 更新。" >&2
+    exit 1
+fi
 
 if command -v xcodegen >/dev/null 2>&1; then
     echo "→ 生成 Xcode 工程"

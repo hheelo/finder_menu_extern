@@ -21,6 +21,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var isRefreshingDiagnostics = false
 
     private let executor = ActionExecutor()
+    private var queuedInvocations: [CLIInvocation] = []
 
     init() {
         terminalProfile = AppSettings.shared.terminalProfile
@@ -35,12 +36,22 @@ final class AppModel: ObservableObject {
 
     func refreshExtensionStatus() {
         if #available(macOS 14.4, *) {
-            extensionEnabled = FIFinderSyncController.isExtensionEnabled
+            applyExtensionStatus(
+                FIFinderSyncController.isExtensionEnabled
+            )
         } else {
-            extensionEnabled = false
+            // 项目最低支持 14.0，而系统 API 到 14.4 才出现。旧系统通过
+            // pluginkit 的用户选择标记异步判断，不能把所有用户都误报为未启用。
+            Task { [weak self] in
+                let enabled = await LegacyFinderExtensionStatus.isEnabled()
+                self?.applyExtensionStatus(enabled)
+            }
         }
+    }
 
-        if extensionEnabled {
+    private func applyExtensionStatus(_ enabled: Bool) {
+        extensionEnabled = enabled
+        if enabled {
             refreshFinderSessionIfNeeded()
         }
     }
@@ -52,36 +63,62 @@ final class AppModel: ObservableObject {
     }
 
     private func dispatch(deepLink url: URL) {
-        if let invocation = CLIInvocation(deepLink: url) {
+        guard url.scheme == AppConstants.deepLinkScheme else {
+            rejectDeepLink("链接协议不是 rightclick。")
+            return
+        }
+
+        switch url.host {
+        case "run":
+            guard let invocation = CLIInvocation(deepLink: url) else {
+                rejectDeepLink(
+                    "CLI 请求无效：工具必须是 codex 或 claude，工作目录必须是现有的绝对路径。"
+                )
+                return
+            }
             appLogger.notice("收到深链 类型=cli")
             handle(invocation)
-            return
-        }
-
-        // 用哪个终端由宿主解析：扩展读不到「默认终端」设置。
-        if let invocation = TerminalInvocation(deepLink: url) {
+        case "terminal":
+            // 用哪个终端由宿主解析：扩展读不到「默认终端」设置。
+            guard let invocation = TerminalInvocation(deepLink: url) else {
+                rejectDeepLink(
+                    "终端请求无效：工作目录必须是现有的绝对文件夹路径。"
+                )
+                return
+            }
             appLogger.notice("收到深链 类型=terminal")
             handle(invocation)
-            return
-        }
-
-        // 沙箱化的扩展不能启动其他 App，「用 X 打开」由宿主代为执行。
-        if let invocation = OpenInvocation(deepLink: url) {
+        case "open":
+            // 沙箱化的扩展不能启动其他 App，「用 X 打开」由宿主代为执行。
+            guard let invocation = OpenInvocation(deepLink: url) else {
+                rejectDeepLink(
+                    "打开请求无效：应用必须在白名单中，目标必须是现有的绝对路径。"
+                )
+                return
+            }
             appLogger.notice(
                 "收到深链 类型=open 目标数=\(invocation.targets.count, privacy: .public)"
             )
             handle(invocation)
-            return
+        default:
+            rejectDeepLink("未知的 RightClick 操作：\(url.host ?? "缺少操作名")。")
         }
+    }
 
+    private func rejectDeepLink(_ reason: String) {
         appLogger.error("收到无法解析的深链")
-        lastError = "已拒绝无效的启动链接：工作目录必须是现有文件夹。"
+        lastError = "已拒绝无效的启动链接：\(reason)"
         WindowPresenter.bringToFront()
     }
 
     private func handle(_ invocation: CLIInvocation) {
         if confirmCLIExecution {
-            pendingInvocation = invocation
+            if pendingInvocation == nil && queuedInvocations.isEmpty {
+                pendingInvocation = invocation
+            } else {
+                queuedInvocations.append(invocation)
+                lastStatus = "CLI 请求已排队（\(queuedInvocations.count) 个待处理）"
+            }
             // 确认框挂在主窗口上；附属应用的窗口可能已被收起，必须先请回来。
             WindowPresenter.bringToFront()
         } else {
@@ -169,13 +206,29 @@ final class AppModel: ObservableObject {
     }
 
     func cancelPendingInvocation() {
+        guard pendingInvocation != nil else { return }
         pendingInvocation = nil
+        presentNextQueuedInvocation()
     }
 
     func confirmPendingInvocation() {
         guard let invocation = pendingInvocation else { return }
         pendingInvocation = nil
         execute(invocation)
+        presentNextQueuedInvocation()
+    }
+
+    private func presentNextQueuedInvocation() {
+        // SwiftUI 会在 alert 按钮 action 之后再把 isPresented 写成 false。
+        // 下一项延后一轮展示，避免这个写回把新确认框立即取消。
+        DispatchQueue.main.async { [weak self] in
+            guard let self, pendingInvocation == nil,
+                  !queuedInvocations.isEmpty else {
+                return
+            }
+            pendingInvocation = queuedInvocations.removeFirst()
+            WindowPresenter.bringToFront()
+        }
     }
 
     /// 每次刷新要起两个登录 shell，成本不低；而深链会让 SwiftUI 新建窗口，
@@ -190,9 +243,20 @@ final class AppModel: ObservableObject {
         }
         lastDiagnosticsRefresh = ContinuousClock().now
         isRefreshingDiagnostics = true
-        diagnostics = await AppDiagnostics.collect(
+        let collected = await AppDiagnostics.collect(
             extensionEnabled: extensionEnabled
         )
+        // 旧系统的 pluginkit 检测可能在 collect 的 await 期间返回。以完成时的
+        // 最新状态改写这一行，避免设置页一直显示初始化时的 false。
+        diagnostics = collected.map { item in
+            guard item.id == "extension" else { return item }
+            return DiagnosticItem(
+                id: item.id,
+                title: item.title,
+                passed: extensionEnabled,
+                detail: extensionEnabled ? "已启用" : "未启用"
+            )
+        }
         isRefreshingDiagnostics = false
     }
 
@@ -312,5 +376,38 @@ final class AppModel: ObservableObject {
                 lastError = "无法重新打开 Finder：\(error.localizedDescription)"
             }
         }
+    }
+}
+
+/// macOS 14.0–14.3 的 Finder 扩展状态检测。
+private enum LegacyFinderExtensionStatus {
+    static func isEnabled() async -> Bool {
+        await Task.detached(priority: .utility) {
+            let process = Process()
+            let outputPipe = Pipe()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
+            process.arguments = [
+                "-m", "-A", "-D", "-i",
+                AppConstants.finderExtensionBundleIdentifier
+            ]
+            process.standardInput = FileHandle.nullDevice
+            process.standardOutput = outputPipe
+            process.standardError = FileHandle.nullDevice
+
+            do {
+                try process.run()
+            } catch {
+                return false
+            }
+
+            // 查询结果很小；先读到 EOF 可避免未来 verbose 输出增大后堵住管道。
+            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return false }
+
+            return AppConstants.plugInKitOutputIndicatesEnabled(
+                String(decoding: data, as: UTF8.self)
+            )
+        }.value
     }
 }
