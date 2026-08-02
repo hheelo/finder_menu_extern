@@ -77,34 +77,47 @@ enum ProcessRunner {
             process.standardError = errorHandle
             try process.run()
 
+            // 轮询和退出后的复查读的是同一件事，抽出来避免两处各写一遍。
+            func totalOutputSize() -> Int {
+                [outputURL, errorURL].reduce(0) { total, url in
+                    let attributes = try? fileManager.attributesOfItem(
+                        atPath: url.path
+                    )
+                    let size = (attributes?[.size] as? NSNumber)?.intValue ?? 0
+                    return total + size
+                }
+            }
+
             let deadline = timeout.map { Date().addingTimeInterval($0) }
             var didTimeOut = false
+            var wasCancelled = false
             var exceededOutputLimit = false
+            // 短命令要尽快返回，所以从 10ms 起步；但等待用户响应自动化授权
+            // 可能长达一分钟，一直按 10ms 轮询就是每秒 100 次唤醒、200 次
+            // stat。逐步退避到 100ms：快命令的延迟几乎不变，长等待的开销降一个
+            // 数量级。
+            var pollInterval = Duration.milliseconds(10)
+            let maximumPollInterval = Duration.milliseconds(100)
             while process.isRunning {
-                if Task.isCancelled || deadline.map({ Date() >= $0 }) == true {
+                // 取消和超时是两回事：混在一起时，未设超时的调用被取消会报出
+                // 「进程执行超过 0 秒」这种自相矛盾的提示。
+                if Task.isCancelled {
+                    wasCancelled = true
+                    break
+                }
+                if deadline.map({ Date() >= $0 }) == true {
                     didTimeOut = true
                     break
                 }
-                let outputAttributes = try? fileManager.attributesOfItem(
-                    atPath: outputURL.path
-                )
-                let errorAttributes = try? fileManager.attributesOfItem(
-                    atPath: errorURL.path
-                )
-                let outputSize = (
-                    outputAttributes?[.size] as? NSNumber
-                )?.intValue ?? 0
-                let errorSize = (
-                    errorAttributes?[.size] as? NSNumber
-                )?.intValue ?? 0
-                if outputSize + errorSize > maximumOutputBytes {
+                if totalOutputSize() > maximumOutputBytes {
                     exceededOutputLimit = true
                     break
                 }
-                try? await Task.sleep(for: .milliseconds(10))
+                try? await Task.sleep(for: pollInterval)
+                pollInterval = min(pollInterval * 2, maximumPollInterval)
             }
 
-            if didTimeOut || exceededOutputLimit {
+            if didTimeOut || wasCancelled || exceededOutputLimit {
                 process.terminate()
                 let graceDeadline = Date().addingTimeInterval(0.5)
                 while process.isRunning && Date() < graceDeadline {
@@ -116,26 +129,20 @@ enum ProcessRunner {
             }
 
             process.waitUntilExit()
-            let finalOutputAttributes = try? fileManager.attributesOfItem(
-                atPath: outputURL.path
-            )
-            let finalErrorAttributes = try? fileManager.attributesOfItem(
-                atPath: errorURL.path
-            )
-            let finalOutputSize = (
-                finalOutputAttributes?[.size] as? NSNumber
-            )?.intValue ?? 0
-            let finalErrorSize = (
-                finalErrorAttributes?[.size] as? NSNumber
-            )?.intValue ?? 0
-            if finalOutputSize + finalErrorSize > maximumOutputBytes {
+            // 最后一次轮询到进程退出之间仍可能写出内容，退出后再复查一次。
+            if totalOutputSize() > maximumOutputBytes {
                 exceededOutputLimit = true
             }
-            try outputHandle.synchronize()
-            try errorHandle.synchronize()
-            try outputHandle.close()
-            try errorHandle.close()
+            // 用 `try?`：这里的收尾失败不该盖掉下面真正要报的超时/超限原因。
+            // 句柄的兜底关闭仍由前面的 defer 负责（重复关闭是幂等的）。
+            try? outputHandle.synchronize()
+            try? errorHandle.synchronize()
+            try? outputHandle.close()
+            try? errorHandle.close()
 
+            if wasCancelled {
+                throw CancellationError()
+            }
             if didTimeOut {
                 throw ProcessRunnerError.timedOut(seconds: timeout ?? 0)
             }

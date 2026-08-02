@@ -105,13 +105,9 @@ enum AppDiagnostics {
             script: "command -v -- \(command.rawValue) 2>/dev/null"
         )
 
-        // 登录 shell 会 source 用户的 rc 文件，其中的横幅/提示同样会写到
-        // stdout，因此不能把整段输出当成路径，只取最后一行非空内容。
-        let path = output?
-            .split(separator: "\n", omittingEmptySubsequences: true)
-            .last?
-            .trimmingCharacters(in: .whitespaces) ?? ""
-        return path.isEmpty ? nil : path
+        // 解析规则连同它的两个坑（rc 噪声、别名/函数/内建回显定义而非路径）
+        // 一起放在 Core，可脱离 AppKit 测试。
+        return output.flatMap(ExecutablePathParser.executablePath(in:))
     }
 
     /// 在用户的登录 shell 中执行脚本。
