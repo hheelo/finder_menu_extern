@@ -19,7 +19,8 @@ enum AppEnvironment {
 /// 那种唤起不该弹出任何窗口。`applicationDidFinishLaunching` 的
 /// `launchIsDefaultUserInfoKey` 能区分「用户双击启动」和「为处理 URL 而启动」。
 ///
-/// 窗口只是收起而非关闭，`AppModel` 需要展示确认框或错误时能直接把它请回来。
+/// 窗口只是收起而非关闭，用户之后双击 App 时可以直接把它请回来。Finder 深链
+/// 无论成功或失败都不主动显示宿主窗口。
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 是否由用户自己启动（而非为处理深链）。决定要不要检查更新。
@@ -36,9 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         guard !isDefaultLaunch else { return }
 
-        // URL 事件先于本方法到达（实测如此），此时 AppModel 可能已经因为需要
-        // 确认或报错而请出了窗口，那就不能再收起。另外 SwiftUI 的窗口未必在
-        // 此刻就已创建，所以下一个 runloop 再收一次。
+        // URL 事件先于本方法到达（实测如此）。SwiftUI 的窗口未必在此刻就已
+        // 创建，所以下一个 runloop 再收一次。显式展示只来自用户主动 reopen。
         hideWindows()
         DispatchQueue.main.async { self.hideWindows() }
     }
@@ -107,7 +107,7 @@ enum WindowPresenter {
     /// 「进程怎么启动的」，也不是「之前有没有窗口」，而是逐个窗口比对：
     /// 原本就可见的保持不动，处理期间新出现的一律收掉。
     ///
-    /// 期间若有人主动要求显示（报错、CLI 确认），以那个要求为准。
+    /// 期间若用户主动 reopen，以那个显示请求为准。
     static func withPreservedVisibility(_ body: () -> Void) {
         let before = Set(
             NSApp.windows.filter { $0.isVisible }.map(\.windowNumber)
@@ -136,7 +136,7 @@ enum WindowPresenter {
         guard !appeared.isEmpty else { return }
 
         for window in appeared {
-            // 留一个收起备用，供之后报错或 CLI 确认时请回前台；
+            // 留一个收起备用，供用户之后主动打开 App 时请回前台；
             // 其余直接关闭，否则每条深链都堆积一个隐藏窗口，
             // 而每个新窗口都会带来一次环境诊断（两个登录 shell）。
             if hasHiddenWindow {

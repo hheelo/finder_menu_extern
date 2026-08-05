@@ -11,26 +11,24 @@ final class AppModel: ObservableObject {
     @Published var lastStatus = "等待 Finder 操作"
     @Published var lastError: String?
     @Published private(set) var extensionEnabled = false
-    @Published private(set) var pendingInvocation: CLIInvocation?
     @Published private(set) var diagnostics: [DiagnosticItem] = []
     @Published private(set) var isRefreshingDiagnostics = false
 
     private let settings: AppSettings
     private let executor: any CLIExecuting
-    private let bringToFront: @MainActor () -> Void
-    private var queuedInvocations: [CLIInvocation] = []
+    private let extensionRequestToken: @MainActor () -> String?
 
     init(
         settings: AppSettings = .shared,
         executor: any CLIExecuting = ActionExecutor(),
-        bringToFront: @escaping @MainActor () -> Void = {
-            WindowPresenter.bringToFront()
+        extensionRequestToken: @escaping @MainActor () -> String? = {
+            ExtensionRequestTokenStore.loadForHost()
         },
         performInitialRefresh: Bool = true
     ) {
         self.settings = settings
         self.executor = executor
-        self.bringToFront = bringToFront
+        self.extensionRequestToken = extensionRequestToken
         terminalProfile = settings.terminalProfile
 
         if performInitialRefresh {
@@ -74,7 +72,12 @@ final class AppModel: ObservableObject {
     private func dispatch(deepLink url: URL) {
         let request: DeepLinkRequest
         do {
-            request = try DeepLinkRequest(deepLink: url)
+            request = try DeepLinkRequest(
+                deepLink: url,
+                expectedCLIAuthenticationToken: url.host == "run"
+                    ? extensionRequestToken()
+                    : nil
+            )
         } catch let error as DeepLinkRequestError {
             rejectDeepLink(error.rejectionReason)
             return
@@ -103,20 +106,12 @@ final class AppModel: ObservableObject {
     private func rejectDeepLink(_ reason: String) {
         appLogger.error("收到无法解析的深链")
         lastError = "已拒绝无效的启动链接：\(reason)"
-        bringToFront()
     }
 
     private func handle(_ invocation: CLIInvocation) {
-        // rightclick:// 是系统级入口，网页和本地进程都可以构造。CLI 会启动
-        // 有文件读写能力的 agent，因此任何来源都必须经过用户确认。
-        if pendingInvocation == nil && queuedInvocations.isEmpty {
-            pendingInvocation = invocation
-        } else {
-            queuedInvocations.append(invocation)
-            lastStatus = "CLI 请求已排队（\(queuedInvocations.count) 个待处理）"
-        }
-        // 确认框挂在主窗口上；附属应用的窗口可能已被收起，必须先请回来。
-        bringToFront()
+        // 只有持有本机扩展容器随机令牌的 Finder 请求才能到达这里。
+        // 受信请求直接启动终端；宿主继续保持后台，不展示 RightClick 窗口。
+        execute(invocation)
     }
 
     private func handle(_ invocation: OpenInvocation) {
@@ -191,37 +186,10 @@ final class AppModel: ObservableObject {
         return resolved
     }
 
-    /// 扩展里不能弹窗（模态会堵死它的主线程），失败提示统一由宿主呈现。
-    /// 宿主是附属应用，窗口平时收起，报错时必须显式请回前台。
+    /// 扩展里不能弹窗（模态会堵死它的主线程）。错误保留在宿主状态中，
+    /// 用户下次主动打开 RightClick 时可以看到；Finder 动作本身不弹宿主窗口。
     private func reportOpenFailure(_ message: String) {
         lastError = message
-        bringToFront()
-    }
-
-    func cancelPendingInvocation() {
-        guard pendingInvocation != nil else { return }
-        pendingInvocation = nil
-        presentNextQueuedInvocation()
-    }
-
-    func confirmPendingInvocation() {
-        guard let invocation = pendingInvocation else { return }
-        pendingInvocation = nil
-        execute(invocation)
-        presentNextQueuedInvocation()
-    }
-
-    private func presentNextQueuedInvocation() {
-        // SwiftUI 会在 alert 按钮 action 之后再把 isPresented 写成 false。
-        // 下一项延后一轮展示，避免这个写回把新确认框立即取消。
-        DispatchQueue.main.async { [weak self] in
-            guard let self, pendingInvocation == nil,
-                  !queuedInvocations.isEmpty else {
-                return
-            }
-            pendingInvocation = queuedInvocations.removeFirst()
-            bringToFront()
-        }
     }
 
     /// 每次刷新要起两个登录 shell，成本不低；而深链会让 SwiftUI 新建窗口，
@@ -287,7 +255,6 @@ final class AppModel: ObservableObject {
                     "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
                 )
                 lastError = error.localizedDescription
-                bringToFront()
             }
         }
     }

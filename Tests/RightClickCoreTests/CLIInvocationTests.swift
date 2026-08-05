@@ -26,6 +26,19 @@ struct CLIInvocationTests {
     }
 
     @Test
+    func authenticatedDeepLinkRoundTrips() throws {
+        let token = ExtensionRequestTokenStore.makeToken()
+        let invocation = CLIInvocation(
+            command: .claude,
+            workingDirectory: FileManager.default.temporaryDirectory,
+            authenticationToken: token
+        )
+
+        let deepLink = try #require(invocation.deepLink)
+        #expect(CLIInvocation(deepLink: deepLink) == invocation)
+    }
+
+    @Test
     func rejectsUnrelatedURL() {
         let url = URL(string: "https://example.com")!
         #expect(CLIInvocation(deepLink: url) == nil)
@@ -42,6 +55,15 @@ struct CLIInvocationTests {
 
         #expect(CLIInvocation(deepLink: unknown) == nil)
         #expect(CLIInvocation(deepLink: duplicated) == nil)
+    }
+
+    @Test
+    func rejectsMalformedAuthenticationToken() {
+        let malformed = URL(
+            string: "rightclick://run?tool=codex&cwd=/tmp&token=guess"
+        )!
+
+        #expect(CLIInvocation(deepLink: malformed) == nil)
     }
 
     @Test

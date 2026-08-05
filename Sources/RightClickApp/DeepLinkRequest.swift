@@ -6,14 +6,21 @@ enum DeepLinkRequest: Equatable {
     case terminal(TerminalInvocation)
     case open(OpenInvocation)
 
-    init(deepLink url: URL) throws {
+    init(
+        deepLink url: URL,
+        expectedCLIAuthenticationToken: String?
+    ) throws {
         guard url.scheme == AppConstants.deepLinkScheme else {
             throw DeepLinkRequestError.invalidScheme
         }
 
         switch url.host {
         case "run":
-            guard let invocation = CLIInvocation(deepLink: url) else {
+            guard let invocation = CLIInvocation(deepLink: url),
+                  ExtensionRequestTokenStore.tokensMatch(
+                      invocation.authenticationToken,
+                      expectedCLIAuthenticationToken
+                  ) else {
                 throw DeepLinkRequestError.invalidCLI
             }
             self = .cli(invocation)
@@ -45,7 +52,7 @@ enum DeepLinkRequestError: Error, Equatable {
         case .invalidScheme:
             "链接协议不是 rightclick。"
         case .invalidCLI:
-            "CLI 请求无效：工具必须是 codex 或 claude，工作目录必须是现有的绝对路径。"
+            "CLI 请求无效或未通过本机 Finder 扩展认证。"
         case .invalidTerminal:
             "终端请求无效：工作目录必须是现有的绝对文件夹路径。"
         case .invalidOpen:

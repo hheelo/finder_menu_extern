@@ -53,7 +53,7 @@ enum AppDiagnostics {
         RightClick \(version) (\(build))
         macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
         默认终端：\(terminalProfile.title)
-        CLI 启动前确认：始终开启
+        CLI 启动：仅接受本机 Finder 扩展认证请求
 
         \(rows)
         """

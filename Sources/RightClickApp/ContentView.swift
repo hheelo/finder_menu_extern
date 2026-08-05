@@ -1,5 +1,4 @@
 import SwiftUI
-import RightClickCore
 
 struct ContentView: View {
     let updater: UpdaterController
@@ -99,33 +98,6 @@ struct ContentView: View {
             }
         }
         .padding(28)
-        .alert(
-            "启动 CLI？",
-            isPresented: Binding(
-                get: { model.pendingInvocation != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        model.cancelPendingInvocation()
-                    }
-                }
-            ),
-            presenting: model.pendingInvocation
-        ) { _ in
-            Button("取消", role: .cancel) {
-                model.cancelPendingInvocation()
-            }
-            Button("启动") {
-                model.confirmPendingInvocation()
-            }
-        } message: { invocation in
-            Text(
-                "将在 \(model.terminalProfile.title) 中运行：\n"
-                    + ShellCommandBuilder.command(
-                        invocation.command,
-                        in: invocation.workingDirectory
-                    )
-            )
-        }
     }
 }
 

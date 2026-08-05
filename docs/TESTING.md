@@ -35,13 +35,12 @@ VERSION=0.2.5 ./scripts/build-release.sh
 - 测试 VS Code / Codex App 存在与缺失两种状态
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
 - 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
-- 触发 CLI 动作，确认 RightClick 切到前台并展示包含工作目录的完整命令；取消后
-  不应打开终端窗口
-- 快速触发两个 CLI 动作，确认两个请求依次出现且不会互相覆盖
-- 从浏览器打开格式合法的 `rightclick://run?tool=codex&cwd=/tmp`，确认仍然必须
-  显示完整命令并等待用户确认
+- 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台且不增加窗口
+- 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
+- 从浏览器打开格式合法但没有本机令牌的
+  `rightclick://run?tool=codex&cwd=/tmp`，确认不开终端且不显示 RightClick 窗口
 - 从浏览器分别打开无效的 run、terminal、open 和未知 `rightclick://` 链接，确认
-  不会执行动作，并显示与请求类型对应的错误原因
+  不会执行动作，也不显示 RightClick 窗口
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
 - 保持 Finder 运行并升级旧版本；启动新 App 后确认 Finder 自动退出并重新打开，
   且右键菜单加载的是新扩展

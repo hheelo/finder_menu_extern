@@ -17,12 +17,17 @@ private let logger = Logger(
 final class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
     private let fileCreator = FileCreator()
+    private let requestToken: String?
 
     override init() {
+        requestToken = try? ExtensionRequestTokenStore.loadOrCreateForExtension()
         super.init()
         controller.directoryURLs = [
             URL(fileURLWithPath: "/", isDirectory: true)
         ]
+        if requestToken == nil {
+            logger.error("无法初始化扩展请求令牌，CLI 动作将不可用")
+        }
         logger.notice("Finder 扩展已初始化")
     }
 
@@ -208,10 +213,14 @@ final class FinderSync: FIFinderSync {
         for command: CLICommand,
         context: SelectionContext
     ) throws {
+        guard let requestToken else {
+            throw FinderActionError.authenticationUnavailable
+        }
         guard let directory = context.workingDirectory,
               let deepLink = CLIInvocation(
                   command: command,
-                  workingDirectory: directory
+                  workingDirectory: directory,
+                  authenticationToken: requestToken
               ).deepLink else {
             throw FinderActionError.invalidWorkingDirectory
         }
@@ -264,6 +273,7 @@ private extension MenuPlacement {
 private enum FinderActionError: LocalizedError {
     case invalidTarget
     case invalidWorkingDirectory
+    case authenticationUnavailable
     case hostApplicationUnavailable
 
     var errorDescription: String? {
@@ -272,6 +282,8 @@ private enum FinderActionError: LocalizedError {
             "所选项目无法作为打开目标。"
         case .invalidWorkingDirectory:
             "无法确定有效的工作目录。"
+        case .authenticationUnavailable:
+            "无法建立 Finder 扩展与 RightClick 的安全连接。"
         case .hostApplicationUnavailable:
             "无法启动 RightClick，请确认 App 仍位于 Applications 文件夹中。"
         }

@@ -62,8 +62,8 @@ struct SettingsView: View {
             Section {
                 Text(
                     "首次运行终端命令时，macOS 可能询问是否允许 "
-                        + "RightClick 控制 Terminal 或 iTerm2。所有 CLI 请求都会"
-                        + "先切到前台显示完整命令，并等待你确认。"
+                        + "RightClick 控制 Terminal 或 iTerm2。Finder 动作会在"
+                        + "后台交给 RightClick 处理，不会显示宿主窗口。"
                 )
                     .font(.callout)
                     .foregroundStyle(.secondary)

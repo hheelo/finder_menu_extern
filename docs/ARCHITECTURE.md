@@ -12,7 +12,8 @@
 - 直接完成剪贴板与文件创建（这两件事在扩展内即可完成）
 - 不启动任何外部 App：扩展被沙箱化，`NSWorkspace` 指定 App 启动会被拒绝，
   「用 X 打开」与「运行 CLI」一律编码成深链交给宿主
-- 通过 `rightclick://run?tool=...&cwd=...` 请求宿主运行 CLI
+- 通过带本机随机令牌的 `rightclick://run?tool=...&cwd=...&token=...` 请求宿主
+  运行 CLI；令牌由扩展生成并保存在自己的沙箱容器中
 - 通过 `rightclick://open?app=...&path=...` 请求宿主用指定 App 打开
 - 通过 `rightclick://terminal?cwd=...` 请求宿主在该目录打开终端。用哪个终端
   由宿主解析：扩展有独立的 UserDefaults 且 App Group 已移除，读不到用户设置
@@ -21,13 +22,12 @@
 ### RightClick
 
 - 以 `LSUIElement` 附属应用运行：Dock 无图标，双击 App 打开窗口
-- 被深链唤起时不显示窗口（靠 `launchIsDefaultUserInfoKey` 区分启动来源），
-  但需要确认或报错时把窗口请回前台
+- 被任何 Finder 深链唤起时都不显示窗口；错误保留在状态中，只有用户主动双击
+  App 时才显示宿主窗口
 - 提供启用指引、扩展状态、终端选择和错误状态
 - macOS 14.4 起使用系统 API 检查扩展状态；14.0–14.3 使用 `pluginkit` 用户选择
   标记兜底，避免把已启用的扩展误报为未启用
-- 严格解析 CLI 深链接；所有 CLI 请求都必须在前台展示完整命令并由用户确认
-- 连续收到多个需要确认的 CLI 请求时按到达顺序排队，不覆盖尚未处理的请求
+- 严格解析 CLI 深链接；只有令牌与本机扩展容器一致的请求才直接启动终端
 - 使用 `osascript` 参数控制用户选择的终端，不拼接脚本源码
 - 代扩展执行外部 App 的启动，并在失败时向用户呈现错误
 - 解析终端：默认优先 iTerm2，未安装时回退 Terminal；显式选中 iTerm2 但未安装
@@ -52,9 +52,9 @@
 - `rightclick://open` 只接受白名单内的 App 标识（见 `ExternalApplication.known`），
   宿主不会被诱导去启动任意程序
 - 打开目标必须全部是已存在的绝对路径，只要有一个不存在就整体拒绝
-- 使用 `URLComponents` 编码路径，宿主只接受唯一的 `tool` / `cwd` 参数
-- 工作目录必须是已存在的绝对目录；CLI 启动前确认不可关闭
-- Finder 始终以非激活方式唤起宿主；宿主只在 CLI 确认或报错时主动切到前台
+- 使用 `URLComponents` 编码路径，宿主只接受唯一的 `tool` / `cwd` / `token` 参数
+- 工作目录必须是已存在的绝对目录，CLI 请求还必须携带本机随机令牌
+- Finder 始终以非激活方式唤起宿主，深链成功或失败都不会切到前台
 - shell 命令作为 `osascript` 参数传递，不插入 AppleScript 源码
 - 登录 shell 与 `osascript` 共用有超时和输出上限的进程执行器；stdout/stderr
   写入权限为 `0600` 的临时文件，避免管道缓冲区或子进程持有写端造成互锁
@@ -86,8 +86,8 @@
   也在主线程上，一旦弹出右键菜单将永久不再出现
 - 扩展的 `NSLog` 只写 stderr 且被丢弃，排查一律用 `os.Logger`，
   级别不低于 `notice`（`info` 默认不落盘）
-- URL 事件先于 `applicationDidFinishLaunching` 到达。附属应用在启动期收起窗口时
-  必须检查窗口是否已被显式请出，否则确认框与错误提示会被立刻收走而永不可见
+- URL 事件先于 `applicationDidFinishLaunching` 到达。附属应用在启动期和下一轮
+  runloop 都要收起窗口，避免 SwiftUI 延迟创建的窗口闪现
 - `com.openai.codex` 实际是 ChatGPT.app 的 Bundle ID
 - iTerm2 的 AppleScript `create window ... command X` 不经过 shell，`X` 含
   `&&` 之类操作符会直接失败且连窗口都建不起来（返回 missing value）。
