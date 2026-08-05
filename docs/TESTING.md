@@ -35,7 +35,8 @@ VERSION=0.2.5 ./scripts/build-release.sh
 - 测试 VS Code / Codex App 存在与缺失两种状态
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
 - 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
-- 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台且不增加窗口
+- 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台、不增加窗口，
+  界面也不会短暂闪现
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
 - 关闭 RightClick 的最后一个窗口但不退出进程，再双击 App，确认会新建并显示窗口
 - 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建

@@ -86,19 +86,20 @@
   也在主线程上，一旦弹出右键菜单将永久不再出现
 - 扩展的 `NSLog` 只写 stderr 且被丢弃，排查一律用 `os.Logger`，
   级别不低于 `notice`（`info` 默认不落盘）
-- URL 事件先于 `applicationDidFinishLaunching` 到达。附属应用在启动期和下一轮
-  runloop 都要收起窗口，避免 SwiftUI 延迟创建的窗口闪现
+- URL 事件先于 `applicationDidFinishLaunching` 到达。AppDelegate 与 SwiftUI
+  场景共用按首次访问初始化的 `AppModel`，因此 URL 先到也可以直接处理；冷启动
+  收到 URL 时先隐藏整个应用，阻止默认窗口在启动过程中闪现
 - `com.openai.codex` 实际是 ChatGPT.app 的 Bundle ID
 - iTerm2 的 AppleScript `create window ... command X` 不经过 shell，`X` 含
   `&&` 之类操作符会直接失败且连窗口都建不起来（返回 missing value）。
   必须先建默认 profile 的会话再 `write text`，与 Terminal 的 `do script` 等价
-- SwiftUI 为投递 `onOpenURL` 会新建窗口，即使已有窗口开着也照建不误。因此
-  深链处理必须按「窗口编号」逐个比对：原本可见的保持不动，期间新出现的收掉。
-  只看「之前有没有窗口」不够，会漏掉「窗口开着又多出一个」的情形。
-  新窗口可能在处理函数返回之后才创建，所以下一个 runloop 还要再查一次
-- `applicationShouldHandleReopen` 一律返回 false：返回 true 会让 AppKit
-  执行默认行为再开一个窗口。也不能因「本进程是无声启动」就拒绝 reopen，
-  用户可能在宿主被深链唤起后才去双击 App
+- 深链不能挂在 SwiftUI 的 `onOpenURL` 上：SwiftUI 会先创建并显示窗口再投递，
+  随后收起仍会肉眼可见地闪一下。AppDelegate 直接接收 URL 并交给模型，深链
+  路径从源头不进入 `WindowGroup`；窗口场景也用空的 `handlesExternalEvents`
+  集合明确拒绝所有外部事件
+- `applicationShouldHandleReopen` 在有窗口时自行恢复并返回 false；最后一个窗口
+  已关闭时返回 true，让 AppKit/SwiftUI 新建窗口。不能因「本进程是无声启动」
+  就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证

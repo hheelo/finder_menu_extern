@@ -64,9 +64,7 @@ final class AppModel: ObservableObject {
     }
 
     func handle(url: URL) {
-        WindowPresenter.withPreservedVisibility {
-            self.dispatch(deepLink: url)
-        }
+        dispatch(deepLink: url)
     }
 
     private func dispatch(deepLink url: URL) {
@@ -192,8 +190,8 @@ final class AppModel: ObservableObject {
         lastError = message
     }
 
-    /// 每次刷新要起两个登录 shell，成本不低；而深链会让 SwiftUI 新建窗口，
-    /// 视图重新出现就会再触发一次。加个节流，避免频繁重跑。
+    /// 每次刷新要起两个登录 shell，成本不低。窗口重新激活时加个节流，避免
+    /// 用户在多个应用间切换时频繁重跑。
     private var lastDiagnosticsRefresh: ContinuousClock.Instant?
 
     func refreshDiagnostics(force: Bool = false) async {

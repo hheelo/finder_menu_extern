@@ -35,8 +35,7 @@ final class UpdaterController {
     /// 不用定时检查，也不在深链唤起时检查——宿主经常被无声唤起，
     /// 那种时候弹出更新界面会让人莫名其妙。
     func checkInBackground() {
-        // 每进程只查一次：这个调用挂在视图的 .task 上，而深链会让 SwiftUI
-        // 新建窗口，视图重新出现就会再触发一次。
+        // 每进程只查一次：窗口被关闭后重新创建时，视图的 .task 会再次执行。
         guard !hasCheckedInBackground else { return }
         hasCheckedInBackground = true
         appLogger.notice("后台检查更新")
