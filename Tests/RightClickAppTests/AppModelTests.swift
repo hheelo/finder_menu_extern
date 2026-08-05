@@ -5,6 +5,27 @@ import Testing
 
 @MainActor
 struct AppModelTests {
+    @Test(arguments: [true, false], [true, false])
+    func reopenPolicy(
+        hasVisibleWindows: Bool,
+        hasPresentableWindow: Bool
+    ) {
+        let expectedAction: ReopenAction
+        if hasPresentableWindow {
+            expectedAction = .restoreExisting
+        } else if hasVisibleWindows {
+            expectedAction = .keepVisible
+        } else {
+            expectedAction = .createWindow
+        }
+        #expect(
+            ReopenPolicy.action(
+                hasVisibleWindows: hasVisibleWindows,
+                hasPresentableWindow: hasPresentableWindow
+            ) == expectedAction
+        )
+    }
+
     @Test
     func trustedCLIDeepLinkExecutesWithoutConfirmation() async throws {
         let fixture = try makeFixture()

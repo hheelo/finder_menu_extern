@@ -37,6 +37,8 @@ VERSION=0.2.5 ./scripts/build-release.sh
 - 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
 - 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台且不增加窗口
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
+- 关闭 RightClick 的最后一个窗口但不退出进程，再双击 App，确认会新建并显示窗口
+- 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建
 - 从浏览器打开格式合法但没有本机令牌的
   `rightclick://run?tool=codex&cwd=/tmp`，确认不开终端且不显示 RightClick 窗口
 - 从浏览器分别打开无效的 run、terminal、open 和未知 `rightclick://` 链接，确认

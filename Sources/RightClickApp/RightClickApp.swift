@@ -19,8 +19,9 @@ enum AppEnvironment {
 /// 那种唤起不该弹出任何窗口。`applicationDidFinishLaunching` 的
 /// `launchIsDefaultUserInfoKey` 能区分「用户双击启动」和「为处理 URL 而启动」。
 ///
-/// 窗口只是收起而非关闭，用户之后双击 App 时可以直接把它请回来。Finder 深链
-/// 无论成功或失败都不主动显示宿主窗口。
+/// 被深链唤起的窗口会被收起，用户之后双击 App 时可以把它请回来；若用户已经
+/// 关闭了最后一个窗口，则由系统新建窗口。Finder 深链无论成功或失败都不主动
+/// 显示宿主窗口。
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 是否由用户自己启动（而非为处理深链）。决定要不要检查更新。
@@ -63,16 +64,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
+        let hasPresentableWindow = WindowPresenter.hasPresentableWindow
         appLogger.notice(
-            "收到 reopen 有可见窗口=\(flag, privacy: .public) 无声会话=\(WindowPresenter.isHeadlessSession, privacy: .public)"
+            "收到 reopen 有可见窗口=\(flag, privacy: .public) 有可恢复窗口=\(hasPresentableWindow, privacy: .public) 无声会话=\(WindowPresenter.isHeadlessSession, privacy: .public)"
         )
-        // 一律返回 false：窗口的显示与否完全由这里决定。
-        // 返回 true 会让 AppKit 执行默认行为，即再开一个窗口——
-        // 深链送达已开着窗口的宿主时就会多出一个一模一样的窗口。
-        // 已有可见窗口时什么都不做：激活由系统负责，无需我们插手。
-        guard !flag else { return false }
-        WindowPresenter.bringToFront()
-        return false
+        switch ReopenPolicy.action(
+            hasVisibleWindows: flag,
+            hasPresentableWindow: hasPresentableWindow
+        ) {
+        case .keepVisible:
+            // 已有可见窗口时什么都不做：激活由系统负责。
+            return false
+        case .restoreExisting:
+            WindowPresenter.bringToFront()
+            return false
+        case .createWindow:
+            // 红色关闭按钮会把最后一个 SwiftUI 窗口销毁，但 LSUIElement 宿主
+            // 仍在后台运行。此时交回 AppKit/SwiftUI 的默认 reopen 行为新建窗口。
+            appLogger.notice("没有可恢复窗口，交给系统新建窗口")
+            return true
+        }
+    }
+}
+
+enum ReopenAction: Equatable {
+    case keepVisible
+    case restoreExisting
+    case createWindow
+}
+
+enum ReopenPolicy {
+    static func action(
+        hasVisibleWindows: Bool,
+        hasPresentableWindow: Bool
+    ) -> ReopenAction {
+        if hasPresentableWindow { return .restoreExisting }
+        if hasVisibleWindows { return .keepVisible }
+        return .createWindow
     }
 }
 
@@ -90,14 +118,27 @@ enum WindowPresenter {
     /// 本进程是为处理深链而启动的（而非用户主动打开）。
     static var isHeadlessSession = false
 
+    static var hasPresentableWindow: Bool {
+        presentableWindow != nil
+    }
+
     static func bringToFront() {
+        guard let window = presentableWindow else {
+            appLogger.error("无法请出窗口：没有可恢复窗口")
+            return
+        }
         presentationCount += 1
         NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
-        NSApp.windows
-            .first { $0.contentViewController != nil }?
-            .makeKeyAndOrderFront(nil)
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+        window.makeKeyAndOrderFront(nil)
         appLogger.notice("已请出窗口")
+    }
+
+    private static var presentableWindow: NSWindow? {
+        NSApp.windows.first { $0.contentViewController != nil }
     }
 
     /// 处理深链不应该让任何原本不可见的窗口变得可见。
