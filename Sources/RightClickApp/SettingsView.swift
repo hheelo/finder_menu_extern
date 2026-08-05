@@ -16,11 +16,6 @@ struct SettingsView: View {
                     + "选自动时优先 iTerm2；未安装 iTerm2 时回退到 Terminal。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
-                Toggle(
-                    "运行 CLI 前切到前台确认",
-                    isOn: $model.confirmCLIExecution
-                )
             }
 
             Section("环境诊断") {
@@ -67,8 +62,8 @@ struct SettingsView: View {
             Section {
                 Text(
                     "首次运行终端命令时，macOS 可能询问是否允许 "
-                        + "RightClick 控制 Terminal 或 iTerm2。关闭确认时，"
-                        + "Finder 操作不会将 RightClick 切到前台。"
+                        + "RightClick 控制 Terminal 或 iTerm2。所有 CLI 请求都会"
+                        + "先切到前台显示完整命令，并等待你确认。"
                 )
                     .font(.callout)
                     .foregroundStyle(.secondary)

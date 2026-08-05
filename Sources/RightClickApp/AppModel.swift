@@ -6,12 +6,7 @@ import os
 @MainActor
 final class AppModel: ObservableObject {
     @Published var terminalProfile: TerminalProfile {
-        didSet { AppSettings.shared.terminalProfile = terminalProfile }
-    }
-    @Published var confirmCLIExecution: Bool {
-        didSet {
-            AppSettings.shared.confirmCLIExecution = confirmCLIExecution
-        }
+        didSet { settings.terminalProfile = terminalProfile }
     }
     @Published var lastStatus = "等待 Finder 操作"
     @Published var lastError: String?
@@ -20,14 +15,28 @@ final class AppModel: ObservableObject {
     @Published private(set) var diagnostics: [DiagnosticItem] = []
     @Published private(set) var isRefreshingDiagnostics = false
 
-    private let executor = ActionExecutor()
+    private let settings: AppSettings
+    private let executor: any CLIExecuting
+    private let bringToFront: @MainActor () -> Void
     private var queuedInvocations: [CLIInvocation] = []
 
-    init() {
-        terminalProfile = AppSettings.shared.terminalProfile
-        confirmCLIExecution = AppSettings.shared.confirmCLIExecution
-        refreshExtensionStatus()
-        Task { await refreshDiagnostics() }
+    init(
+        settings: AppSettings = .shared,
+        executor: any CLIExecuting = ActionExecutor(),
+        bringToFront: @escaping @MainActor () -> Void = {
+            WindowPresenter.bringToFront()
+        },
+        performInitialRefresh: Bool = true
+    ) {
+        self.settings = settings
+        self.executor = executor
+        self.bringToFront = bringToFront
+        terminalProfile = settings.terminalProfile
+
+        if performInitialRefresh {
+            refreshExtensionStatus()
+            Task { await refreshDiagnostics() }
+        }
     }
 
     func openExtensionSettings() {
@@ -63,67 +72,51 @@ final class AppModel: ObservableObject {
     }
 
     private func dispatch(deepLink url: URL) {
-        guard url.scheme == AppConstants.deepLinkScheme else {
-            rejectDeepLink("链接协议不是 rightclick。")
+        let request: DeepLinkRequest
+        do {
+            request = try DeepLinkRequest(deepLink: url)
+        } catch let error as DeepLinkRequestError {
+            rejectDeepLink(error.rejectionReason)
+            return
+        } catch {
+            rejectDeepLink("无法解析请求。")
             return
         }
 
-        switch url.host {
-        case "run":
-            guard let invocation = CLIInvocation(deepLink: url) else {
-                rejectDeepLink(
-                    "CLI 请求无效：工具必须是 codex 或 claude，工作目录必须是现有的绝对路径。"
-                )
-                return
-            }
+        switch request {
+        case let .cli(invocation):
             appLogger.notice("收到深链 类型=cli")
             handle(invocation)
-        case "terminal":
+        case let .terminal(invocation):
             // 用哪个终端由宿主解析：扩展读不到「默认终端」设置。
-            guard let invocation = TerminalInvocation(deepLink: url) else {
-                rejectDeepLink(
-                    "终端请求无效：工作目录必须是现有的绝对文件夹路径。"
-                )
-                return
-            }
             appLogger.notice("收到深链 类型=terminal")
             handle(invocation)
-        case "open":
+        case let .open(invocation):
             // 沙箱化的扩展不能启动其他 App，「用 X 打开」由宿主代为执行。
-            guard let invocation = OpenInvocation(deepLink: url) else {
-                rejectDeepLink(
-                    "打开请求无效：应用必须在白名单中，目标必须是现有的绝对路径。"
-                )
-                return
-            }
             appLogger.notice(
                 "收到深链 类型=open 目标数=\(invocation.targets.count, privacy: .public)"
             )
             handle(invocation)
-        default:
-            rejectDeepLink("未知的 RightClick 操作：\(url.host ?? "缺少操作名")。")
         }
     }
 
     private func rejectDeepLink(_ reason: String) {
         appLogger.error("收到无法解析的深链")
         lastError = "已拒绝无效的启动链接：\(reason)"
-        WindowPresenter.bringToFront()
+        bringToFront()
     }
 
     private func handle(_ invocation: CLIInvocation) {
-        if confirmCLIExecution {
-            if pendingInvocation == nil && queuedInvocations.isEmpty {
-                pendingInvocation = invocation
-            } else {
-                queuedInvocations.append(invocation)
-                lastStatus = "CLI 请求已排队（\(queuedInvocations.count) 个待处理）"
-            }
-            // 确认框挂在主窗口上；附属应用的窗口可能已被收起，必须先请回来。
-            WindowPresenter.bringToFront()
+        // rightclick:// 是系统级入口，网页和本地进程都可以构造。CLI 会启动
+        // 有文件读写能力的 agent，因此任何来源都必须经过用户确认。
+        if pendingInvocation == nil && queuedInvocations.isEmpty {
+            pendingInvocation = invocation
         } else {
-            execute(invocation)
+            queuedInvocations.append(invocation)
+            lastStatus = "CLI 请求已排队（\(queuedInvocations.count) 个待处理）"
         }
+        // 确认框挂在主窗口上；附属应用的窗口可能已被收起，必须先请回来。
+        bringToFront()
     }
 
     private func handle(_ invocation: OpenInvocation) {
@@ -202,7 +195,7 @@ final class AppModel: ObservableObject {
     /// 宿主是附属应用，窗口平时收起，报错时必须显式请回前台。
     private func reportOpenFailure(_ message: String) {
         lastError = message
-        WindowPresenter.bringToFront()
+        bringToFront()
     }
 
     func cancelPendingInvocation() {
@@ -227,7 +220,7 @@ final class AppModel: ObservableObject {
                 return
             }
             pendingInvocation = queuedInvocations.removeFirst()
-            WindowPresenter.bringToFront()
+            bringToFront()
         }
     }
 
@@ -263,8 +256,7 @@ final class AppModel: ObservableObject {
     func copyDiagnostics() {
         let report = AppDiagnostics.report(
             diagnostics,
-            terminalProfile: terminalProfile,
-            confirmationEnabled: confirmCLIExecution
+            terminalProfile: terminalProfile
         )
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(report, forType: .string)
@@ -295,14 +287,14 @@ final class AppModel: ObservableObject {
                     "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
                 )
                 lastError = error.localizedDescription
-                WindowPresenter.bringToFront()
+                bringToFront()
             }
         }
     }
 
     private func refreshFinderSessionIfNeeded() {
         guard let version = Self.bundleVersion,
-              AppSettings.shared.finderSessionBuild != version else {
+              settings.finderSessionBuild != version else {
             return
         }
 
@@ -310,7 +302,7 @@ final class AppModel: ObservableObject {
         // 成功后才写，重启路径上的任何崩溃或挂起都会在下次启动时原样重演，
         // 把 App 变成永远打不开的死循环（0.2.6 就是这样）。重启真的失败时
         // 用户仍可用界面上的「重启 Finder」按钮手动重试。
-        AppSettings.shared.finderSessionBuild = version
+        settings.finderSessionBuild = version
         restartFinder(successStatus: "已为当前版本重新加载 Finder")
     }
 

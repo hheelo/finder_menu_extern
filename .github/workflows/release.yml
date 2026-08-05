@@ -16,6 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Install pinned XcodeGen
+        run: |
+          ./scripts/install-pinned-xcodegen.sh "${RUNNER_TEMP}/rightclick-xcodegen"
+          echo "${RUNNER_TEMP}/rightclick-xcodegen/xcodegen/bin" >> "${GITHUB_PATH}"
+
+      - name: Verify generated project is up to date
+        run: ./scripts/verify-generated-project.sh
+
       - name: Test
         run: |
           xcodebuild \

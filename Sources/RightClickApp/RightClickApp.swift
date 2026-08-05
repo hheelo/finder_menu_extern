@@ -7,6 +7,12 @@ let appLogger = Logger(
     category: "app"
 )
 
+enum AppEnvironment {
+    static var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+}
+
 /// 宿主是 `LSUIElement` 附属应用：Dock 里不出现图标。
 ///
 /// 但它仍会被扩展的深链频繁唤起（每次「用 X 打开」「运行 CLI」都要经过它），
@@ -152,7 +158,9 @@ enum WindowPresenter {
 @main
 struct RightClickApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @StateObject private var model = AppModel()
+    @StateObject private var model = AppModel(
+        performInitialRefresh: !AppEnvironment.isRunningTests
+    )
     @State private var updater = UpdaterController()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -165,7 +173,10 @@ struct RightClickApp: App {
                 .task {
                     // 只在用户自己打开 App 时查一次；深链唤起时不查，
                     // 否则会在用户点「用 VS Code 打开」时冒出更新界面。
-                    guard delegate.isUserLaunch else { return }
+                    guard !AppEnvironment.isRunningTests,
+                          delegate.isUserLaunch else {
+                        return
+                    }
                     updater.checkInBackground()
                 }
                 .onChange(of: scenePhase) { _, newPhase in

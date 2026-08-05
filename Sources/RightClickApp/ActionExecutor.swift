@@ -179,7 +179,15 @@ enum ActionExecutorError: LocalizedError {
 }
 
 @MainActor
-struct ActionExecutor {
+protocol CLIExecuting {
+    func execute(
+        _ invocation: CLIInvocation,
+        terminalProfile: TerminalProfile
+    ) async throws
+}
+
+@MainActor
+struct ActionExecutor: CLIExecuting {
     func execute(
         _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile

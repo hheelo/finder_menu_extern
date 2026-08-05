@@ -37,8 +37,7 @@ enum AppDiagnostics {
 
     static func report(
         _ items: [DiagnosticItem],
-        terminalProfile: TerminalProfile,
-        confirmationEnabled: Bool
+        terminalProfile: TerminalProfile
     ) -> String {
         let version = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleShortVersionString"
@@ -54,7 +53,7 @@ enum AppDiagnostics {
         RightClick \(version) (\(build))
         macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
         默认终端：\(terminalProfile.title)
-        启动前确认：\(confirmationEnabled ? "开启" : "关闭")
+        CLI 启动前确认：始终开启
 
         \(rows)
         """

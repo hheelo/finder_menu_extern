@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		012B558953EB0D1E2C806B2E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 237D30D1F1111056F3177FBD /* Sparkle */; };
 		06A4FDC689A66A1229B8591D /* TerminalProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F149106428DBEA2AC3EFAB9D /* TerminalProfile.swift */; };
+		12BA83B817A2CAFCE4822D32 /* DeepLinkRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D751F802357CA9B0181743F2 /* DeepLinkRequestTests.swift */; };
+		16253340E99F5D1CACC7939C /* DeepLinkRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB8EBD0D2081EB7B7B09A3B /* DeepLinkRequest.swift */; };
 		1D5A81EF52B6F7697F49D27C /* TerminalInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66DD77E8ED9FD935977EF665 /* TerminalInvocationTests.swift */; };
 		20DE0261F3883D77C3C41781 /* FileCreatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49EDAF82E7ACA6FC6DD103B /* FileCreatorTests.swift */; };
 		2C792D922DA3DA016B08BB3E /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D584FD06A4707D9D607F236 /* AppSettings.swift */; };
@@ -18,6 +20,7 @@
 		3F1F075E6DF6328DFBD23A35 /* AppConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00EBB4C077AED2C7F98DCDB5 /* AppConstants.swift */; };
 		3F76F4D2DBD204915B2BD746 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9565FC36BC183BE010303657 /* Assets.xcassets */; };
 		4EF94D88CF70E916ABC64B47 /* RightClickFinderExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 403F31C4AE3B7C19785FC7EB /* RightClickFinderExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		50D85D8DD4A32B7D1A5F32E0 /* ProcessRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B338F1C601E212E5F0381226 /* ProcessRunnerTests.swift */; };
 		545803F894D40A1C38EA4ED8 /* RightClickApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0BC918B1EB142D3FA66DC8C /* RightClickApp.swift */; };
 		5B49569EBA1E9528D5B5F018 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E4749E7D55BE88F7397F35 /* AppModel.swift */; };
 		71E701CA58A0DA8B61C9EA6C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B165B70C5575CF81EE1AE7F7 /* SettingsView.swift */; };
@@ -39,17 +42,27 @@
 		BB46E3F7D38749239FB6ECA8 /* CLIInvocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27572AB5B8405DA8B6A415E6 /* CLIInvocation.swift */; };
 		BC7C7FA23B3973439B3CE7AF /* SelectionContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1619892FCF1A5FAEC0C177 /* SelectionContextTests.swift */; };
 		BF03AC3F670117F85097C670 /* ExecutablePathParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF2BD378512DC135ADC3016 /* ExecutablePathParser.swift */; };
+		C181EBD76C3530551CE384B6 /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
 		C267EF3E4B6C11FDB8D22DF1 /* UpdaterController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59270681F4795CFF7E10997C /* UpdaterController.swift */; };
 		C66C5301703F6B12E5EBEEF9 /* RightClickCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C7950F9C644EF21CBB18E536 /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
 		CCBFA31B9C6D3E62B1AE9104 /* RightClickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7945574CA07D3EE47247E5D8 /* RightClickAction.swift */; };
 		CFABAE7E3A171CBB90ED8C4C /* ClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DA93DE1BA183F60B69D058 /* ClipboardText.swift */; };
 		E21A2900F6B09CDAF4A34CF3 /* FileTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E443EF553D797AE2521933E9 /* FileTemplate.swift */; };
+		EF010F02EF99B0F4637BCA54 /* RightClickCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		F16EE41E5A3D470376B92ACD /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
 		F8F85CF7EB1C1AC922E8F2DF /* ExternalApplicationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0D46A7C4A1A215960D4108 /* ExternalApplicationTests.swift */; };
+		FC5B9474E3B7DE66A075CDC4 /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30568F1902D0E7645E5EE2BF /* AppModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3FE9B9C929DF0F61B3348256 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1419D4A0B2A1BBD5BC1F125C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B7F3374CC11D0285B7326D13;
+			remoteInfo = RightClick;
+		};
 		7DCF890C4637F38484404A0F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 1419D4A0B2A1BBD5BC1F125C /* Project object */;
@@ -78,9 +91,27 @@
 			remoteGlobalIDString = E0E44EA4EE3EADDE23009928;
 			remoteInfo = RightClickCore;
 		};
+		B4B0BD7EFDC194C974B3E8FE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1419D4A0B2A1BBD5BC1F125C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E0E44EA4EE3EADDE23009928;
+			remoteInfo = RightClickCore;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		360C1313BB69EA73730E6E2D /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				EF010F02EF99B0F4637BCA54 /* RightClickCore.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6735C47E653DC0EDA9C39D29 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -134,13 +165,16 @@
 		1D584FD06A4707D9D607F236 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		261326AEEF383C0858F03568 /* RightClickMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightClickMenuTests.swift; sourceTree = "<group>"; };
 		27572AB5B8405DA8B6A415E6 /* CLIInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInvocation.swift; sourceTree = "<group>"; };
+		2AB8EBD0D2081EB7B7B09A3B /* DeepLinkRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRequest.swift; sourceTree = "<group>"; };
 		2D0D46A7C4A1A215960D4108 /* ExternalApplicationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalApplicationTests.swift; sourceTree = "<group>"; };
+		30568F1902D0E7645E5EE2BF /* AppModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModelTests.swift; sourceTree = "<group>"; };
 		30A228BDC99F372753AEDF05 /* RightClickCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RightClickCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		31DA93DE1BA183F60B69D058 /* ClipboardText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardText.swift; sourceTree = "<group>"; };
 		3C1619892FCF1A5FAEC0C177 /* SelectionContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionContextTests.swift; sourceTree = "<group>"; };
 		403F31C4AE3B7C19785FC7EB /* RightClickFinderExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RightClickFinderExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4809F6985A7D2364B09E19B2 /* OpenInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenInvocation.swift; sourceTree = "<group>"; };
 		59270681F4795CFF7E10997C /* UpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterController.swift; sourceTree = "<group>"; };
+		636A04A2E7190FA424AF2E04 /* RightClickAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RightClickAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		66DD77E8ED9FD935977EF665 /* TerminalInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInvocationTests.swift; sourceTree = "<group>"; };
 		6BF2BD378512DC135ADC3016 /* ExecutablePathParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePathParser.swift; sourceTree = "<group>"; };
 		7299E52324848B5CC0E1CD18 /* ActionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionExecutor.swift; sourceTree = "<group>"; };
@@ -158,10 +192,12 @@
 		A97B7F8F10FEDC8BEEA9763B /* TerminalInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInvocation.swift; sourceTree = "<group>"; };
 		ABAAB2233E121EB1DBE50FD0 /* ExecutablePathParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePathParserTests.swift; sourceTree = "<group>"; };
 		B165B70C5575CF81EE1AE7F7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B338F1C601E212E5F0381226 /* ProcessRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessRunnerTests.swift; sourceTree = "<group>"; };
 		BA93CC2C2D78CF5533BB9135 /* AppDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiagnostics.swift; sourceTree = "<group>"; };
 		BB1BE9A934567D43F5488B14 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		C7D5B1DDABAF04AEA0F0B397 /* RightClick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RightClick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFD59B4FACD0786B2B547A82 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
+		D751F802357CA9B0181743F2 /* DeepLinkRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRequestTests.swift; sourceTree = "<group>"; };
 		E443EF553D797AE2521933E9 /* FileTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTemplate.swift; sourceTree = "<group>"; };
 		F149106428DBEA2AC3EFAB9D /* TerminalProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalProfile.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -184,6 +220,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9890D9AAE8F4EDFC15476C25 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C181EBD76C3530551CE384B6 /* RightClickCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C9BECC7D8D8EFD243B113C63 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -198,6 +242,7 @@
 		27F0405D2EBA85B18527A696 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				915C75C49A13372DD2691B15 /* RightClickAppTests */,
 				675E08DCE135C37C0DF58D0C /* RightClickCoreTests */,
 			);
 			path = Tests;
@@ -236,6 +281,7 @@
 				BA93CC2C2D78CF5533BB9135 /* AppDiagnostics.swift */,
 				A5E4749E7D55BE88F7397F35 /* AppModel.swift */,
 				9FD7F83B07E605091F56E6D3 /* ContentView.swift */,
+				2AB8EBD0D2081EB7B7B09A3B /* DeepLinkRequest.swift */,
 				A0BC918B1EB142D3FA66DC8C /* RightClickApp.swift */,
 				B165B70C5575CF81EE1AE7F7 /* SettingsView.swift */,
 				59270681F4795CFF7E10997C /* UpdaterController.swift */,
@@ -262,6 +308,16 @@
 				F149106428DBEA2AC3EFAB9D /* TerminalProfile.swift */,
 			);
 			path = RightClickCore;
+			sourceTree = "<group>";
+		};
+		915C75C49A13372DD2691B15 /* RightClickAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				30568F1902D0E7645E5EE2BF /* AppModelTests.swift */,
+				D751F802357CA9B0181743F2 /* DeepLinkRequestTests.swift */,
+				B338F1C601E212E5F0381226 /* ProcessRunnerTests.swift */,
+			);
+			path = RightClickAppTests;
 			sourceTree = "<group>";
 		};
 		C40B2EC651C7D0161B310080 /* RightClickFinderExtension */ = {
@@ -294,6 +350,7 @@
 			isa = PBXGroup;
 			children = (
 				C7D5B1DDABAF04AEA0F0B397 /* RightClick.app */,
+				636A04A2E7190FA424AF2E04 /* RightClickAppTests.xctest */,
 				0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */,
 				30A228BDC99F372753AEDF05 /* RightClickCoreTests.xctest */,
 				403F31C4AE3B7C19785FC7EB /* RightClickFinderExtension.appex */,
@@ -304,6 +361,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0363C5CD29448014616D9C1A /* RightClickAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D30F491A893C37A36CAB8B45 /* Build configuration list for PBXNativeTarget "RightClickAppTests" */;
+			buildPhases = (
+				74AD9EDDC21115873E76F4E1 /* Sources */,
+				9890D9AAE8F4EDFC15476C25 /* Frameworks */,
+				360C1313BB69EA73730E6E2D /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FC66144943C17EE1531E24C7 /* PBXTargetDependency */,
+				F1F59F8F2DE1691E3F24CE46 /* PBXTargetDependency */,
+			);
+			name = RightClickAppTests;
+			packageProductDependencies = (
+			);
+			productName = RightClickAppTests;
+			productReference = 636A04A2E7190FA424AF2E04 /* RightClickAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		77DBC1A538B075D699635A58 /* RightClickFinderExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 20287CEC8A89E74018ACBD8A /* Build configuration list for PBXNativeTarget "RightClickFinderExtension" */;
@@ -394,6 +472,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					0363C5CD29448014616D9C1A = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					77DBC1A538B075D699635A58 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -430,6 +512,7 @@
 			projectRoot = "";
 			targets = (
 				B7F3374CC11D0285B7326D13 /* RightClick */,
+				0363C5CD29448014616D9C1A /* RightClickAppTests */,
 				E0E44EA4EE3EADDE23009928 /* RightClickCore */,
 				8119B8D753880DC991DD88F4 /* RightClickCoreTests */,
 				77DBC1A538B075D699635A58 /* RightClickFinderExtension */,
@@ -473,6 +556,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		74AD9EDDC21115873E76F4E1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC5B9474E3B7DE66A075CDC4 /* AppModelTests.swift in Sources */,
+				12BA83B817A2CAFCE4822D32 /* DeepLinkRequestTests.swift in Sources */,
+				50D85D8DD4A32B7D1A5F32E0 /* ProcessRunnerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		768B1A5E8CF5CD8ED93EDC51 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -502,6 +595,7 @@
 				7E190D62E09D55A3C2D195EB /* AppDiagnostics.swift in Sources */,
 				5B49569EBA1E9528D5B5F018 /* AppModel.swift in Sources */,
 				A83BF1C191764624D565794F /* ContentView.swift in Sources */,
+				16253340E99F5D1CACC7939C /* DeepLinkRequest.swift in Sources */,
 				545803F894D40A1C38EA4ED8 /* RightClickApp.swift in Sources */,
 				71E701CA58A0DA8B61C9EA6C /* SettingsView.swift in Sources */,
 				C267EF3E4B6C11FDB8D22DF1 /* UpdaterController.swift in Sources */,
@@ -531,6 +625,16 @@
 			target = E0E44EA4EE3EADDE23009928 /* RightClickCore */;
 			targetProxy = A9050B76F19D666E9C0AFC89 /* PBXContainerItemProxy */;
 		};
+		F1F59F8F2DE1691E3F24CE46 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E0E44EA4EE3EADDE23009928 /* RightClickCore */;
+			targetProxy = B4B0BD7EFDC194C974B3E8FE /* PBXContainerItemProxy */;
+		};
+		FC66144943C17EE1531E24C7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B7F3374CC11D0285B7326D13 /* RightClick */;
+			targetProxy = 3FE9B9C929DF0F61B3348256 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -555,6 +659,23 @@
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		0B46472B79E38ECFFF9B92B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hheelo.RightClick.AppTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RightClick.app/Contents/MacOS/RightClick";
 			};
 			name = Release;
 		};
@@ -611,7 +732,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 504;
+				CURRENT_PROJECT_VERSION = 505;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -632,7 +753,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.5.4;
+				MARKETING_VERSION = 0.5.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -641,6 +762,23 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		5A55E25C08B3CF39AAB95988 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hheelo.RightClick.AppTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RightClick.app/Contents/MacOS/RightClick";
 			};
 			name = Debug;
 		};
@@ -775,7 +913,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 504;
+				CURRENT_PROJECT_VERSION = 505;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -790,7 +928,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.5.4;
+				MARKETING_VERSION = 0.5.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -861,6 +999,15 @@
 			buildConfigurations = (
 				A090C945861F96EF874D94CB /* Debug */,
 				D834DF6E97ED7AB942D8E266 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D30F491A893C37A36CAB8B45 /* Build configuration list for PBXNativeTarget "RightClickAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A55E25C08B3CF39AAB95988 /* Debug */,
+				0B46472B79E38ECFFF9B92B5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
