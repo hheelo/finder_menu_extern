@@ -49,10 +49,7 @@ jobs:
             exit 1
           fi
           version="${VERSION#v}"
-          # 构建号与 build-release.sh 用同一套推导，保持一致
-          build="$(printf '%s' "${version}" | awk -F'[.-]' '{
-              printf "%d", ($1 * 10000) + ($2 * 100) + $3
-          }')"
+          build="$(./scripts/derive-build-number.sh "${version}")"
           # 私钥只经标准输入传入，不进命令行参数（同机进程可见）
           printf '%s' "${SPARKLE_PRIVATE_KEY}" | ./scripts/generate-appcast.sh \
             ".build/release/output/RightClick-${version}.dmg" \

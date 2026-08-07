@@ -43,33 +43,22 @@ public struct CLIInvocation: Equatable, Sendable {
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard deepLink.scheme == AppConstants.deepLinkScheme,
-              deepLink.host == "run",
-              deepLink.user == nil,
-              deepLink.password == nil,
-              deepLink.port == nil,
-              deepLink.fragment == nil,
-              let components = URLComponents(
-                  url: deepLink,
-                  resolvingAgainstBaseURL: false
-              ),
-              let queryItems = components.queryItems,
-              queryItems.count == 2 || queryItems.count == 3,
-              queryItems.allSatisfy({
-                  $0.name == "tool" || $0.name == "cwd" || $0.name == "token"
-              }),
-              queryItems.filter({ $0.name == "tool" }).count == 1,
-              queryItems.filter({ $0.name == "cwd" }).count == 1,
-              queryItems.filter({ $0.name == "token" }).count <= 1,
-              let tool = queryItems.first(where: { $0.name == "tool" })?.value,
+        guard let components = DeepLinkComponents(
+            deepLink: deepLink,
+            host: "run",
+            allowedNames: ["tool", "cwd", "token"]
+        ),
+              components.queryItems.count == 2 ||
+                components.queryItems.count == 3,
+              components.count(of: "token") <= 1,
+              let tool = components.single("tool"),
               let command = CLICommand(rawValue: tool),
-              let path = queryItems.first(where: { $0.name == "cwd" })?.value,
+              let path = components.single("cwd"),
               path.hasPrefix("/") else {
             return nil
         }
 
-        let authenticationToken = queryItems
-            .first(where: { $0.name == "token" })?.value
+        let authenticationToken = components.optionalSingle("token")
         guard authenticationToken.map(
             ExtensionRequestTokenStore.isValidToken
         ) ?? true else {

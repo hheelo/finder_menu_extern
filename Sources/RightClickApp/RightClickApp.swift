@@ -1,17 +1,5 @@
 import AppKit
 import SwiftUI
-import os
-
-let appLogger = Logger(
-    subsystem: "com.hheelo.RightClick",
-    category: "app"
-)
-
-enum AppEnvironment {
-    static var isRunningTests: Bool {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-    }
-}
 
 /// URL 事件由 AppDelegate 直接接收，不能挂在 SwiftUI 窗口上。
 /// `WindowGroup.onOpenURL` 会为了投递事件先创建并显示一个窗口，随后再收起也会
@@ -118,23 +106,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         sharedAppModel.refreshExtensionStatus()
         Task { await sharedAppModel.refreshDiagnostics() }
-    }
-}
-
-enum ReopenAction: Equatable {
-    case keepVisible
-    case restoreExisting
-    case createWindow
-}
-
-enum ReopenPolicy {
-    static func action(
-        hasVisibleWindows: Bool,
-        hasPresentableWindow: Bool
-    ) -> ReopenAction {
-        if hasPresentableWindow { return .restoreExisting }
-        if hasVisibleWindows { return .keepVisible }
-        return .createWindow
     }
 }
 

@@ -9,15 +9,24 @@ import Foundation
 public struct OpenInvocation: Equatable, Sendable {
     public let application: ExternalApplication
     public let targets: [URL]
+    public let authenticationToken: String?
 
-    public init(application: ExternalApplication, targets: [URL]) {
+    public init(
+        application: ExternalApplication,
+        targets: [URL],
+        authenticationToken: String? = nil
+    ) {
         self.application = application
         self.targets = targets
+        self.authenticationToken = authenticationToken
     }
 
     public var deepLink: URL? {
         guard !targets.isEmpty,
-              targets.allSatisfy({ $0.isFileURL && $0.path.hasPrefix("/") }) else {
+              targets.allSatisfy({ $0.isFileURL && $0.path.hasPrefix("/") }),
+              authenticationToken.map(
+                  ExtensionRequestTokenStore.isValidToken
+              ) ?? true else {
             return nil
         }
 
@@ -27,6 +36,11 @@ public struct OpenInvocation: Equatable, Sendable {
         components.queryItems =
             [URLQueryItem(name: "app", value: application.identifier)]
             + targets.map { URLQueryItem(name: "path", value: $0.path) }
+        if let authenticationToken {
+            components.queryItems?.append(
+                URLQueryItem(name: "token", value: authenticationToken)
+            )
+        }
         return components.url
     }
 
@@ -35,31 +49,28 @@ public struct OpenInvocation: Equatable, Sendable {
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard deepLink.scheme == AppConstants.deepLinkScheme,
-              deepLink.host == "open",
-              deepLink.user == nil,
-              deepLink.password == nil,
-              deepLink.port == nil,
-              deepLink.fragment == nil,
-              let components = URLComponents(
-                  url: deepLink,
-                  resolvingAgainstBaseURL: false
-              ),
-              let queryItems = components.queryItems,
-              queryItems.allSatisfy({ $0.name == "app" || $0.name == "path" }),
-              queryItems.filter({ $0.name == "app" }).count == 1,
-              let identifier = queryItems
-                  .first(where: { $0.name == "app" })?.value,
+        guard let components = DeepLinkComponents(
+            deepLink: deepLink,
+            host: "open",
+            allowedNames: ["app", "path", "token"]
+        ),
+              components.count(of: "token") <= 1,
+              let identifier = components.single("app"),
               let application = ExternalApplication(identifier: identifier)
         else {
             return nil
         }
 
-        let paths = queryItems
-            .filter { $0.name == "path" }
-            .compactMap(\.value)
+        let paths = components.all("path")
         guard !paths.isEmpty,
               paths.allSatisfy({ $0.hasPrefix("/") }) else {
+            return nil
+        }
+
+        let authenticationToken = components.optionalSingle("token")
+        guard authenticationToken.map(
+            ExtensionRequestTokenStore.isValidToken
+        ) ?? true else {
             return nil
         }
 
@@ -72,5 +83,6 @@ public struct OpenInvocation: Equatable, Sendable {
 
         self.application = application
         self.targets = urls
+        self.authenticationToken = authenticationToken
     }
 }

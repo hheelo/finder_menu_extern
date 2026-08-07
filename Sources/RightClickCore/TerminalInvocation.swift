@@ -10,14 +10,22 @@ import Foundation
 /// 是「用户的终端」这一意图，具体是哪个 App 由宿主在收到时才解析。
 public struct TerminalInvocation: Equatable, Sendable {
     public let workingDirectory: URL
+    public let authenticationToken: String?
 
-    public init(workingDirectory: URL) {
+    public init(
+        workingDirectory: URL,
+        authenticationToken: String? = nil
+    ) {
         self.workingDirectory = workingDirectory
+        self.authenticationToken = authenticationToken
     }
 
     public var deepLink: URL? {
         guard workingDirectory.isFileURL,
-              workingDirectory.path.hasPrefix("/") else {
+              workingDirectory.path.hasPrefix("/"),
+              authenticationToken.map(
+                  ExtensionRequestTokenStore.isValidToken
+              ) ?? true else {
             return nil
         }
 
@@ -27,6 +35,11 @@ public struct TerminalInvocation: Equatable, Sendable {
         components.queryItems = [
             URLQueryItem(name: "cwd", value: workingDirectory.path)
         ]
+        if let authenticationToken {
+            components.queryItems?.append(
+                URLQueryItem(name: "token", value: authenticationToken)
+            )
+        }
         return components.url
     }
 
@@ -34,22 +47,23 @@ public struct TerminalInvocation: Equatable, Sendable {
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard deepLink.scheme == AppConstants.deepLinkScheme,
-              deepLink.host == "terminal",
-              deepLink.user == nil,
-              deepLink.password == nil,
-              deepLink.port == nil,
-              deepLink.fragment == nil,
-              let components = URLComponents(
-                  url: deepLink,
-                  resolvingAgainstBaseURL: false
-              ),
-              let queryItems = components.queryItems,
-              queryItems.count == 1,
-              let item = queryItems.first,
-              item.name == "cwd",
-              let path = item.value,
+        guard let components = DeepLinkComponents(
+            deepLink: deepLink,
+            host: "terminal",
+            allowedNames: ["cwd", "token"]
+        ),
+              components.queryItems.count == 1 ||
+                components.queryItems.count == 2,
+              components.count(of: "token") <= 1,
+              let path = components.single("cwd"),
               path.hasPrefix("/") else {
+            return nil
+        }
+
+        let authenticationToken = components.optionalSingle("token")
+        guard authenticationToken.map(
+            ExtensionRequestTokenStore.isValidToken
+        ) ?? true else {
             return nil
         }
 
@@ -66,5 +80,6 @@ public struct TerminalInvocation: Equatable, Sendable {
         }
 
         self.workingDirectory = directory
+        self.authenticationToken = authenticationToken
     }
 }

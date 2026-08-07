@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     let updater: UpdaterController
     @EnvironmentObject private var model: AppModel
+    @State private var errorsExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -53,6 +54,8 @@ struct ContentView: View {
                 Button("重启 Finder") {
                     model.restartFinder()
                 }
+                .buttonStyle(.bordered)
+                .tint(model.needsFinderRestartHint ? .orange : .accentColor)
 
                 Label(
                     model.extensionEnabled
@@ -66,6 +69,15 @@ struct ContentView: View {
                     .foregroundStyle(
                         model.extensionEnabled ? .green : .secondary
                     )
+            }
+
+            if model.needsFinderRestartHint {
+                Label(
+                    "检测到升级前的 Finder 扩展会话；请重启 Finder 以启用完整的安全认证。",
+                    systemImage: "arrow.clockwise.circle.fill"
+                )
+                .font(.callout)
+                .foregroundStyle(.orange)
             }
 
             Divider()
@@ -90,10 +102,43 @@ struct ContentView: View {
                 Button("退出 RightClick") {
                     NSApp.terminate(nil)
                 }
-                if let lastError = model.lastError {
-                    Text(lastError)
-                        .foregroundStyle(.red)
-                        .lineLimit(2)
+            }
+
+            if !model.errorHistory.isEmpty {
+                DisclosureGroup(
+                    "最近错误（\(model.errorHistory.count)）",
+                    isExpanded: $errorsExpanded
+                ) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(model.errorHistory) { record in
+                                HStack(
+                                    alignment: .firstTextBaseline,
+                                    spacing: 10
+                                ) {
+                                    Text(record.date, style: .time)
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                    // 扩展消息始终作为纯文本渲染，不识别链接。
+                                    Text(record.message)
+                                        .foregroundStyle(.red)
+                                        .frame(
+                                            maxWidth: .infinity,
+                                            alignment: .leading
+                                        )
+                                }
+                            }
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .frame(maxHeight: 180)
+
+                    HStack {
+                        Spacer()
+                        Button("清除") {
+                            model.clearErrors()
+                        }
+                    }
                 }
             }
         }

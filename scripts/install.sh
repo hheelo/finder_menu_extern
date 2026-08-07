@@ -13,6 +13,16 @@ built_app="${derived_data}/Build/Products/Release/RightClick.app"
 built_extension="${built_app}/Contents/PlugIns/RightClickFinderExtension.appex"
 backup_dir="${HOME}/Library/Application Support/RightClick/Backups"
 launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+marketing_version="$(sed -n \
+    's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*//p' \
+    "${project_dir}/project.yml" | head -n 1)"
+if [[ -z "${marketing_version}" ]]; then
+    echo "无法从 project.yml 读取 MARKETING_VERSION" >&2
+    exit 1
+fi
+build_number="$(
+    "${script_dir}/derive-build-number.sh" "${marketing_version}"
+)"
 
 unregister_build_extension() {
     if [[ -d "${built_extension}" ]]; then
@@ -47,6 +57,8 @@ xcodebuild \
     -scheme RightClick \
     -configuration Release \
     -derivedDataPath "${derived_data}" \
+    MARKETING_VERSION="${marketing_version}" \
+    CURRENT_PROJECT_VERSION="${build_number}" \
     CODE_SIGN_STYLE=Manual \
     CODE_SIGN_IDENTITY=- \
     CODE_SIGNING_ALLOWED=YES \

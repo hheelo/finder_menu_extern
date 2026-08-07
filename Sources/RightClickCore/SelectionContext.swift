@@ -21,27 +21,37 @@ public struct SelectionContext: Equatable, Sendable {
         self.effectiveURLs = effectiveURLs
 
         var probed: [URL: Bool] = [:]
-        func isDirectory(_ url: URL) -> Bool {
+        func isEnterableDirectory(_ url: URL) -> Bool {
             if let cached = probed[url] { return cached }
-            let result = Self.probeIsDirectory(url)
+            let result = Self.probeIsEnterableDirectory(url)
             probed[url] = result
             return result
         }
         func directoryRepresented(by url: URL) -> URL {
-            isDirectory(url) ? url : url.deletingLastPathComponent()
+            isEnterableDirectory(url) ? url : url.deletingLastPathComponent()
         }
 
         if selectedURLs.isEmpty {
             creationDirectory = targetedURL.map(directoryRepresented(by:))
         } else if selectedURLs.count == 1,
                   let selected = selectedURLs.first,
-                  isDirectory(selected) {
+                  isEnterableDirectory(selected) {
             creationDirectory = selected
         } else {
             creationDirectory = selectedURLs.first?.deletingLastPathComponent()
         }
 
         workingDirectory = effectiveURLs.first.map(directoryRepresented(by:))
+    }
+
+    /// 包（.app / .xcodeproj / .rtfd / …）在磁盘上是目录，但 Finder 把它当成
+    /// 一个文件。新建文件和终端目录若进入包内部，会破坏签名或污染工程。
+    private static func probeIsEnterableDirectory(_ url: URL) -> Bool {
+        probeIsDirectory(url) && !probeIsPackage(url)
+    }
+
+    private static func probeIsPackage(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isPackageKey]).isPackage) ?? false
     }
 
     private static func probeIsDirectory(_ url: URL) -> Bool {

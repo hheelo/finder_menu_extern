@@ -68,4 +68,50 @@ struct SelectionContextTests {
         #expect(context.creationDirectory?.path == directory.path)
         #expect(context.workingDirectory?.path == directory.path)
     }
+
+    @Test
+    func treatsPackagesAsFilesForCreationAndTerminalDirectories() throws {
+        let parent = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let package = parent.appendingPathComponent(
+            "Example.app",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: package,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: parent) }
+
+        let context = SelectionContext(
+            selectedURLs: [package],
+            targetedURL: parent
+        )
+
+        #expect(context.effectiveURLs == [package])
+        #expect(context.creationDirectory == parent)
+        #expect(context.workingDirectory == parent)
+    }
+
+    @Test
+    func allowsDirectoriesInsideExplicitlyOpenedPackageContents() throws {
+        let parent = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let contents = parent
+            .appendingPathComponent("Example.app", isDirectory: true)
+            .appendingPathComponent("Contents", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: contents,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: parent) }
+
+        let context = SelectionContext(
+            selectedURLs: [],
+            targetedURL: contents
+        )
+
+        #expect(context.creationDirectory == contents)
+        #expect(context.workingDirectory == contents)
+    }
 }

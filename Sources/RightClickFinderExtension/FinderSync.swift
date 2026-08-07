@@ -17,17 +17,14 @@ private let logger = Logger(
 final class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
     private let fileCreator = FileCreator()
-    private let requestToken: String?
+    private let tokenLock = NSLock()
+    private var tokenAvailability = RetryableTokenAvailability()
 
     override init() {
-        requestToken = try? ExtensionRequestTokenStore.loadOrCreateForExtension()
         super.init()
         controller.directoryURLs = [
             URL(fileURLWithPath: "/", isDirectory: true)
         ]
-        if requestToken == nil {
-            logger.error("无法初始化扩展请求令牌，CLI 动作将不可用")
-        }
         logger.notice("Finder 扩展已初始化")
     }
 
@@ -126,7 +123,11 @@ final class FinderSync: FIFinderSync {
             action: action,
             placement: placement
         ).menuTag
-        item.isEnabled = isEnabled
+        // 宿主型动作全部依赖认证。令牌获取失败时菜单先置灰；下次构建菜单或
+        // 执行动作会再次尝试，不会让一次初始化竞争锁死整个扩展进程。
+        item.isEnabled = isEnabled && (
+            !action.requiresAuthenticatedHost || currentToken() != nil
+        )
         return item
     }
 
@@ -150,11 +151,13 @@ final class FinderSync: FIFinderSync {
         do {
             switch action {
             case .copyPath:
-                copy(ClipboardText.paths(for: context.effectiveURLs))
+                try copy(ClipboardText.paths(for: context.effectiveURLs))
             case .copyFilename:
-                copy(ClipboardText.filenames(for: context.effectiveURLs))
+                try copy(ClipboardText.filenames(for: context.effectiveURLs))
             case let .createFile(template):
-                guard let directory = context.creationDirectory else { return }
+                guard let directory = context.creationDirectory else {
+                    throw FinderActionError.invalidTarget
+                }
                 let createdURL = try fileCreator.create(template, in: directory)
                 NSWorkspace.shared.activateFileViewerSelecting([createdURL])
             case .openInVSCode:
@@ -162,14 +165,18 @@ final class FinderSync: FIFinderSync {
             case .openInCodex:
                 try open(context.effectiveURLs, with: .codex)
             case .openInTerminal:
+                guard let token = currentToken() else {
+                    throw FinderActionError.authenticationUnavailable
+                }
                 guard let directory = context.workingDirectory,
                       let deepLink = TerminalInvocation(
-                          workingDirectory: directory
+                          workingDirectory: directory,
+                          authenticationToken: token
                       ).deepLink else {
                     throw FinderActionError.invalidWorkingDirectory
                 }
                 // 用哪个终端由宿主决定：扩展读不到用户设置。
-                try openHost(with: deepLink)
+                openHost(with: deepLink)
             case .runCodexCLI:
                 try openHost(for: .codex, context: context)
             case .runClaudeCode:
@@ -182,11 +189,14 @@ final class FinderSync: FIFinderSync {
             logger.error(
                 "动作执行失败：\(error.localizedDescription, privacy: .public)"
             )
+            reportToHost(error.localizedDescription)
         }
     }
 
-    private func copy(_ value: String) {
-        guard !value.isEmpty else { return }
+    private func copy(_ value: String) throws {
+        guard !value.isEmpty else {
+            throw FinderActionError.invalidTarget
+        }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
     }
@@ -200,20 +210,24 @@ final class FinderSync: FIFinderSync {
         _ urls: [URL],
         with application: ExternalApplication
     ) throws {
+        guard let token = currentToken() else {
+            throw FinderActionError.authenticationUnavailable
+        }
         guard let deepLink = OpenInvocation(
             application: application,
-            targets: urls
+            targets: urls,
+            authenticationToken: token
         ).deepLink else {
             throw FinderActionError.invalidTarget
         }
-        try openHost(with: deepLink)
+        openHost(with: deepLink)
     }
 
     private func openHost(
         for command: CLICommand,
         context: SelectionContext
     ) throws {
-        guard let requestToken else {
+        guard let requestToken = currentToken() else {
             throw FinderActionError.authenticationUnavailable
         }
         guard let directory = context.workingDirectory,
@@ -224,14 +238,17 @@ final class FinderSync: FIFinderSync {
               ).deepLink else {
             throw FinderActionError.invalidWorkingDirectory
         }
-        try openHost(with: deepLink)
+        openHost(with: deepLink)
     }
 
     /// 只用 `open(_ url:)` 系列：指定 App 去启动在沙箱里会被拒绝，打开 URL 不会。
     ///
     /// 关键是不要激活宿主。宿主只是代为执行动作，一旦被带到前台，
     /// 系统会把它先前收起的窗口重新显示出来——用户每点一次功能就看到窗口闪一下。
-    private func openHost(with deepLink: URL) throws {
+    private func openHost(
+        with deepLink: URL,
+        kind: HostRequestKind = .action
+    ) {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.addsToRecentItems = false
@@ -251,8 +268,65 @@ final class FinderSync: FIFinderSync {
             // 宁可让窗口闪一下，也不能让功能失效。
             _ = application
             if !NSWorkspace.shared.open(deepLink) {
-                logger.error("回退唤起宿主也失败")
+                let hostError = FinderActionError.hostApplicationUnavailable
+                logger.error(
+                    "\(hostError.localizedDescription, privacy: .public)"
+                )
+                // 宿主本身无法启动时不能再尝试通过宿主上报，否则会无限递归。
+                if kind == .errorReport {
+                    logger.error("错误报告无法送达宿主，仅保留扩展日志")
+                }
             }
+        }
+    }
+
+    /// 令牌延迟到真正需要时再取，并允许重试。
+    ///
+    /// init 时 Application Support 可能尚未就绪，或与另一个同时被拉起的扩展
+    /// 实例争锁失败。Finder 不重启的话进程能活很久，一次失败不能永久锁死动作。
+    private func currentToken() -> String? {
+        tokenLock.lock()
+        defer { tokenLock.unlock() }
+        guard let token = tokenAvailability.current(load: {
+            try ExtensionRequestTokenStore.loadOrCreateForExtension()
+        }) else {
+            logger.error("获取扩展请求令牌失败，本次动作不可用")
+            return nil
+        }
+        return token
+    }
+
+    /// 错误报告本身失败时只写日志，绝不能递归上报。
+    private func reportToHost(_ message: String) {
+        let maximumLength = ErrorInvocation.maximumMessageLength
+        let reportMessage = message.count <= maximumLength
+            ? message
+            : String(message.prefix(maximumLength - 1)) + "…"
+        guard let token = currentToken(),
+              let deepLink = ErrorInvocation(
+                  message: reportMessage,
+                  authenticationToken: token
+              ).deepLink else {
+            logger.error("无法构造经过认证的错误报告")
+            return
+        }
+        openHost(with: deepLink, kind: .errorReport)
+    }
+}
+
+private enum HostRequestKind {
+    case action
+    case errorReport
+}
+
+private extension RightClickAction {
+    var requiresAuthenticatedHost: Bool {
+        switch self {
+        case .copyPath, .copyFilename, .createFile:
+            false
+        case .openInVSCode, .openInCodex, .openInTerminal,
+             .runCodexCLI, .runClaudeCode:
+            true
         }
     }
 }

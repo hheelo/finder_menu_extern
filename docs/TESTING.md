@@ -13,10 +13,14 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.2.5 ./scripts/build-release.sh
+VERSION=0.6.0 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
+
+`RightClickAppTests` 是无宿主逻辑测试：被测文件直接编入测试包，不启动
+`LSUIElement` App，也不依赖已安装的同 Bundle ID 副本或 Sparkle。装有
+`/Applications/RightClick.app` 时应同样能在数秒内跑完两个测试 bundle。
 
 ## 干净机器
 
@@ -42,8 +46,18 @@ VERSION=0.2.5 ./scripts/build-release.sh
 - 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建
 - 从浏览器打开格式合法但没有本机令牌的
   `rightclick://run?tool=codex&cwd=/tmp`，确认不开终端且不显示 RightClick 窗口
-- 从浏览器分别打开无效的 run、terminal、open 和未知 `rightclick://` 链接，确认
-  不会执行动作，也不显示 RightClick 窗口
+- 从浏览器打开无令牌的 `rightclick://error?message=...`，确认不显示通知、不写入
+  错误历史，也不显示 RightClick 窗口
+- 从浏览器分别打开令牌错误的 run、terminal、open、error 和未知
+  `rightclick://` 链接，确认不会执行动作或显示通知
+- v0.6.x 过渡期：安装旧版并先触发一次 terminal/open 动作，再升级但不重启
+  Finder；确认旧扩展的无令牌请求仍可用，主窗口出现橙色“重启 Finder”提示。
+  该无令牌兼容分支计划在 v0.7.0 移除
+- 卸载 VS Code 后触发“用 VS Code 打开”，确认收到本地通知、错误进入最近 10 条
+  历史，并且 RightClick 不抢焦点；拒绝通知权限时仍应保留错误历史
+- 右键 `/Applications` 中的 App 新建 TXT，确认目标是 App 的父目录（或收到权限
+  错误），绝不能写入 `.app` 包内部
+- 右键 `.xcodeproj` 后“在终端中打开”，确认终端目录是工程包的父目录
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
 - 保持 Finder 运行并升级旧版本；启动新 App 后确认 Finder 自动退出并重新打开，
   且右键菜单加载的是新扩展

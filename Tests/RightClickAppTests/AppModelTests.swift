@@ -1,7 +1,6 @@
 import Foundation
 import RightClickCore
 import Testing
-@testable import RightClick
 
 @MainActor
 struct AppModelTests {
@@ -79,7 +78,9 @@ struct AppModelTests {
         await waitForMainQueue()
 
         #expect(fixture.executor.invocations.isEmpty)
-        #expect(fixture.model.lastError?.contains("CLI 请求无效") == true)
+        #expect(fixture.model.lastError == nil)
+        #expect(fixture.model.errorHistory.isEmpty)
+        #expect(fixture.notifier.messages.isEmpty)
     }
 
     @Test
@@ -90,8 +91,80 @@ struct AppModelTests {
         fixture.model.handle(url: URL(string: "https://example.com")!)
         await waitForMainQueue()
 
-        #expect(fixture.model.lastError?.contains("链接协议不是 rightclick") == true)
+        #expect(fixture.model.lastError == nil)
+        #expect(fixture.model.errorHistory.isEmpty)
+        #expect(fixture.notifier.messages.isEmpty)
         #expect(fixture.executor.invocations.isEmpty)
+    }
+
+    @Test
+    func authenticatedErrorIsNotifiedAndStored() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let invocation = ErrorInvocation(
+            message: "没有写入权限。",
+            authenticationToken: fixture.token
+        )
+
+        fixture.model.handle(url: try #require(invocation.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.notifier.messages == ["没有写入权限。"])
+        #expect(fixture.model.errorHistory.map(\.message) == ["没有写入权限。"])
+        #expect(fixture.model.lastError == "没有写入权限。")
+    }
+
+    @Test
+    func trustedExecutionFailureIsNotified() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        fixture.executor.failureMessage = "终端拒绝了自动化请求。"
+        let invocation = CLIInvocation(
+            command: .codex,
+            workingDirectory: fixture.directory,
+            authenticationToken: fixture.token
+        )
+
+        fixture.model.handle(url: try #require(invocation.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.notifier.messages == ["终端拒绝了自动化请求。"])
+        #expect(fixture.model.errorHistory.count == 1)
+    }
+
+    @Test
+    func legacyOpenRequestContinuesButRequestsFinderRestart() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let invocation = OpenInvocation(
+            application: .visualStudioCode,
+            targets: [fixture.directory]
+        )
+
+        fixture.model.handle(url: try #require(invocation.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.model.needsFinderRestartHint)
+        #expect(fixture.notifier.messages.isEmpty)
+        #expect(fixture.model.errorHistory.isEmpty)
+    }
+
+    @Test
+    func authenticatedOpenFailureIsNotified() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let invocation = OpenInvocation(
+            application: .visualStudioCode,
+            targets: [fixture.directory],
+            authenticationToken: fixture.token
+        )
+
+        fixture.model.handle(url: try #require(invocation.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.notifier.messages.count == 1)
+        #expect(fixture.model.errorHistory.count == 1)
+        #expect(!fixture.model.needsFinderRestartHint)
     }
 
     private func makeFixture() throws -> Fixture {
@@ -102,6 +175,7 @@ struct AppModelTests {
         let directory = try makeDirectory()
         let secondDirectory = try makeDirectory()
         let executor = RecordingExecutor()
+        let notifier = RecordingNotifier()
         let token = ExtensionRequestTokenStore.makeToken()
         let settings = AppSettings(defaults: defaults)
         settings.terminalProfile = .terminal
@@ -109,11 +183,14 @@ struct AppModelTests {
             settings: settings,
             executor: executor,
             extensionRequestToken: { token },
+            notifier: notifier,
+            applicationURL: { _ in nil },
             performInitialRefresh: false
         )
         return Fixture(
             model: model,
             executor: executor,
+            notifier: notifier,
             token: token,
             defaults: defaults,
             suiteName: suiteName,
@@ -142,12 +219,30 @@ struct AppModelTests {
 @MainActor
 private final class RecordingExecutor: CLIExecuting {
     private(set) var invocations: [CLIInvocation] = []
+    var failureMessage: String?
 
     func execute(
         _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile
     ) async throws {
         invocations.append(invocation)
+        if let failureMessage {
+            throw TestExecutionError(message: failureMessage)
+        }
+    }
+}
+
+private struct TestExecutionError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
+@MainActor
+private final class RecordingNotifier: UserNotifying {
+    private(set) var messages: [String] = []
+
+    func report(_ message: String) {
+        messages.append(message)
     }
 }
 
@@ -155,6 +250,7 @@ private final class RecordingExecutor: CLIExecuting {
 private struct Fixture {
     let model: AppModel
     let executor: RecordingExecutor
+    let notifier: RecordingNotifier
     let token: String
     let defaults: UserDefaults
     let suiteName: String

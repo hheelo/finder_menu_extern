@@ -11,33 +11,10 @@ fi
 version="${VERSION}"
 version="${version#v}"
 
-if [[ "${version}" != <->.<->.<-> ]]; then
-    echo "版本号必须是 major.minor.patch：${version}" >&2
-    exit 2
-fi
-major="${version%%.*}"
-remainder="${version#*.}"
-minor="${remainder%%.*}"
-patch="${remainder#*.}"
-for part in "${major}" "${minor}" "${patch}"; do
-    if [[ "${part}" != "0" && "${part}" == 0* ]]; then
-        echo "版本号不能包含前导零：${version}" >&2
-        exit 2
-    fi
-done
-if (( major >= 100 || minor >= 100 || patch >= 100 )); then
-    echo "版本号每一段必须小于 100：${version}" >&2
-    exit 2
-fi
-
 # CFBundleVersion 必须逐次发布单调递增：宿主 App 用「短版本号 + 构建号」
 # 判断升级后是否需要重新加载 Finder，而 LaunchServices 也依赖它区分版本。
 # 从 semver 推导，例如 0.2.5 → 205、1.0.0 → 10000（要求各段小于 100）。
-build_number="$((major * 10000 + minor * 100 + patch))"
-if [[ ! "${build_number}" =~ ^[0-9]+$ ]] || (( build_number <= 0 )); then
-    echo "无法从版本号推导构建号：${version}" >&2
-    exit 1
-fi
+build_number="$("${script_dir}/derive-build-number.sh" "${version}")"
 
 release_root="${project_dir}/.build/release"
 derived_data="${project_dir}/.build/ReleaseDerivedData"

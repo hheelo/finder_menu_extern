@@ -1,7 +1,6 @@
 import Foundation
 import RightClickCore
 import Testing
-@testable import RightClick
 
 struct DeepLinkRequestTests {
     @Test
@@ -15,29 +14,33 @@ struct DeepLinkRequestTests {
             workingDirectory: directory,
             authenticationToken: token
         )
-        let terminal = TerminalInvocation(workingDirectory: directory)
+        let terminal = TerminalInvocation(
+            workingDirectory: directory,
+            authenticationToken: token
+        )
         let open = OpenInvocation(
             application: .visualStudioCode,
-            targets: [directory]
+            targets: [directory],
+            authenticationToken: token
         )
 
         #expect(
             try DeepLinkRequest(
                 deepLink: #require(cli.deepLink),
-                expectedCLIAuthenticationToken: token
+                expectedAuthenticationToken: token
             ) == .cli(cli)
         )
         #expect(
             try DeepLinkRequest(
                 deepLink: #require(terminal.deepLink),
-                expectedCLIAuthenticationToken: nil
+                expectedAuthenticationToken: token
             )
                 == .terminal(terminal)
         )
         #expect(
             try DeepLinkRequest(
                 deepLink: #require(open.deepLink),
-                expectedCLIAuthenticationToken: nil
+                expectedAuthenticationToken: token
             ) == .open(open)
         )
     }
@@ -100,6 +103,54 @@ struct DeepLinkRequestTests {
         )
     }
 
+    @Test
+    func authenticatesTerminalAndOpenWithLegacyTransition() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let expectedToken = ExtensionRequestTokenStore.makeToken()
+        let wrongToken = ExtensionRequestTokenStore.makeToken()
+
+        let legacyTerminal = TerminalInvocation(workingDirectory: directory)
+        let legacyOpen = OpenInvocation(
+            application: .visualStudioCode,
+            targets: [directory]
+        )
+        #expect(
+            try DeepLinkRequest(
+                deepLink: #require(legacyTerminal.deepLink),
+                expectedAuthenticationToken: expectedToken
+            ).authentication == .legacyUnsigned
+        )
+        #expect(
+            try DeepLinkRequest(
+                deepLink: #require(legacyOpen.deepLink),
+                expectedAuthenticationToken: expectedToken
+            ).authentication == .legacyUnsigned
+        )
+
+        for url in [
+            TerminalInvocation(
+                workingDirectory: directory,
+                authenticationToken: wrongToken
+            ).deepLink,
+            OpenInvocation(
+                application: .visualStudioCode,
+                targets: [directory],
+                authenticationToken: wrongToken
+            ).deepLink
+        ] {
+            do {
+                _ = try DeepLinkRequest(
+                    deepLink: #require(url),
+                    expectedAuthenticationToken: expectedToken
+                )
+                Issue.record("令牌不匹配的请求本应被拒绝")
+            } catch let error as DeepLinkRequestError {
+                #expect(error == .invalidTerminal || error == .invalidOpen)
+            }
+        }
+    }
+
     private func makeDirectory() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -119,7 +170,7 @@ struct DeepLinkRequestTests {
         do {
             _ = try DeepLinkRequest(
                 deepLink: url,
-                expectedCLIAuthenticationToken: authenticationToken
+                expectedAuthenticationToken: authenticationToken
             )
             Issue.record("请求本应被拒绝", sourceLocation: sourceLocation)
         } catch let error as DeepLinkRequestError {
