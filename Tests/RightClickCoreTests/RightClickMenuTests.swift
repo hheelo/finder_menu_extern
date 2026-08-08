@@ -46,6 +46,7 @@ struct RightClickMenuTests {
         let nodes = RightClickMenu.nodes(placement: .container, context: context)
 
         #expect(nodes.contains(.action(.copyPath, isEnabled: true)))
+        #expect(enabledSubmenu(named: "更多复制方式", in: nodes))
         #expect(nodes.contains(.action(.openInVSCode, isEnabled: true)))
         #expect(enabledSubmenu(named: "新建文件", in: nodes))
         #expect(enabledSubmenu(named: "运行 AI CLI", in: nodes))
@@ -63,6 +64,10 @@ struct RightClickMenuTests {
         // 终端不再是子菜单：具体用哪个由宿主解析，菜单只提供一个动作。
         #expect(submenuItems(named: "在终端中打开", in: nodes) == nil)
         #expect(nodes.contains(.action(.openInTerminal, isEnabled: true)))
+        #expect(
+            submenuItems(named: "更多复制方式", in: nodes)?.count
+                == 3
+        )
     }
 
     /// 复制类动作在文件上可用，但新建文件要落到父目录。
@@ -156,6 +161,20 @@ struct RightClickMenuTests {
             verify(RightClickMenu.nodes(placement: placement, context: context))
         }
         #expect(checked > 0)
+    }
+
+    @Test
+    func everyActionHasAStableLogDescription() {
+        let descriptions = RightClickAction.allMenuActions.map(
+            \.logDescription
+        )
+        #expect(descriptions.allSatisfy { !$0.isEmpty })
+        #expect(Set(descriptions).count == descriptions.count)
+        #expect(RightClickAction.copyPath.logDescription == "copyPath")
+        #expect(
+            RightClickAction.createFile(.markdown).logDescription
+                == "createFile(markdown)"
+        )
     }
 
     private func submenuItems(

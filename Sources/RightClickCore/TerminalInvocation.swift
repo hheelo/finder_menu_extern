@@ -21,6 +21,10 @@ public struct TerminalInvocation: Equatable, Sendable {
     }
 
     public var deepLink: URL? {
+        deepLink(now: Date(), nonce: UUID().uuidString)
+    }
+
+    public func deepLink(now: Date, nonce: String) -> URL? {
         guard workingDirectory.isFileURL,
               workingDirectory.path.hasPrefix("/"),
               authenticationToken.map(
@@ -35,12 +39,12 @@ public struct TerminalInvocation: Equatable, Sendable {
         components.queryItems = [
             URLQueryItem(name: "cwd", value: workingDirectory.path)
         ]
-        if let authenticationToken {
-            components.queryItems?.append(
-                URLQueryItem(name: "token", value: authenticationToken)
-            )
-        }
-        return components.url
+        return DeepLinkSignature.signedURL(
+            components: components,
+            token: authenticationToken,
+            now: now,
+            nonce: nonce
+        )
     }
 
     public init?(
@@ -50,23 +54,17 @@ public struct TerminalInvocation: Equatable, Sendable {
         guard let components = DeepLinkComponents(
             deepLink: deepLink,
             host: "terminal",
-            allowedNames: ["cwd", "token"]
+            allowedNames: [
+                "cwd", "token", "v", "ts", "nonce", "sig"
+            ]
         ),
-              components.queryItems.count == 1 ||
-                components.queryItems.count == 2,
-              components.count(of: "token") <= 1,
+              DeepLinkSignature.authentication(in: deepLink) != nil,
               let path = components.single("cwd"),
               path.hasPrefix("/") else {
             return nil
         }
 
         let authenticationToken = components.optionalSingle("token")
-        guard authenticationToken.map(
-            ExtensionRequestTokenStore.isValidToken
-        ) ?? true else {
-            return nil
-        }
-
         let directory = URL(
             fileURLWithPath: path,
             isDirectory: true
@@ -81,5 +79,9 @@ public struct TerminalInvocation: Equatable, Sendable {
 
         self.workingDirectory = directory
         self.authenticationToken = authenticationToken
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.workingDirectory == rhs.workingDirectory
     }
 }

@@ -8,6 +8,9 @@ final class AppModel: ObservableObject {
     @Published var terminalProfile: TerminalProfile {
         didSet { settings.terminalProfile = terminalProfile }
     }
+    @Published var terminalWindowBehavior: TerminalWindowBehavior {
+        didSet { settings.terminalWindowBehavior = terminalWindowBehavior }
+    }
     @Published var lastStatus = "等待 Finder 操作"
     @Published var lastError: String?
     @Published private(set) var errorHistory: [AppErrorRecord] = []
@@ -51,6 +54,7 @@ final class AppModel: ObservableObject {
         finderSessionManager = FinderSessionManager(settings: settings)
         self.notifier = notifier
         terminalProfile = settings.terminalProfile
+        terminalWindowBehavior = settings.terminalWindowBehavior
         diagnostics = diagnosticsStore.cached(extensionEnabled: false) ?? []
         diagnosticsAreAuthoritative = diagnosticsStore.hasFreshCache
 
@@ -87,6 +91,7 @@ final class AppModel: ObservableObject {
         deepLinkCoordinator.dispatch(
             url,
             terminalProfile: terminalProfile,
+            terminalWindowBehavior: terminalWindowBehavior,
             commandAvailability: { [weak self] command in
                 guard self?.diagnosticsAreAuthoritative == true else {
                     return nil
@@ -118,7 +123,8 @@ final class AppModel: ObservableObject {
     func copyDiagnostics() {
         let report = AppDiagnostics.report(
             diagnostics,
-            terminalProfile: terminalProfile
+            terminalProfile: terminalProfile,
+            terminalWindowBehavior: terminalWindowBehavior
         )
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(report, forType: .string)

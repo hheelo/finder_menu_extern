@@ -11,8 +11,8 @@ settings:
     SWIFT_VERSION: "6.0"
     # 仅供 Xcode 内直接构建。install.sh、build-release.sh 和 Release CI 都调用
     # derive-build-number.sh 从 MARKETING_VERSION 推导并覆盖该值。
-    CURRENT_PROJECT_VERSION: 601
-    MARKETING_VERSION: 0.6.1
+    CURRENT_PROJECT_VERSION: 602
+    MARKETING_VERSION: 0.6.2
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true
@@ -61,7 +61,7 @@ targets:
         # 附属应用：Dock 里不出现图标。宿主主要被扩展的深链唤起，
         # 不应该像普通应用那样占一个 Dock 位置。
         LSUIElement: true
-        NSAppleEventsUsageDescription: RightClick 需要控制 Terminal 或 iTerm2，才能在所选目录中运行 Codex CLI / Claude Code。
+        NSAppleEventsUsageDescription: RightClick 需要控制 Terminal、iTerm2 或 System Events，才能在所选目录的新会话中运行 Codex CLI / Claude Code。
         NSPrincipalClass: NSApplication
         # 始终指向最新一次发布的资产，发新版无需改动此处
         SUFeedURL: https://github.com/hheelo/finder_menu_extern/releases/latest/download/appcast.xml
@@ -139,6 +139,7 @@ targets:
       - Sources/RightClickApp/DeepLinkRequest.swift
       - Sources/RightClickApp/DiagnosticsStore.swift
       - Sources/RightClickApp/FinderSessionManager.swift
+      - Sources/RightClickApp/NonceCache.swift
       - Sources/RightClickApp/TerminalResolver.swift
       - Sources/RightClickApp/UserNotifier.swift
     dependencies:

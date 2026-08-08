@@ -182,7 +182,8 @@ enum ActionExecutorError: LocalizedError {
 protocol CLIExecuting {
     func execute(
         _ invocation: CLIInvocation,
-        terminalProfile: TerminalProfile
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
     ) async throws
 }
 
@@ -190,23 +191,27 @@ protocol CLIExecuting {
 struct ActionExecutor: CLIExecuting {
     func execute(
         _ invocation: CLIInvocation,
-        terminalProfile: TerminalProfile
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
         try await run(
             invocation.command,
             directory: invocation.workingDirectory,
-            terminalProfile: terminalProfile
+            terminalProfile: terminalProfile,
+            terminalWindowBehavior: terminalWindowBehavior
         )
     }
 
     private func run(
         _ command: CLICommand,
         directory: URL,
-        terminalProfile: TerminalProfile
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
         let shellCommand = ShellCommandBuilder.command(command, in: directory)
-        let script = appleScript(
-            terminalProfile: terminalProfile
+        let script = Self.appleScript(
+            terminalProfile: terminalProfile,
+            terminalWindowBehavior: terminalWindowBehavior
         )
         let result: ProcessRunnerResult
         do {
@@ -231,13 +236,14 @@ struct ActionExecutor: CLIExecuting {
         }
     }
 
-    private func appleScript(
-        terminalProfile: TerminalProfile
+    static func appleScript(
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
     ) -> String {
-        switch terminalProfile {
+        switch (terminalProfile, terminalWindowBehavior) {
         // 调用方保证已解析过；`.automatic` 兜底走 Terminal，
         // 它一定存在，不会对着未安装的应用发 AppleScript。
-        case .automatic, .terminal:
+        case (.automatic, .newWindow), (.terminal, .newWindow):
             return """
             on run argv
                 tell application "Terminal"
@@ -246,7 +252,33 @@ struct ActionExecutor: CLIExecuting {
                 end tell
             end run
             """
-        case .iTerm:
+        case (.automatic, .newTab), (.terminal, .newTab):
+            // Terminal 的 AppleScript 字典把 tabs 暴露成只读集合，不能像
+            // iTerm2 一样直接 make。用系统的新标签页快捷键，并确认标签数量
+            // 确实增加后才写入命令，防止权限被拒时污染当前会话。
+            return """
+            on run argv
+                tell application "Terminal"
+                    activate
+                    if (count of windows) is 0 then
+                        do script (item 1 of argv)
+                    else
+                        set targetWindow to front window
+                        set oldTabCount to count of tabs of targetWindow
+                        tell application "System Events" to keystroke "t" using command down
+                        repeat 20 times
+                            if (count of tabs of targetWindow) > oldTabCount then exit repeat
+                            delay 0.05
+                        end repeat
+                        if (count of tabs of targetWindow) is oldTabCount then
+                            error "无法创建 Terminal 标签页；请在系统设置的隐私与安全性中允许 RightClick 使用辅助功能。"
+                        end if
+                        do script (item 1 of argv) in selected tab of targetWindow
+                    end if
+                end tell
+            end run
+            """
+        case (.iTerm, .newWindow):
             // iTerm2 的 `command` 参数不经过 shell，直接把
             // `cd '...' && codex` 交给它会失败，连窗口都建不起来
             // （实测返回 missing value）。所以先建一个正常的 shell 会话，
@@ -257,6 +289,23 @@ struct ActionExecutor: CLIExecuting {
                     activate
                     set newWindow to (create window with default profile)
                     tell current session of newWindow to write text (item 1 of argv)
+                end tell
+            end run
+            """
+        case (.iTerm, .newTab):
+            return """
+            on run argv
+                tell application "iTerm2"
+                    activate
+                    if (count of windows) is 0 then
+                        set targetWindow to (create window with default profile)
+                        tell current session of targetWindow to write text (item 1 of argv)
+                    else
+                        tell current window
+                            set targetTab to (create tab with default profile)
+                            tell current session of targetTab to write text (item 1 of argv)
+                        end tell
+                    end if
                 end tell
             end run
             """

@@ -126,7 +126,8 @@ final class FinderSync: FIFinderSync {
         // 宿主型动作全部依赖认证。令牌获取失败时菜单先置灰；下次构建菜单或
         // 执行动作会再次尝试，不会让一次初始化竞争锁死整个扩展进程。
         item.isEnabled = isEnabled && (
-            !action.requiresAuthenticatedHost || currentToken() != nil
+            !FinderActionPolicy.requiresAuthenticatedHost(action) ||
+                currentToken() != nil
         )
         return item
     }
@@ -143,7 +144,8 @@ final class FinderSync: FIFinderSync {
         // 可能残留的选区，确保动作落在鼠标实际指向的目录。
         let context = context(for: payload.placement)
         logger.notice("""
-            执行动作 tag=\(sender.tag, privacy: .public) \
+            执行动作=\(action.logDescription, privacy: .public) \
+            tag=\(sender.tag, privacy: .public) \
             位置=\(String(describing: payload.placement), privacy: .public) \
             生效=\(context.effectiveURLs.count, privacy: .public) \
             工作目录=\(context.workingDirectory != nil, privacy: .public)
@@ -154,6 +156,18 @@ final class FinderSync: FIFinderSync {
                 try copy(ClipboardText.paths(for: context.effectiveURLs))
             case .copyFilename:
                 try copy(ClipboardText.filenames(for: context.effectiveURLs))
+            case .copyFileURL:
+                try copy(ClipboardText.fileURLs(for: context.effectiveURLs))
+            case .copyShellPath:
+                try copy(
+                    ClipboardText.shellQuotedPaths(
+                        for: context.effectiveURLs
+                    )
+                )
+            case .copyParentPath:
+                try copy(
+                    ClipboardText.parentPaths(for: context.effectiveURLs)
+                )
             case let .createFile(template):
                 guard let directory = context.creationDirectory else {
                     throw FinderActionError.invalidTarget
@@ -189,7 +203,9 @@ final class FinderSync: FIFinderSync {
             logger.error(
                 "动作执行失败：\(error.localizedDescription, privacy: .public)"
             )
-            reportToHost(error.localizedDescription)
+            if FinderActionPolicy.shouldReportToHost(error) {
+                reportToHost(error.localizedDescription)
+            }
         }
     }
 
@@ -210,11 +226,8 @@ final class FinderSync: FIFinderSync {
         _ urls: [URL],
         with application: ExternalApplication
     ) throws {
-        guard urls.count <= OpenInvocation.maximumTargets else {
-            throw FinderActionError.tooManyOpenTargets(
-                count: urls.count,
-                maximum: OpenInvocation.maximumTargets
-            )
+        if let error = FinderActionPolicy.openTargetError(count: urls.count) {
+            throw error
         }
         guard let token = currentToken() else {
             throw FinderActionError.authenticationUnavailable
@@ -325,18 +338,6 @@ private enum HostRequestKind {
     case errorReport
 }
 
-private extension RightClickAction {
-    var requiresAuthenticatedHost: Bool {
-        switch self {
-        case .copyPath, .copyFilename, .createFile:
-            false
-        case .openInVSCode, .openInCodex, .openInTerminal,
-             .runCodexCLI, .runClaudeCode:
-            true
-        }
-    }
-}
-
 private extension MenuPlacement {
     /// `FIMenuKind` 只在扩展里可见，映射留在这一层，Core 保持与 Finder 无关。
     init?(_ menuKind: FIMenuKind) {
@@ -346,29 +347,6 @@ private extension MenuPlacement {
         case .contextualMenuForSidebar: self = .sidebar
         case .toolbarItemMenu: self = .toolbar
         @unknown default: return nil
-        }
-    }
-}
-
-private enum FinderActionError: LocalizedError {
-    case invalidTarget
-    case invalidWorkingDirectory
-    case tooManyOpenTargets(count: Int, maximum: Int)
-    case authenticationUnavailable
-    case hostApplicationUnavailable
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidTarget:
-            "所选项目无法作为打开目标。"
-        case .invalidWorkingDirectory:
-            "无法确定有效的工作目录。"
-        case let .tooManyOpenTargets(count, maximum):
-            "一次最多打开 \(maximum) 个项目，当前选中 \(count) 个。"
-        case .authenticationUnavailable:
-            "无法建立 Finder 扩展与 RightClick 的安全连接。"
-        case .hostApplicationUnavailable:
-            "无法启动 RightClick，请确认 App 仍位于 Applications 文件夹中。"
         }
     }
 }

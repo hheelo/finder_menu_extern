@@ -75,14 +75,13 @@ public extension ExternalApplication {
         names: ["Visual Studio Code"]
     )
 
-    // 已核实：`com.openai.codex` 就是 ChatGPT.app 的 Bundle ID
-    // （CFBundleName=ChatGPT，Codex 是其内部框架名）。所以这一项实际打开的是
-    // ChatGPT.app，菜单标题「用 Codex 打开」可能需要按产品意图重新斟酌。
+    // `identifier` 是已发布的深链契约，继续保留 codex；用户可见名称按实际
+    // 应用显示为 ChatGPT。旧安装若仍叫 Codex，目录回退也继续兼容。
     static let codex = ExternalApplication(
         identifier: "codex",
-        title: "Codex",
+        title: "ChatGPT",
         bundleIdentifiers: ["com.openai.codex"],
-        names: ["Codex"]
+        names: ["ChatGPT", "Codex"]
     )
 
     static let terminal = ExternalApplication(

@@ -5,6 +5,7 @@ public final class AppSettings: @unchecked Sendable {
 
     private enum Key {
         static let terminalProfile = "terminalProfile"
+        static let terminalWindowBehavior = "terminalWindowBehavior"
         static let finderSessionBuild = "finderSessionBuild"
         static let cachedDiagnostics = "cachedDiagnostics"
     }
@@ -22,6 +23,16 @@ public final class AppSettings: @unchecked Sendable {
         }
         set {
             defaults.set(newValue.rawValue, forKey: Key.terminalProfile)
+        }
+    }
+
+    public var terminalWindowBehavior: TerminalWindowBehavior {
+        get {
+            defaults.string(forKey: Key.terminalWindowBehavior)
+                .flatMap(TerminalWindowBehavior.init(rawValue:)) ?? .newTab
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: Key.terminalWindowBehavior)
         }
     }
 

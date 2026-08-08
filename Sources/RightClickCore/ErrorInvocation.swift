@@ -17,6 +17,10 @@ public struct ErrorInvocation: Equatable, Sendable {
     }
 
     public var deepLink: URL? {
+        deepLink(now: Date(), nonce: UUID().uuidString)
+    }
+
+    public func deepLink(now: Date, nonce: String) -> URL? {
         guard !message.isEmpty,
               message.count <= Self.maximumMessageLength,
               authenticationToken.map(
@@ -29,30 +33,34 @@ public struct ErrorInvocation: Equatable, Sendable {
         components.scheme = AppConstants.deepLinkScheme
         components.host = "error"
         components.queryItems = [URLQueryItem(name: "message", value: message)]
-        if let authenticationToken {
-            components.queryItems?.append(
-                URLQueryItem(name: "token", value: authenticationToken)
-            )
-        }
-        return components.url
+        return DeepLinkSignature.signedURL(
+            components: components,
+            token: authenticationToken,
+            now: now,
+            nonce: nonce
+        )
     }
 
     public init?(deepLink: URL) {
         guard let components = DeepLinkComponents(
             deepLink: deepLink,
             host: "error",
-            allowedNames: ["message", "token"]
+            allowedNames: [
+                "message", "token", "v", "ts", "nonce", "sig"
+            ]
         ),
-        components.queryItems.count == 2,
+        DeepLinkSignature.authentication(in: deepLink) != nil,
         let message = components.single("message"),
         !message.isEmpty,
-        message.count <= Self.maximumMessageLength,
-        let authenticationToken = components.single("token"),
-        ExtensionRequestTokenStore.isValidToken(authenticationToken) else {
+        message.count <= Self.maximumMessageLength else {
             return nil
         }
 
         self.message = message
-        self.authenticationToken = authenticationToken
+        self.authenticationToken = components.optionalSingle("token")
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.message == rhs.message
     }
 }

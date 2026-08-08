@@ -79,6 +79,50 @@ struct AppModelTests {
     }
 
     @Test
+    func selectedTerminalWindowBehaviorFlowsToExecutor() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        fixture.model.terminalWindowBehavior = .newWindow
+        let invocation = CLIInvocation(
+            command: .codex,
+            workingDirectory: fixture.directory,
+            authenticationToken: fixture.token
+        )
+
+        fixture.model.handle(url: try #require(invocation.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.executor.windowBehaviors == [.newWindow])
+    }
+
+    @Test
+    func terminalScriptsDistinguishTabsFromWindows() {
+        let terminalTab = ActionExecutor.appleScript(
+            terminalProfile: .terminal,
+            terminalWindowBehavior: .newTab
+        )
+        let terminalWindow = ActionExecutor.appleScript(
+            terminalProfile: .terminal,
+            terminalWindowBehavior: .newWindow
+        )
+        let iTermTab = ActionExecutor.appleScript(
+            terminalProfile: .iTerm,
+            terminalWindowBehavior: .newTab
+        )
+        let iTermWindow = ActionExecutor.appleScript(
+            terminalProfile: .iTerm,
+            terminalWindowBehavior: .newWindow
+        )
+
+        #expect(terminalTab.contains("keystroke \"t\""))
+        #expect(terminalTab.contains("count of windows) is 0"))
+        #expect(!terminalWindow.contains("keystroke \"t\""))
+        #expect(iTermTab.contains("create tab with default profile"))
+        #expect(iTermTab.contains("count of windows) is 0"))
+        #expect(!iTermWindow.contains("create tab with default profile"))
+    }
+
+    @Test
     func knownMissingCLIIsRejectedBeforeOpeningTerminal() async throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -266,13 +310,16 @@ struct AppModelTests {
 @MainActor
 private final class RecordingExecutor: CLIExecuting {
     private(set) var invocations: [CLIInvocation] = []
+    private(set) var windowBehaviors: [TerminalWindowBehavior] = []
     var failureMessage: String?
 
     func execute(
         _ invocation: CLIInvocation,
-        terminalProfile: TerminalProfile
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
         invocations.append(invocation)
+        windowBehaviors.append(terminalWindowBehavior)
         if let failureMessage {
             throw TestExecutionError(message: failureMessage)
         }

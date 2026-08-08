@@ -27,6 +27,10 @@ public struct OpenInvocation: Equatable, Sendable {
     }
 
     public var deepLink: URL? {
+        deepLink(now: Date(), nonce: UUID().uuidString)
+    }
+
+    public func deepLink(now: Date, nonce: String) -> URL? {
         guard !targets.isEmpty,
               targets.count <= Self.maximumTargets,
               targets.allSatisfy({ $0.isFileURL && $0.path.hasPrefix("/") }),
@@ -42,12 +46,12 @@ public struct OpenInvocation: Equatable, Sendable {
         components.queryItems =
             [URLQueryItem(name: "app", value: application.identifier)]
             + targets.map { URLQueryItem(name: "path", value: $0.path) }
-        if let authenticationToken {
-            components.queryItems?.append(
-                URLQueryItem(name: "token", value: authenticationToken)
-            )
-        }
-        return components.url
+        return DeepLinkSignature.signedURL(
+            components: components,
+            token: authenticationToken,
+            now: now,
+            nonce: nonce
+        )
     }
 
     /// 严格解析：只接受白名单内的 App 标识，路径必须是已存在的绝对路径。
@@ -58,9 +62,11 @@ public struct OpenInvocation: Equatable, Sendable {
         guard let components = DeepLinkComponents(
             deepLink: deepLink,
             host: "open",
-            allowedNames: ["app", "path", "token"]
+            allowedNames: [
+                "app", "path", "token", "v", "ts", "nonce", "sig"
+            ]
         ),
-              components.count(of: "token") <= 1,
+              DeepLinkSignature.authentication(in: deepLink) != nil,
               let identifier = components.single("app"),
               let application = ExternalApplication(identifier: identifier)
         else {
@@ -75,12 +81,6 @@ public struct OpenInvocation: Equatable, Sendable {
         }
 
         let authenticationToken = components.optionalSingle("token")
-        guard authenticationToken.map(
-            ExtensionRequestTokenStore.isValidToken
-        ) ?? true else {
-            return nil
-        }
-
         let urls = paths.map {
             URL(fileURLWithPath: $0).standardizedFileURL
         }
@@ -91,5 +91,9 @@ public struct OpenInvocation: Equatable, Sendable {
         self.application = application
         self.targets = urls
         self.authenticationToken = authenticationToken
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.application == rhs.application && lhs.targets == rhs.targets
     }
 }

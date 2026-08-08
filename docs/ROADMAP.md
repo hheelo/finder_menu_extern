@@ -10,9 +10,9 @@
 
 ## M1：最小可用版本
 
-- [x] 复制路径与文件名
+- [x] 复制路径、文件名、file URL、Shell 引用路径与父目录
 - [x] 新建 7 种文件
-- [x] VS Code / Codex 由扩展直接打开
+- [x] VS Code / ChatGPT 由宿主后台打开
 - [x] Terminal / iTerm2 启动 Codex CLI / Claude Code
 - [x] 扩展启用状态和系统设置入口
 - [ ] 在全新用户环境中完成 Finder 端到端验证
@@ -36,7 +36,8 @@
 - [x] 严格校验 CLI 深链接和工作目录
 - [x] 通过参数向 AppleScript 传递命令
 - [x] 终端启动移出主线程
-- [x] CLI 深链使用本机扩展令牌认证，宿主后台无窗口执行
+- [x] CLI 深链使用 HMAC-SHA256、时间戳与 nonce 认证，宿主后台无窗口执行
+- [x] CLI 终端可选新标签页或新窗口
 - [x] Finder 操作失败提示与不可用菜单置灰
 - [x] 环境诊断与诊断报告复制
 - [x] 新建文件后在 Finder 中选中

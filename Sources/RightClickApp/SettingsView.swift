@@ -12,7 +12,12 @@ struct SettingsView: View {
                         Text(terminal.title).tag(terminal)
                     }
                 }
-                Text("「在终端中打开」与「运行 AI CLI」都使用这里的选择。"
+                Picker("运行 AI CLI 时", selection: $model.terminalWindowBehavior) {
+                    ForEach(TerminalWindowBehavior.allCases, id: \.self) { behavior in
+                        Text(behavior.title).tag(behavior)
+                    }
+                }
+                Text("「在终端中打开」与「运行 AI CLI」都使用默认终端。"
                     + "选自动时优先 iTerm2；未安装 iTerm2 时回退到 Terminal。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -63,7 +68,8 @@ struct SettingsView: View {
                 Text(
                     "首次运行终端命令时，macOS 可能询问是否允许 "
                         + "RightClick 控制 Terminal 或 iTerm2。Finder 动作会在"
-                        + "后台交给 RightClick 处理，不会显示宿主窗口。"
+                        + "后台交给 RightClick 处理，不会显示宿主窗口。Terminal 的"
+                        + "新标签页还需要允许 RightClick 使用辅助功能。"
                 )
                     .font(.callout)
                     .foregroundStyle(.secondary)

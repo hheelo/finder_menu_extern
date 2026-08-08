@@ -1,37 +1,32 @@
 import Foundation
 import RightClickCore
 
-enum DeepLinkRequest: Equatable {
-    case cli(CLIInvocation)
-    case terminal(TerminalInvocation)
-    case open(OpenInvocation)
-    case error(ErrorInvocation)
+struct DeepLinkRequest: Equatable {
+    enum Payload: Equatable {
+        case cli(CLIInvocation)
+        case terminal(TerminalInvocation)
+        case open(OpenInvocation)
+        case error(ErrorInvocation)
+    }
 
     enum Authentication: Equatable {
         case authenticated
+        /// v0.6.1 扩展仍会把令牌直接放进 URL。v0.7.0 与无签名
+        /// terminal/open 过渡分支一起移除。
+        case legacyToken
         /// 只用于升级过渡：新宿主可能暂时收到旧 Finder 扩展发出的无令牌
         /// terminal/open 请求。v0.7.0 移除该兼容分支。
         case legacyUnsigned
     }
 
-    var authentication: Authentication {
-        switch self {
-        case .cli, .error:
-            .authenticated
-        case let .terminal(invocation):
-            invocation.authenticationToken == nil
-                ? .legacyUnsigned
-                : .authenticated
-        case let .open(invocation):
-            invocation.authenticationToken == nil
-                ? .legacyUnsigned
-                : .authenticated
-        }
-    }
+    let payload: Payload
+    let authentication: Authentication
 
     init(
         deepLink url: URL,
-        expectedAuthenticationToken: String?
+        expectedAuthenticationToken: String?,
+        now: Date = Date(),
+        consumeNonce: (String, Date) -> Bool = { _, _ in true }
     ) throws {
         guard url.scheme == AppConstants.deepLinkScheme else {
             throw DeepLinkRequestError.invalidScheme
@@ -39,45 +34,72 @@ enum DeepLinkRequest: Equatable {
 
         switch url.host {
         case "run":
-            guard let invocation = CLIInvocation(deepLink: url),
-                  ExtensionRequestTokenStore.tokensMatch(
-                      invocation.authenticationToken,
-                      expectedAuthenticationToken
-                  ) else {
+            guard let invocation = CLIInvocation(deepLink: url) else {
                 throw DeepLinkRequestError.invalidCLI
             }
-            self = .cli(invocation)
+            payload = .cli(invocation)
         case "terminal":
-            guard let invocation = TerminalInvocation(deepLink: url),
-                  invocation.authenticationToken == nil ||
-                    ExtensionRequestTokenStore.tokensMatch(
-                        invocation.authenticationToken,
-                        expectedAuthenticationToken
-                    ) else {
+            guard let invocation = TerminalInvocation(deepLink: url) else {
                 throw DeepLinkRequestError.invalidTerminal
             }
-            self = .terminal(invocation)
+            payload = .terminal(invocation)
         case "open":
-            guard let invocation = OpenInvocation(deepLink: url),
-                  invocation.authenticationToken == nil ||
-                    ExtensionRequestTokenStore.tokensMatch(
-                        invocation.authenticationToken,
-                        expectedAuthenticationToken
-                    ) else {
+            guard let invocation = OpenInvocation(deepLink: url) else {
                 throw DeepLinkRequestError.invalidOpen
             }
-            self = .open(invocation)
+            payload = .open(invocation)
         case "error":
-            guard let invocation = ErrorInvocation(deepLink: url),
-                  ExtensionRequestTokenStore.tokensMatch(
-                      invocation.authenticationToken,
-                      expectedAuthenticationToken
-                  ) else {
+            guard let invocation = ErrorInvocation(deepLink: url) else {
                 throw DeepLinkRequestError.invalidError
             }
-            self = .error(invocation)
+            payload = .error(invocation)
         default:
             throw DeepLinkRequestError.unknownAction(url.host)
+        }
+
+        guard let transportAuthentication = DeepLinkSignature.authentication(
+            in: url
+        ) else {
+            throw Self.rejection(for: payload)
+        }
+        switch transportAuthentication {
+        case let .signed(signed):
+            guard let expectedAuthenticationToken,
+                  DeepLinkSignature.verify(
+                      signed,
+                      deepLink: url,
+                      token: expectedAuthenticationToken,
+                      now: now
+                  ), consumeNonce(signed.nonce, now) else {
+                throw Self.rejection(for: payload)
+            }
+            authentication = .authenticated
+        case let .legacyToken(token):
+            guard ExtensionRequestTokenStore.tokensMatch(
+                token,
+                expectedAuthenticationToken
+            ) else {
+                throw Self.rejection(for: payload)
+            }
+            authentication = .legacyToken
+        case .unsigned:
+            switch payload {
+            case .terminal, .open:
+                authentication = .legacyUnsigned
+            case .cli, .error:
+                throw Self.rejection(for: payload)
+            }
+        }
+    }
+
+    private static func rejection(
+        for payload: Payload
+    ) -> DeepLinkRequestError {
+        switch payload {
+        case .cli: .invalidCLI
+        case .terminal: .invalidTerminal
+        case .open: .invalidOpen
+        case .error: .invalidError
         }
     }
 }

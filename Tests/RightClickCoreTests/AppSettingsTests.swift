@@ -11,9 +11,12 @@ struct AppSettingsTests {
         let settings = AppSettings(defaults: defaults)
 
         #expect(settings.terminalProfile == .automatic)
+        #expect(settings.terminalWindowBehavior == .newTab)
 
         settings.terminalProfile = .terminal
         #expect(settings.terminalProfile == .terminal)
+        settings.terminalWindowBehavior = .newWindow
+        #expect(settings.terminalWindowBehavior == .newWindow)
     }
 
     @Test

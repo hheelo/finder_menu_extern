@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.6.1 ./scripts/build-release.sh
+VERSION=0.6.2 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -34,10 +34,11 @@ VERSION=0.6.1 ./scripts/build-release.sh
   含空格/中文/单引号的目录中检查右键菜单
 - 保持 Finder 窗口中另一个文件处于选中状态，再右键窗口空白处和侧边栏目录，
   确认复制、打开、新建及终端动作都作用于右键目录而不是残留选区
-- 测试复制路径、复制文件名和多选
+- 测试复制路径、复制文件名、file URL、Shell 引用路径、父目录和多选；确认多选
+  每行一项，Shell 路径中的单引号被正确转义
 - 逐一创建七种文件，确认同名文件不会覆盖
 - 快速连续创建同一种文件，确认并发占用名称时会重选名且不会覆盖
-- 测试 VS Code / Codex App 存在与缺失两种状态
+- 测试 VS Code / ChatGPT 存在与缺失两种状态，确认菜单与诊断显示 ChatGPT
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
 - 分别将登录 Shell 设为 zsh/bash、fish 和 Nushell，刷新诊断，确认
   面板显示真实 Shell 路径且能找到该 Shell 环境中的 CLI
@@ -45,7 +46,10 @@ VERSION=0.6.1 ./scripts/build-release.sh
   运行 Codex CLI，确认收到可读提示且不打开终端；清空诊断缓存后则应放行
 - 选中 129 个以上的项目并点「用 VS Code 打开」，确认收到「一次最多
   打开 128 个项目」提示，不打开不完整的目标集合
-- 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
+- 测试 Terminal 与 iTerm2，并检查首次自动化权限提示；Terminal 新标签页首次
+  使用还应提示辅助功能权限，拒绝后不得把命令写进原标签页
+- 分别选择“新标签页”和“新窗口”。连续触发三次 CLI 时，前者应增加三个标签页
+  而非三个窗口；完全退出终端后触发一次，应只出现一个窗口
 - 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台、不增加窗口，
   界面也不会短暂闪现
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
@@ -53,15 +57,17 @@ VERSION=0.6.1 ./scripts/build-release.sh
 - 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建
 - 先用 Finder 右键动作无声唤起宿主，再双击 App，确认日志出现
   「后台检查更新」；单纯右键唤起时不应有 Sparkle 初始化日志
-- 从浏览器打开格式合法但没有本机令牌的
+- 从浏览器打开格式合法但没有 v2 签名的
   `rightclick://run?tool=codex&cwd=/tmp`，确认不开终端且不显示 RightClick 窗口
 - 从浏览器打开无令牌的 `rightclick://error?message=...`，确认不显示通知、不写入
   错误历史，也不显示 RightClick 窗口
-- 从浏览器分别打开令牌错误的 run、terminal、open、error 和未知
+- 从浏览器分别打开签名缺失/损坏的 run、terminal、open、error 和未知
   `rightclick://` 链接，确认不会执行动作或显示通知
-- v0.6.x 过渡期：安装旧版并先触发一次 terminal/open 动作，再升级但不重启
-  Finder；确认旧扩展的无令牌请求仍可用，主窗口出现橙色“重启 Finder”提示。
-  该无令牌兼容分支计划在 v0.7.0 移除
+- 对扩展生成的 v2 请求分别篡改工具、路径、参数顺序、时间戳和签名，确认全部拒绝；
+  同一 URL 连续提交两次，第二次必须因 nonce 重放被拒绝
+- v0.6.x 过渡期：安装 v0.6.1 并触发一次动作，再升级但不重启 Finder；确认旧扩展
+  的 `token=` 请求仍可用。更早版本的无令牌 terminal/open 也应软过渡，主窗口
+  出现橙色“重启 Finder”提示。这些兼容分支计划在 v0.7.0 移除
 - 卸载 VS Code 后触发“用 VS Code 打开”，确认收到本地通知、错误进入最近 10 条
   历史，并且 RightClick 不抢焦点；拒绝通知权限时仍应保留错误历史
 - 右键 `/Applications` 中的 App 新建 TXT，确认目标是 App 的父目录（或收到权限

@@ -14,22 +14,26 @@ final class DeepLinkCoordinator {
     private let executor: any CLIExecuting
     private let terminalResolver: TerminalResolver
     private let applicationURL: @MainActor (ExternalApplication) -> URL?
+    private let nonceCache: NonceCache
 
     init(
         extensionRequestToken: @escaping @MainActor () -> String?,
         executor: any CLIExecuting,
         terminalResolver: TerminalResolver = TerminalResolver(),
+        nonceCache: NonceCache = NonceCache(),
         applicationURL: @escaping @MainActor (ExternalApplication) -> URL?
     ) {
         self.extensionRequestToken = extensionRequestToken
         self.executor = executor
         self.terminalResolver = terminalResolver
+        self.nonceCache = nonceCache
         self.applicationURL = applicationURL
     }
 
     func dispatch(
         _ url: URL,
         terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior = .newTab,
         commandAvailability: (CLICommand) -> Bool? = { _ in nil },
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
@@ -37,7 +41,10 @@ final class DeepLinkCoordinator {
         do {
             request = try DeepLinkRequest(
                 deepLink: url,
-                expectedAuthenticationToken: extensionRequestToken()
+                expectedAuthenticationToken: extensionRequestToken(),
+                consumeNonce: { [nonceCache] nonce, now in
+                    nonceCache.consume(nonce, now: now)
+                }
             )
         } catch let error as DeepLinkRequestError {
             reject(error.rejectionReason)
@@ -47,15 +54,17 @@ final class DeepLinkCoordinator {
             return
         }
 
-        let isAuthenticated = request.authentication == .authenticated
-        if request.authentication == .legacyUnsigned {
+        // 旧 token URL 在过渡期仍经过常数时间密钥校验，其失败
+        // 可以安全通知用户。只有无签名 terminal/open 不是可信来源。
+        let isAuthenticated = request.authentication != .legacyUnsigned
+        if request.authentication != .authenticated {
             // 升级后 Finder 可能短暂保留旧扩展。这个兼容分支计划在 v0.7.0
             // 移除；在此之前让动作继续工作，并提示用户刷新 Finder 会话。
-            appLogger.notice("收到未认证的旧版扩展请求，建议重启 Finder")
+            appLogger.notice("收到旧版扩展请求，建议重启 Finder")
             emit(.legacyRequest)
         }
 
-        switch request {
+        switch request.payload {
         case let .cli(invocation):
             appLogger.notice("收到深链 类型=cli")
             // 只有诊断明确跑过且确认缺失时才拦截。没有诊断项就放行，避免
@@ -71,6 +80,7 @@ final class DeepLinkCoordinator {
             execute(
                 invocation,
                 terminalProfile: terminalProfile,
+                terminalWindowBehavior: terminalWindowBehavior,
                 isAuthenticated: isAuthenticated,
                 emit: emit
             )
@@ -153,6 +163,7 @@ final class DeepLinkCoordinator {
     private func execute(
         _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior,
         isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
@@ -163,7 +174,8 @@ final class DeepLinkCoordinator {
                     invocation,
                     terminalProfile: terminalResolver.resolvedProfile(
                         for: terminalProfile
-                    )
+                    ),
+                    terminalWindowBehavior: terminalWindowBehavior
                 )
                 appLogger.notice(
                     "CLI 启动成功 tool=\(invocation.command.rawValue, privacy: .public)"

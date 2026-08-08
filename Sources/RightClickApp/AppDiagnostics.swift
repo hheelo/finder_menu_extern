@@ -41,7 +41,7 @@ enum AppDiagnostics {
                 detail: loginShellURL.path
             ),
             applicationItem(id: "vscode", title: "Visual Studio Code", url: vscode),
-            applicationItem(id: "codex-app", title: "Codex App", url: codexApp),
+            applicationItem(id: "codex-app", title: "ChatGPT", url: codexApp),
             applicationItem(id: "iterm", title: "iTerm2（可选）", url: iTerm),
             commandItem(command: .codex, path: resolvedCodexPath),
             commandItem(command: .claude, path: resolvedClaudePath)
@@ -50,7 +50,8 @@ enum AppDiagnostics {
 
     static func report(
         _ items: [DiagnosticItem],
-        terminalProfile: TerminalProfile
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
     ) -> String {
         let version = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleShortVersionString"
@@ -66,6 +67,7 @@ enum AppDiagnostics {
         RightClick \(version) (\(build))
         macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
         默认终端：\(terminalProfile.title)
+        CLI 终端行为：\(terminalWindowBehavior.title)
         CLI 启动：仅接受本机 Finder 扩展认证请求
 
         \(rows)

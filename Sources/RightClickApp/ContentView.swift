@@ -29,7 +29,7 @@ struct ContentView: View {
                     FeatureRow(
                         icon: "rectangle.and.hand.point.up.left",
                         title: "打开",
-                        detail: "Visual Studio Code、Codex"
+                        detail: "Visual Studio Code、ChatGPT"
                     )
                     FeatureRow(
                         icon: "terminal",

@@ -43,6 +43,18 @@ public enum TerminalProfile: String, CaseIterable, Codable, Sendable {
     public static var selectableCases: [TerminalProfile] { allCases }
 }
 
+public enum TerminalWindowBehavior: String, CaseIterable, Codable, Sendable {
+    case newTab
+    case newWindow
+
+    public var title: String {
+        switch self {
+        case .newTab: "新标签页"
+        case .newWindow: "新窗口"
+        }
+    }
+}
+
 public enum CLICommand: String, CaseIterable, Codable, Hashable, Sendable {
     case codex
     case claude

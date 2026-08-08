@@ -52,6 +52,15 @@ public enum RightClickMenu {
         return [
             .action(.copyPath, isEnabled: hasSelection),
             .action(.copyFilename, isEnabled: hasSelection),
+            .submenu(
+                title: "更多复制方式",
+                isEnabled: hasSelection,
+                items: [
+                    .action(.copyFileURL, isEnabled: hasSelection),
+                    .action(.copyShellPath, isEnabled: hasSelection),
+                    .action(.copyParentPath, isEnabled: hasSelection)
+                ]
+            ),
             .separator,
             .action(.openInVSCode, isEnabled: hasSelection),
             .action(.openInCodex, isEnabled: hasSelection),

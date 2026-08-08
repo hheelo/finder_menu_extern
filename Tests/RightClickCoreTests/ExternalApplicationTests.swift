@@ -51,6 +51,17 @@ struct ExternalApplicationTests {
     }
 
     @Test
+    func chatGPTKeepsThePublishedCodexIdentifier() {
+        let application = ExternalApplication.codex
+
+        #expect(application.identifier == "codex")
+        #expect(application.title == "ChatGPT")
+        #expect(application.bundleIdentifiers == ["com.openai.codex"])
+        #expect(application.names == ["ChatGPT", "Codex"])
+        #expect(ExternalApplication(identifier: "codex") == application)
+    }
+
+    @Test
     func explicitTerminalProfilesShareTheApplicationTitle() {
         #expect(TerminalProfile.terminal.title == ExternalApplication.terminal.title)
         #expect(TerminalProfile.iTerm.title == ExternalApplication.iTerm.title)

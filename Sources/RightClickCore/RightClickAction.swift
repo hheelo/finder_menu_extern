@@ -9,17 +9,42 @@ public enum RightClickAction: Codable, Equatable, Sendable {
     case runCodexCLI
     case runClaudeCode
     case createFile(FileTemplate)
+    case copyFileURL
+    case copyShellPath
+    case copyParentPath
 
     public var title: String {
         switch self {
         case .copyPath: "复制文件路径"
         case .copyFilename: "复制文件名"
         case .openInVSCode: "用 VS Code 打开"
-        case .openInCodex: "用 Codex 打开"
+        case .openInCodex: "用 ChatGPT 打开"
         case .openInTerminal: "在终端中打开"
         case .runCodexCLI: "在终端运行 Codex CLI"
         case .runClaudeCode: "在终端运行 Claude Code"
         case let .createFile(template): template.title
+        case .copyFileURL: "复制 file URL"
+        case .copyShellPath: "复制 Shell 引用路径"
+        case .copyParentPath: "复制父目录路径"
+        }
+    }
+
+    /// 日志与诊断用的稳定英文标识。不使用 `title`：UI 文案会修改、
+    /// 也将被本地化，历史日志不应因翻译而无法检索。
+    public var logDescription: String {
+        switch self {
+        case .copyPath: "copyPath"
+        case .copyFilename: "copyFilename"
+        case .openInVSCode: "openInVSCode"
+        case .openInCodex: "openInCodex"
+        case .openInTerminal: "openInTerminal"
+        case .runCodexCLI: "runCodexCLI"
+        case .runClaudeCode: "runClaudeCode"
+        case let .createFile(template):
+            "createFile(\(template.rawValue))"
+        case .copyFileURL: "copyFileURL"
+        case .copyShellPath: "copyShellPath"
+        case .copyParentPath: "copyParentPath"
         }
     }
 }
@@ -32,6 +57,8 @@ public extension RightClickAction {
         [.copyPath, .copyFilename, .openInVSCode, .openInCodex, .openInTerminal]
         + [.runCodexCLI, .runClaudeCode]
         + FileTemplate.allCases.map { .createFile($0) }
+        // 必须追加，不能插入前面：已发出的菜单 tag 是跨进程契约。
+        + [.copyFileURL, .copyShellPath, .copyParentPath]
 
     /// 菜单项要跨进程送到 Finder、再把点击送回扩展，途中只有 plist 安全的值
     /// 能存活；自定义对象放进 `representedObject` 到不了对面，回调里取到的是

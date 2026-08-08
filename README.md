@@ -2,9 +2,9 @@
 
 RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者常用操作：
 
-- 复制所选文件的路径或文件名（支持多选）
-- 用 Visual Studio Code 或 Codex 打开
-- 在终端打开目录，或运行 Codex CLI / Claude Code；默认优先 iTerm2，未安装则用 Terminal
+- 复制所选文件的路径、文件名、file URL、Shell 引用路径或父目录（支持多选）
+- 用 Visual Studio Code 或 ChatGPT 打开
+- 在终端打开目录，或运行 Codex CLI / Claude Code；可选新标签页或新窗口，默认优先 iTerm2
 - 新建 TXT、Markdown、Python、Shell、HTML、JSON、CSV 文件
 - 支持文件、文件夹、窗口空白处、桌面和 Finder 侧边栏
 - Finder 动作全程不显示宿主窗口；AI CLI 请求经本机扩展认证后直接打开终端
@@ -80,9 +80,10 @@ Finder，避免覆盖升级后继续使用旧扩展会话。
 - `rightclick://` 只接受固定的 `codex` / `claude` 工具标识
 - 工作目录必须是现有的绝对文件夹路径
 - Finder 的打开与 CLI 操作都由 RightClick 在后台处理，不显示宿主窗口
-- CLI 深链必须携带 Finder 扩展在本机随机生成的令牌，网页无法直接启动 AI CLI
+- 新版深链使用 HMAC-SHA256 签名，随机密钥不进入 URL；时间戳与 nonce 限制重放
 - 路径通过 `osascript` 参数传递，不会插入 AppleScript 源码
 - 设置页会检测 Finder 扩展、编辑器、iTerm2 与 CLI
+- Terminal 的“新标签页”使用系统快捷键，首次使用需在“隐私与安全性 → 辅助功能”中允许 RightClick；也可改用新窗口
 - 主窗口可复制诊断信息，便于提交 Issue
 
 ## 开发

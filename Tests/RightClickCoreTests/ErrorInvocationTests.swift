@@ -18,7 +18,7 @@ struct ErrorInvocationTests {
     }
 
     @Test
-    func rejectsEmptyLongUnsignedAndForeignRequests() {
+    func rejectsEmptyLongAndForeignRequests() {
         let token = ExtensionRequestTokenStore.makeToken()
         #expect(ErrorInvocation(message: "").deepLink == nil)
         #expect(
@@ -30,7 +30,7 @@ struct ErrorInvocationTests {
         #expect(
             ErrorInvocation(
                 deepLink: URL(string: "rightclick://error?message=unsigned")!
-            ) == nil
+            )?.message == "unsigned"
         )
         #expect(
             ErrorInvocation(
