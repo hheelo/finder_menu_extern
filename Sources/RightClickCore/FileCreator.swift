@@ -26,15 +26,28 @@ public struct FileCreator {
             throw FileCreatorError.destinationIsNotDirectory(directory)
         }
 
-        let destination = availableURL(
-            named: template.preferredFilename,
-            in: directory
-        )
-        try Data(template.initialContents.utf8).write(
-            to: destination,
-            options: .withoutOverwriting
-        )
-        return destination
+        // 检查空闲名称与实际写入之间存在竞争窗口（连续点击或多个 Finder
+        // 进程即可触发）。保留 .withoutOverwriting 这条数据安全保证，并在
+        // 名称刚被占用时重新寻找；其他错误立即上抛。
+        var lastConflict: Error?
+        for _ in 0..<8 {
+            let destination = availableURL(
+                named: template.preferredFilename,
+                in: directory
+            )
+            do {
+                try Data(template.initialContents.utf8).write(
+                    to: destination,
+                    options: .withoutOverwriting
+                )
+                return destination
+            } catch let error as NSError
+                where error.domain == NSCocoaErrorDomain &&
+                    error.code == NSFileWriteFileExistsError {
+                lastConflict = error
+            }
+        }
+        throw lastConflict ?? CocoaError(.fileWriteFileExists)
     }
 
     private func availableURL(named filename: String, in directory: URL) -> URL {

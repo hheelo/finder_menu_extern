@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.6.0 ./scripts/build-release.sh
+VERSION=0.6.1 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -36,14 +36,23 @@ VERSION=0.6.0 ./scripts/build-release.sh
   确认复制、打开、新建及终端动作都作用于右键目录而不是残留选区
 - 测试复制路径、复制文件名和多选
 - 逐一创建七种文件，确认同名文件不会覆盖
+- 快速连续创建同一种文件，确认并发占用名称时会重选名且不会覆盖
 - 测试 VS Code / Codex App 存在与缺失两种状态
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
+- 分别将登录 Shell 设为 zsh/bash、fish 和 Nushell，刷新诊断，确认
+  面板显示真实 Shell 路径且能找到该 Shell 环境中的 CLI
+- 把 `codex` 临时移出登录 Shell 的 PATH 并强制刷新诊断，再从 Finder
+  运行 Codex CLI，确认收到可读提示且不打开终端；清空诊断缓存后则应放行
+- 选中 129 个以上的项目并点「用 VS Code 打开」，确认收到「一次最多
+  打开 128 个项目」提示，不打开不完整的目标集合
 - 测试 Terminal 与 iTerm2，并检查首次自动化权限提示
 - 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台、不增加窗口，
   界面也不会短暂闪现
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
 - 关闭 RightClick 的最后一个窗口但不退出进程，再双击 App，确认会新建并显示窗口
 - 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建
+- 先用 Finder 右键动作无声唤起宿主，再双击 App，确认日志出现
+  「后台检查更新」；单纯右键唤起时不应有 Sparkle 初始化日志
 - 从浏览器打开格式合法但没有本机令牌的
   `rightclick://run?tool=codex&cwd=/tmp`，确认不开终端且不显示 RightClick 窗口
 - 从浏览器打开无令牌的 `rightclick://error?message=...`，确认不显示通知、不写入

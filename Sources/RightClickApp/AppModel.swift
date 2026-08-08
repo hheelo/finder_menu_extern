@@ -21,6 +21,7 @@ final class AppModel: ObservableObject {
     private let diagnosticsStore: DiagnosticsStore
     private let finderSessionManager: FinderSessionManager
     private let notifier: any UserNotifying
+    private var diagnosticsAreAuthoritative = false
 
     init(
         settings: AppSettings = .shared,
@@ -46,10 +47,12 @@ final class AppModel: ObservableObject {
             executor: executor,
             applicationURL: applicationURL
         )
-        diagnosticsStore = DiagnosticsStore()
+        diagnosticsStore = DiagnosticsStore(settings: settings)
         finderSessionManager = FinderSessionManager(settings: settings)
         self.notifier = notifier
         terminalProfile = settings.terminalProfile
+        diagnostics = diagnosticsStore.cached(extensionEnabled: false) ?? []
+        diagnosticsAreAuthoritative = diagnosticsStore.hasFreshCache
 
         if performInitialRefresh {
             refreshExtensionStatus()
@@ -72,6 +75,9 @@ final class AppModel: ObservableObject {
 
     private func applyExtensionStatus(_ enabled: Bool) {
         extensionEnabled = enabled
+        if !diagnostics.isEmpty {
+            diagnostics = normalizeExtensionStatus(in: diagnostics)
+        }
         if enabled {
             refreshFinderSessionIfNeeded()
         }
@@ -80,7 +86,15 @@ final class AppModel: ObservableObject {
     func handle(url: URL) {
         deepLinkCoordinator.dispatch(
             url,
-            terminalProfile: terminalProfile
+            terminalProfile: terminalProfile,
+            commandAvailability: { [weak self] command in
+                guard self?.diagnosticsAreAuthoritative == true else {
+                    return nil
+                }
+                return self?.diagnostics.first {
+                    $0.id == command.rawValue
+                }?.passed
+            }
         ) { [weak self] event in
             self?.apply(event)
         }
@@ -96,15 +110,8 @@ final class AppModel: ObservableObject {
         ) {
             // 旧系统的 pluginkit 检测可能在 collect 的 await 期间返回。以完成时
             // 的最新状态改写这一行，避免一直显示初始化时的 false。
-            diagnostics = collected.map { item in
-                guard item.id == "extension" else { return item }
-                return DiagnosticItem(
-                    id: item.id,
-                    title: item.title,
-                    passed: extensionEnabled,
-                    detail: extensionEnabled ? "已启用" : "未启用"
-                )
-            }
+            diagnostics = normalizeExtensionStatus(in: collected)
+            diagnosticsAreAuthoritative = true
         }
     }
 
@@ -142,6 +149,20 @@ final class AppModel: ObservableObject {
     private func reportTrustedFailure(_ message: String) {
         recordFailure(message)
         notifier.report(message)
+    }
+
+    private func normalizeExtensionStatus(
+        in items: [DiagnosticItem]
+    ) -> [DiagnosticItem] {
+        items.map { item in
+            guard item.id == "extension" else { return item }
+            return DiagnosticItem(
+                id: item.id,
+                title: item.title,
+                passed: extensionEnabled,
+                detail: extensionEnabled ? "已启用" : "未启用"
+            )
+        }
     }
 
     private func recordFailure(_ message: String) {

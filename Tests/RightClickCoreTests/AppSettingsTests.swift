@@ -30,6 +30,19 @@ struct AppSettingsTests {
     }
 
     @Test
+    func diagnosticsCachePersists() throws {
+        let suiteName = "RightClickTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let settings = AppSettings(defaults: defaults)
+        let data = Data("cached".utf8)
+
+        #expect(settings.cachedDiagnostics == nil)
+        settings.cachedDiagnostics = data
+        #expect(settings.cachedDiagnostics == data)
+    }
+
+    @Test
     func parsesLegacyPlugInKitElectionMarkers() {
         let enabled = """
               +    com.hheelo.RightClick.FinderExtension(502) /Applications/RightClick.app

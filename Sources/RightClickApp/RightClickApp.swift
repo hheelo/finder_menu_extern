@@ -9,6 +9,10 @@ let sharedAppModel = AppModel(
     performInitialRefresh: false
 )
 
+/// 对象本身创建很轻；内部 Sparkle 控制器直到真正检查更新时才初始化。
+@MainActor
+let sharedUpdaterController = UpdaterController()
+
 /// 宿主是 `LSUIElement` 附属应用：Dock 里不出现图标。
 ///
 /// 但它仍会被扩展的深链频繁唤起（每次「用 X 打开」「运行 CLI」都要经过它），
@@ -45,7 +49,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ] as? Bool ?? true
         isUserLaunch = isDefaultLaunch && !receivedDeepLinkDuringLaunch
         hasFinishedLaunching = true
-        WindowPresenter.isHeadlessSession = !isUserLaunch
         appLogger.notice(
             "启动完成 用户主动启动=\(self.isUserLaunch, privacy: .public)"
         )
@@ -79,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ) -> Bool {
         let hasPresentableWindow = WindowPresenter.hasPresentableWindow
         appLogger.notice(
-            "收到 reopen 有可见窗口=\(flag, privacy: .public) 有可恢复窗口=\(hasPresentableWindow, privacy: .public) 无声会话=\(WindowPresenter.isHeadlessSession, privacy: .public)"
+            "收到 reopen 有可见窗口=\(flag, privacy: .public) 有可恢复窗口=\(hasPresentableWindow, privacy: .public) 用户启动=\(self.isUserLaunch, privacy: .public)"
         )
         switch ReopenPolicy.action(
             hasVisibleWindows: flag,
@@ -106,6 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         sharedAppModel.refreshExtensionStatus()
         Task { await sharedAppModel.refreshDiagnostics() }
+        sharedUpdaterController.checkInBackground()
     }
 }
 
@@ -115,9 +119,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum WindowPresenter {
     /// 启动期收起窗口时用：本进程是否曾显式请出过窗口。
     private(set) static var isPresentationRequested = false
-
-    /// 本进程是为处理深链而启动的（而非用户主动打开）。
-    static var isHeadlessSession = false
 
     static var hasPresentableWindow: Bool {
         presentableWindow != nil
@@ -151,7 +152,7 @@ enum WindowPresenter {
 struct RightClickApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = sharedAppModel
-    @State private var updater = UpdaterController()
+    @State private var updater = sharedUpdaterController
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -162,8 +163,12 @@ struct RightClickApp: App {
                 .task {
                     // 只在用户自己打开 App 时刷新与查更新；深链唤起时不做，
                     // 避免右键路径启动登录 shell 或冒出更新界面。
-                    guard !AppEnvironment.isRunningTests,
-                          delegate.isUserLaunch else {
+                    let isUserVisible = AppPresentation.isUserVisible(
+                        isUserLaunch: delegate.isUserLaunch,
+                        isPresentationRequested:
+                            WindowPresenter.isPresentationRequested
+                    )
+                    guard !AppEnvironment.isRunningTests, isUserVisible else {
                         return
                     }
                     model.refreshExtensionStatus()
@@ -171,11 +176,15 @@ struct RightClickApp: App {
                     updater.checkInBackground()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
-                    let isUserVisible = delegate.isUserLaunch ||
-                        WindowPresenter.isPresentationRequested
+                    let isUserVisible = AppPresentation.isUserVisible(
+                        isUserLaunch: delegate.isUserLaunch,
+                        isPresentationRequested:
+                            WindowPresenter.isPresentationRequested
+                    )
                     if newPhase == .active, isUserVisible {
                         model.refreshExtensionStatus()
                         Task { await model.refreshDiagnostics() }
+                        updater.checkInBackground()
                     }
                 }
         }

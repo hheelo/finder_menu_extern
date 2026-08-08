@@ -13,21 +13,26 @@ import os
 /// 无关，因此 Ad-hoc 签名也能安全校验。代价是没有 Developer ID 就无法轮换密钥。
 @MainActor
 final class UpdaterController {
-    private let controller: SPUStandardUpdaterController
+    private var controller: SPUStandardUpdaterController?
     private var hasCheckedInBackground = false
 
-    init() {
-        controller = SPUStandardUpdaterController(
+    /// 深链无声唤起只需执行 Finder 动作，不初始化 Sparkle/XPC。用户显示窗口、
+    /// 手动或后台检查更新时才按需创建。
+    private func makeControllerIfNeeded() -> SPUStandardUpdaterController {
+        if let controller { return controller }
+        let created = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
+        controller = created
+        return created
     }
 
     /// 用户点「检查更新」：无论有没有新版都给出反馈。
     func checkForUpdates() {
         appLogger.notice("用户手动检查更新")
-        controller.checkForUpdates(nil)
+        makeControllerIfNeeded().checkForUpdates(nil)
     }
 
     /// 用户自己打开 App 时查一次：只有发现新版本才出现界面。
@@ -39,6 +44,6 @@ final class UpdaterController {
         guard !hasCheckedInBackground else { return }
         hasCheckedInBackground = true
         appLogger.notice("后台检查更新")
-        controller.updater.checkForUpdatesInBackground()
+        makeControllerIfNeeded().updater.checkForUpdatesInBackground()
     }
 }

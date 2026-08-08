@@ -5,6 +5,19 @@ import Testing
 @MainActor
 struct AppModelTests {
     @Test(arguments: [true, false], [true, false])
+    func appPresentationVisibility(
+        isUserLaunch: Bool,
+        isPresentationRequested: Bool
+    ) {
+        #expect(
+            AppPresentation.isUserVisible(
+                isUserLaunch: isUserLaunch,
+                isPresentationRequested: isPresentationRequested
+            ) == (isUserLaunch || isPresentationRequested)
+        )
+    }
+
+    @Test(arguments: [true, false], [true, false])
     func reopenPolicy(
         hasVisibleWindows: Bool,
         hasPresentableWindow: Bool
@@ -63,6 +76,40 @@ struct AppModelTests {
         await waitForMainQueue()
 
         #expect(fixture.executor.invocations == [first, second])
+    }
+
+    @Test
+    func knownMissingCLIIsRejectedBeforeOpeningTerminal() async throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let token = ExtensionRequestTokenStore.makeToken()
+        let executor = RecordingExecutor()
+        let coordinator = DeepLinkCoordinator(
+            extensionRequestToken: { token },
+            executor: executor,
+            applicationURL: { _ in nil }
+        )
+        let invocation = CLIInvocation(
+            command: .codex,
+            workingDirectory: directory,
+            authenticationToken: token
+        )
+        var failures: [String] = []
+
+        coordinator.dispatch(
+            try #require(invocation.deepLink),
+            terminalProfile: .terminal,
+            commandAvailability: { _ in false }
+        ) { event in
+            if case let .trustedFailure(message) = event {
+                failures.append(message)
+            }
+        }
+        await waitForMainQueue()
+
+        #expect(executor.invocations.isEmpty)
+        #expect(failures.count == 1)
+        #expect(failures[0].contains("codex"))
     }
 
     @Test

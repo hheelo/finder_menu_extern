@@ -35,9 +35,12 @@
 - 解析终端：默认优先 iTerm2，未安装时回退 Terminal；显式选中 iTerm2 但未安装
   时同样回退，避免 AppleScript 对着不存在的应用报错。「在终端中打开」与
   「运行 AI CLI」共用这一套解析
-- 提供本地环境诊断和 Finder 重启入口
-- 内置 Sparkle 应用内更新：只在用户主动启动时后台查一次，不做定时检查，
-  深链唤起时不查（否则会在用户操作文件时弹出更新界面）
+- 提供本地环境诊断和 Finder 重启入口。诊断使用实际登录 Shell，先做
+  非交互查找，再按 Shell 能力回退到交互模式，且只接受真实可执行文件
+- 诊断结果落盘缓存 24 小时；Finder 扩展状态不进缓存，始终使用当前实况。
+  只在已有权威诊断明确判定 CLI 缺失时拦截；未检测过则照常执行
+- 内置 Sparkle 应用内更新：只在界面确实呈现给用户时后台查一次，
+  不做定时检查，深链无声唤起时不创建 Sparkle 更新器或启动检查
 
 ### RightClickCore
 
@@ -53,7 +56,8 @@
 - 不把完整 shell 命令塞进 URL；URL 只携带固定工具标识与工作目录
 - `rightclick://open` 只接受白名单内的 App 标识（见 `ExternalApplication.known`），
   宿主不会被诱导去启动任意程序
-- 打开目标必须全部是已存在的绝对路径，只要有一个不存在就整体拒绝
+- 打开目标必须全部是已存在的绝对路径，只要有一个不存在就整体拒绝；
+  每次最多 128 个目标，超出时整体拒绝并上报可读错误，不静默截断
 - 使用统一的 `DeepLinkComponents` 严格检查 scheme、host、凭据、fragment、查询项
   白名单与字段数量，避免四种 invocation 的规则漂移
 - 工作目录必须是已存在的绝对目录；run、open、terminal、error 都校验本机随机令牌
@@ -63,7 +67,8 @@
 - shell 命令作为 `osascript` 参数传递，不插入 AppleScript 源码
 - 登录 shell 与 `osascript` 共用有超时和输出上限的进程执行器；stdout/stderr
   写入权限为 `0600` 的临时文件，避免管道缓冲区或子进程持有写端造成互锁
-- 文件创建使用 `.withoutOverwriting`，自动生成 `Untitled 2.ext`
+- 文件创建使用 `.withoutOverwriting`，自动生成 `Untitled 2.ext`；
+  检查名称到落盘之间若发生并发冲突，最多重新选名 8 次，始终不覆盖已有文件
 - `.app`、`.xcodeproj` 等 package 虽是磁盘目录，但新建文件和终端工作目录按
   Finder 文件语义上浮到父目录，避免破坏签名或污染工程包
 - shell 工作目录使用单引号转义
@@ -110,7 +115,8 @@
   集合明确拒绝所有外部事件
 - `applicationShouldHandleReopen` 在有窗口时自行恢复并返回 false；最后一个窗口
   已关闭时返回 true，让 AppKit/SwiftUI 新建窗口。不能因「本进程是无声启动」
-  就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App
+  就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App。启动刷新与
+  后台更新检查共用同一个「界面已呈现」判定，覆盖这条后续恢复路径
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证

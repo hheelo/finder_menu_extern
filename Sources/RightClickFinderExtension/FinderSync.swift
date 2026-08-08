@@ -210,6 +210,12 @@ final class FinderSync: FIFinderSync {
         _ urls: [URL],
         with application: ExternalApplication
     ) throws {
+        guard urls.count <= OpenInvocation.maximumTargets else {
+            throw FinderActionError.tooManyOpenTargets(
+                count: urls.count,
+                maximum: OpenInvocation.maximumTargets
+            )
+        }
         guard let token = currentToken() else {
             throw FinderActionError.authenticationUnavailable
         }
@@ -347,6 +353,7 @@ private extension MenuPlacement {
 private enum FinderActionError: LocalizedError {
     case invalidTarget
     case invalidWorkingDirectory
+    case tooManyOpenTargets(count: Int, maximum: Int)
     case authenticationUnavailable
     case hostApplicationUnavailable
 
@@ -356,6 +363,8 @@ private enum FinderActionError: LocalizedError {
             "所选项目无法作为打开目标。"
         case .invalidWorkingDirectory:
             "无法确定有效的工作目录。"
+        case let .tooManyOpenTargets(count, maximum):
+            "一次最多打开 \(maximum) 个项目，当前选中 \(count) 个。"
         case .authenticationUnavailable:
             "无法建立 Finder 扩展与 RightClick 的安全连接。"
         case .hostApplicationUnavailable:

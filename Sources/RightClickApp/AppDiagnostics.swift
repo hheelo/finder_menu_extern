@@ -1,7 +1,7 @@
 import AppKit
 import RightClickCore
 
-struct DiagnosticItem: Identifiable, Sendable {
+struct DiagnosticItem: Codable, Identifiable, Sendable {
     let id: String
     let title: String
     let passed: Bool
@@ -11,8 +11,15 @@ struct DiagnosticItem: Identifiable, Sendable {
 @MainActor
 enum AppDiagnostics {
     static func collect(extensionEnabled: Bool) async -> [DiagnosticItem] {
-        async let codexPath = executablePath(for: .codex)
-        async let claudePath = executablePath(for: .claude)
+        let loginShellURL = resolvedLoginShellURL()
+        async let codexPath = executablePath(
+            for: .codex,
+            loginShellURL: loginShellURL
+        )
+        async let claudePath = executablePath(
+            for: .claude,
+            loginShellURL: loginShellURL
+        )
 
         let vscode = applicationURL(for: .visualStudioCode)
         let codexApp = applicationURL(for: .codex)
@@ -26,6 +33,12 @@ enum AppDiagnostics {
                 title: "Finder 扩展",
                 passed: extensionEnabled,
                 detail: extensionEnabled ? "已启用" : "未启用"
+            ),
+            DiagnosticItem(
+                id: "login-shell",
+                title: "登录 Shell",
+                passed: true,
+                detail: loginShellURL.path
             ),
             applicationItem(id: "vscode", title: "Visual Studio Code", url: vscode),
             applicationItem(id: "codex-app", title: "Codex App", url: codexApp),
@@ -98,15 +111,41 @@ enum AppDiagnostics {
     }
 
     private static func executablePath(
-        for command: CLICommand
+        for command: CLICommand,
+        loginShellURL: URL
     ) async -> String? {
+        let shellName = loginShellURL.lastPathComponent
+        let script = LoginShellArguments.executableLookupScript(
+            shellName: shellName,
+            command: command.rawValue
+        )
+        if let output = await loginShellOutput(
+            shellURL: loginShellURL,
+            script: script,
+            interactive: false,
+            timeout: 5
+        ), let path = ExecutablePathParser.executablePath(in: output) {
+            return path
+        }
+
+        guard LoginShellArguments.supportsInteractiveFallback(
+            shellName: shellName
+        ) else {
+            return nil
+        }
+
         let output = await loginShellOutput(
-            script: "command -v -- \(command.rawValue) 2>/dev/null"
+            shellURL: loginShellURL,
+            script: script,
+            interactive: true,
+            timeout: 8
         )
 
         // 解析规则连同它的两个坑（rc 噪声、别名/函数/内建回显定义而非路径）
         // 一起放在 Core，可脱离 AppKit 测试。
-        return output.flatMap(ExecutablePathParser.executablePath(in:))
+        return output.flatMap {
+            ExecutablePathParser.executablePath(in: $0)
+        }
     }
 
     /// 在用户的登录 shell 中执行脚本。
@@ -114,19 +153,37 @@ enum AppDiagnostics {
     /// 必须带超时：rc 文件挂起（等待输入、慢速网络探测等）会让调用方的
     /// `isRefreshingDiagnostics` 永远停在 `true`，之后所有诊断刷新都被挡掉。
     private static func loginShellOutput(
+        shellURL: URL,
         script: String,
-        timeout: TimeInterval = 5
+        interactive: Bool,
+        timeout: TimeInterval
     ) async -> String? {
-        // 保留 -i：很多用户把 PATH 写在只有交互式 shell 才加载的 .zshrc 里。
-        // ProcessRunner 用普通临时文件承接输出，即使 rc 脚本派生的子进程继续持有
-        // stdout，超时也不再等待管道 EOF。
+        let arguments = LoginShellArguments.arguments(
+            shellName: shellURL.lastPathComponent,
+            script: script,
+            interactive: interactive
+        )
         guard let result = try? await ProcessRunner.run(
-            executableURL: URL(fileURLWithPath: "/bin/zsh"),
-            arguments: ["-lic", script],
+            executableURL: shellURL,
+            arguments: arguments,
             timeout: timeout
         ), result.terminationStatus == 0 else {
             return nil
         }
         return result.standardOutput
+    }
+
+    /// `SHELL` 可能被继承环境污染，只接受真实存在的绝对可执行路径。
+    /// 取不到时回退 macOS 默认的 zsh。
+    private static func resolvedLoginShellURL(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        fileManager: FileManager = .default
+    ) -> URL {
+        let fallback = URL(fileURLWithPath: "/bin/zsh")
+        guard let path = environment["SHELL"], path.hasPrefix("/"),
+              fileManager.isExecutableFile(atPath: path) else {
+            return fallback
+        }
+        return URL(fileURLWithPath: path)
     }
 }

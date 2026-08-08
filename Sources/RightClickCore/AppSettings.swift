@@ -6,6 +6,7 @@ public final class AppSettings: @unchecked Sendable {
     private enum Key {
         static let terminalProfile = "terminalProfile"
         static let finderSessionBuild = "finderSessionBuild"
+        static let cachedDiagnostics = "cachedDiagnostics"
     }
 
     private let defaults: UserDefaults
@@ -27,5 +28,10 @@ public final class AppSettings: @unchecked Sendable {
     public var finderSessionBuild: String? {
         get { defaults.string(forKey: Key.finderSessionBuild) }
         set { defaults.set(newValue, forKey: Key.finderSessionBuild) }
+    }
+
+    public var cachedDiagnostics: Data? {
+        get { defaults.data(forKey: Key.cachedDiagnostics) }
+        set { defaults.set(newValue, forKey: Key.cachedDiagnostics) }
     }
 }

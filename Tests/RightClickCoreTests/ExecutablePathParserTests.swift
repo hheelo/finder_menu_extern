@@ -6,7 +6,10 @@ struct ExecutablePathParserTests {
     @Test
     func readsPlainExecutablePath() {
         #expect(
-            ExecutablePathParser.executablePath(in: "/opt/homebrew/bin/codex\n")
+            ExecutablePathParser.executablePath(
+                in: "/opt/homebrew/bin/codex\n",
+                isExecutableFile: { _ in true }
+            )
                 == "/opt/homebrew/bin/codex"
         )
     }
@@ -22,7 +25,10 @@ struct ExecutablePathParserTests {
         /usr/local/bin/claude
         """
         #expect(
-            ExecutablePathParser.executablePath(in: output)
+            ExecutablePathParser.executablePath(
+                in: output,
+                isExecutableFile: { _ in true }
+            )
                 == "/usr/local/bin/claude"
         )
     }
@@ -52,7 +58,10 @@ struct ExecutablePathParserTests {
         alias codex='codex --yolo'
         """
         #expect(
-            ExecutablePathParser.executablePath(in: output)
+            ExecutablePathParser.executablePath(
+                in: output,
+                isExecutableFile: { _ in true }
+            )
                 == "/opt/homebrew/bin/codex"
         )
     }
@@ -62,6 +71,16 @@ struct ExecutablePathParserTests {
         #expect(
             ExecutablePathParser.executablePath(in: "   /usr/bin/env   ")
                 == "/usr/bin/env"
+        )
+    }
+
+    @Test
+    func rejectsAPathThatIsNotExecutable() {
+        #expect(
+            ExecutablePathParser.executablePath(
+                in: "/tmp/not-executable",
+                isExecutableFile: { _ in false }
+            ) == nil
         )
     }
 }

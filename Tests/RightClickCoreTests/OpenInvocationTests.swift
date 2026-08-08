@@ -141,4 +141,30 @@ struct OpenInvocationTests {
         #expect(OpenInvocation(deepLink: cli) == nil)
         #expect(CLIInvocation(deepLink: open) == nil)
     }
+
+    @Test
+    func rejectsMoreThanTheMaximumTargets() throws {
+        let root = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let targets = (0...OpenInvocation.maximumTargets).map { index in
+            root.appendingPathComponent("\(index).txt")
+        }
+        for target in targets {
+            try Data().write(to: target)
+        }
+
+        let invocation = OpenInvocation(
+            application: .visualStudioCode,
+            targets: targets
+        )
+        #expect(invocation.deepLink == nil)
+
+        var components = URLComponents()
+        components.scheme = AppConstants.deepLinkScheme
+        components.host = "open"
+        components.queryItems = [
+            URLQueryItem(name: "app", value: "vscode")
+        ] + targets.map { URLQueryItem(name: "path", value: $0.path) }
+        #expect(OpenInvocation(deepLink: try #require(components.url)) == nil)
+    }
 }

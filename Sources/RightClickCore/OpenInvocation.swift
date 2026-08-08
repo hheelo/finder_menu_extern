@@ -7,6 +7,11 @@ import Foundation
 /// `rightclick://open` 深链，用 `NSWorkspace.open(_ url:)` 唤起宿主——
 /// 打开 URL 是沙箱允许的，指定 App 去启动则不是。
 public struct OpenInvocation: Equatable, Sendable {
+    /// 显式限制而不是静默截断：少打开几个文件会让用户误以为全部成功。
+    /// LaunchServices 的 URL 长度上限属于实现细节，这里只负责给请求设一个
+    /// 可预期的边界，不把 128 当作系统阈值。
+    public static let maximumTargets = 128
+
     public let application: ExternalApplication
     public let targets: [URL]
     public let authenticationToken: String?
@@ -23,6 +28,7 @@ public struct OpenInvocation: Equatable, Sendable {
 
     public var deepLink: URL? {
         guard !targets.isEmpty,
+              targets.count <= Self.maximumTargets,
               targets.allSatisfy({ $0.isFileURL && $0.path.hasPrefix("/") }),
               authenticationToken.map(
                   ExtensionRequestTokenStore.isValidToken
@@ -63,6 +69,7 @@ public struct OpenInvocation: Equatable, Sendable {
 
         let paths = components.all("path")
         guard !paths.isEmpty,
+              paths.count <= Self.maximumTargets,
               paths.allSatisfy({ $0.hasPrefix("/") }) else {
             return nil
         }

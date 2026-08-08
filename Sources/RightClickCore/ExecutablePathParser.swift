@@ -16,10 +16,17 @@ public enum ExecutablePathParser {
     ///
     /// 只认以 `/` 开头的行，并取最后一条——真正的路径由 `command -v` 最后打印，
     /// 之前的行都是 rc 文件的噪声。
-    public static func executablePath(in output: String) -> String? {
-        output
+    public static func executablePath(
+        in output: String,
+        isExecutableFile: (String) -> Bool = {
+            FileManager.default.isExecutableFile(atPath: $0)
+        }
+    ) -> String? {
+        let candidate = output
             .split(separator: "\n", omittingEmptySubsequences: true)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .last { $0.hasPrefix("/") }
+        guard let candidate, isExecutableFile(candidate) else { return nil }
+        return candidate
     }
 }

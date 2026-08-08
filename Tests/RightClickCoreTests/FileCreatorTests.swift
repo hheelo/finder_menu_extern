@@ -33,4 +33,27 @@ struct FileCreatorTests {
             try FileCreator().create(.text, in: file)
         }
     }
+
+    @Test
+    func concurrentCreationNeverOverwrites() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let created = try await withThrowingTaskGroup(of: URL.self) { group in
+            for _ in 0..<8 {
+                group.addTask {
+                    try FileCreator().create(.text, in: root)
+                }
+            }
+            return try await group.reduce(into: []) { $0.append($1) }
+        }
+
+        #expect(Set(created.map(\.lastPathComponent)).count == 8)
+        #expect(created.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+    }
 }

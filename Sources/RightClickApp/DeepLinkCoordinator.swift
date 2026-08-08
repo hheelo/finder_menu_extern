@@ -30,6 +30,7 @@ final class DeepLinkCoordinator {
     func dispatch(
         _ url: URL,
         terminalProfile: TerminalProfile,
+        commandAvailability: (CLICommand) -> Bool? = { _ in nil },
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         let request: DeepLinkRequest
@@ -57,6 +58,16 @@ final class DeepLinkCoordinator {
         switch request {
         case let .cli(invocation):
             appLogger.notice("收到深链 类型=cli")
+            // 只有诊断明确跑过且确认缺失时才拦截。没有诊断项就放行，避免
+            // 缓存缺失或一次检测失败把原本能用的功能挡住。
+            if commandAvailability(invocation.command) == false {
+                reportFailure(
+                    "未在登录 Shell 中找到 \(invocation.command.rawValue)，请先安装 \(invocation.command.title)。",
+                    isAuthenticated: isAuthenticated,
+                    emit: emit
+                )
+                return
+            }
             execute(
                 invocation,
                 terminalProfile: terminalProfile,
