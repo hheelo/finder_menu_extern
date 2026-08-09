@@ -113,4 +113,23 @@ struct ExternalApplicationTests {
             #expect(ExternalApplication(identifier: application.identifier) == application)
         }
     }
+
+    /// 新增一个 `openIn*` 动作却忘了接线时，这里报红；扩展 target 没有测试，
+    /// 那条路径上的遗漏只能靠手点才发现。
+    @Test
+    func everyOpenActionMapsIntoTheWhitelist() {
+        for action in RightClickAction.allMenuActions
+            where action.logDescription.hasPrefix("openIn")
+                && action != .openInTerminal {
+            guard let application = ExternalApplication.forOpenAction(action)
+            else {
+                Issue.record("\(action.logDescription) 没有对应的白名单应用")
+                continue
+            }
+            #expect(ExternalApplication.known.contains(application))
+        }
+        // 终端走 TerminalInvocation，不经过应用白名单。
+        #expect(ExternalApplication.forOpenAction(.openInTerminal) == nil)
+        #expect(ExternalApplication.forOpenAction(.copyPath) == nil)
+    }
 }

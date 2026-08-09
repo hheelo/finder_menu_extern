@@ -175,6 +175,17 @@ final class AppModel: ObservableObject {
         }.map(\.element)
     }
 
+    /// 复制发生在扩展进程里，所以这个设置的真相是菜单配置文件而不是
+    /// UserDefaults——写回 `menuConfiguration` 即经既有 didSet 下发到扩展容器。
+    var clipboardSeparator: ClipboardSeparator {
+        get { menuConfiguration.clipboardSeparator }
+        set {
+            var updated = menuConfiguration
+            updated.copySeparator = newValue.rawValue
+            menuConfiguration = updated
+        }
+    }
+
     func menuActionIsEnabled(_ action: RightClickAction) -> Bool {
         !menuConfiguration.disabledActions.contains(action.configurationID)
     }

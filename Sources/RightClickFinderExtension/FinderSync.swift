@@ -165,113 +165,45 @@ final class FinderSync: FIFinderSync {
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {
-        if let configured = ConfiguredCLIMenuItemPayload(menuTag: sender.tag) {
-            performConfiguredCLI(configured)
-            return
-        }
-        if let template = CustomTemplateMenuItemPayload(menuTag: sender.tag) {
-            performCustomTemplate(template)
-            return
-        }
-        guard let payload = RightClickMenuItemPayload(menuTag: sender.tag) else {
+        guard let payload = MenuItemPayload(menuTag: sender.tag) else {
             logger.error(
                 "菜单项未携带可识别的动作，tag=\(sender.tag, privacy: .public)"
             )
             return
         }
+        switch payload {
+        case let .configuredCLI(configured): performConfiguredCLI(configured)
+        case let .customTemplate(template): performCustomTemplate(template)
+        case let .action(action): perform(action)
+        }
+    }
+
+    private func perform(_ payload: RightClickMenuItemPayload) {
         let action = payload.action
         // 菜单位置随 tag 一起往返。空白处和侧边栏必须继续忽略 Finder 窗口里
         // 可能残留的选区，确保动作落在鼠标实际指向的目录。
         let context = context(for: payload.placement)
         logger.notice("""
             执行动作=\(action.logDescription, privacy: .public) \
-            tag=\(sender.tag, privacy: .public) \
+            tag=\(payload.menuTag, privacy: .public) \
             位置=\(String(describing: payload.placement), privacy: .public) \
             生效=\(context.effectiveURLs.count, privacy: .public) \
             工作目录=\(context.workingDirectory != nil, privacy: .public)
             """)
+        reporting("动作执行失败") { try execute(action, in: context) }
+    }
+
+    /// 扩展里所有动作的统一失败出口。
+    ///
+    /// 绝不在扩展里弹模态框：`NSAlert.runModal()` 会占住扩展的主线程，而
+    /// `menu(for:)` 也在主线程上，一旦弹出右键菜单就再也不出现。错误只记日志，
+    /// 需要提示用户时经认证的 error 深链交给宿主 App。
+    private func reporting(_ label: String, _ body: () throws -> Void) {
         do {
-            switch action {
-            case .copyPath:
-                try copy(ClipboardText.paths(for: context.effectiveURLs))
-            case .copyFilename:
-                try copy(ClipboardText.filenames(for: context.effectiveURLs))
-            case .copyFileURL:
-                try copy(ClipboardText.fileURLs(for: context.effectiveURLs))
-            case .copyShellPath:
-                try copy(
-                    ClipboardText.shellQuotedPaths(
-                        for: context.effectiveURLs
-                    )
-                )
-            case .copyParentPath:
-                try copy(
-                    ClipboardText.parentPaths(for: context.effectiveURLs)
-                )
-            case let .createFile(template):
-                guard let directory = context.creationDirectory else {
-                    throw FinderActionError.invalidTarget
-                }
-                let createdURL = try fileCreator.create(template, in: directory)
-                NSWorkspace.shared.activateFileViewerSelecting([createdURL])
-            case .createFolder:
-                guard let directory = context.creationDirectory else {
-                    throw FinderActionError.invalidTarget
-                }
-                let createdURL = try fileCreator.createDirectory(in: directory)
-                NSWorkspace.shared.activateFileViewerSelecting([createdURL])
-            case .createFileFromClipboard:
-                guard let directory = context.creationDirectory,
-                      let text = NSPasteboard.general.string(forType: .string),
-                      !text.isEmpty else {
-                    throw FinderActionError.invalidTarget
-                }
-                let createdURL = try fileCreator.create(
-                    contents: Data(text.utf8),
-                    preferredFilename: "Untitled.txt",
-                    in: directory
-                )
-                NSWorkspace.shared.activateFileViewerSelecting([createdURL])
-            case .openInVSCode:
-                try open(context.effectiveURLs, with: .visualStudioCode)
-            case .openInCodex:
-                try open(context.effectiveURLs, with: .codex)
-            case .openInCursor:
-                try open(context.effectiveURLs, with: .cursor)
-            case .openInZed:
-                try open(context.effectiveURLs, with: .zed)
-            case .openInSublimeText:
-                try open(context.effectiveURLs, with: .sublimeText)
-            case .openInXcode:
-                try open(context.effectiveURLs, with: .xcode)
-            case .openInJetBrains:
-                try open(context.effectiveURLs, with: .jetBrains)
-            case .openInDefaultApplication:
-                try open(context.effectiveURLs, with: .systemDefault)
-            case .openInTerminal:
-                guard let token = currentToken() else {
-                    throw FinderActionError.authenticationUnavailable
-                }
-                guard let directory = context.workingDirectory,
-                      let deepLink = TerminalInvocation(
-                          workingDirectory: directory,
-                          authenticationToken: token
-                      ).deepLink else {
-                    throw FinderActionError.invalidWorkingDirectory
-                }
-                // 用哪个终端由宿主决定：扩展读不到用户设置。
-                openHost(with: deepLink)
-            case .runCodexCLI:
-                try openHost(for: .codex, context: context)
-            case .runClaudeCode:
-                try openHost(for: .claude, context: context)
-            }
+            try body()
         } catch {
-            // 绝不在扩展里弹模态框：`NSAlert.runModal()` 会占住扩展的主线程，
-            // 而 `menu(for:)` 也在主线程上，一旦弹出右键菜单就再也不出现。
-            // 错误只记日志，需要提示用户时由宿主 App 负责。
             logger.error(
-                "动作执行失败：\(error.localizedDescription, privacy: .public)"
+                "\(label, privacy: .public)：\(error.localizedDescription, privacy: .public)"
             )
             if FinderActionPolicy.shouldReportToHost(error) {
                 reportToHost(error.localizedDescription)
@@ -279,16 +211,89 @@ final class FinderSync: FIFinderSync {
         }
     }
 
+    private func execute(
+        _ action: RightClickAction,
+        in context: SelectionContext
+    ) throws {
+        switch action {
+        case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
+             .copyParentPath, .copyRelativePath:
+            // 相对路径的基准要向上探测 `.git`，只在点击时做；`menu(for:)`
+            // 里的每一次文件系统访问都会变成右键菜单的弹出延迟。
+            let base = action == .copyRelativePath
+                ? RelativePathResolver.base(for: context)
+                : nil
+            guard let text = ClipboardText.text(
+                for: action,
+                urls: context.effectiveURLs,
+                base: base,
+                separator: currentMenuConfiguration().clipboardSeparator
+            ) else {
+                throw FinderActionError.invalidTarget
+            }
+            try copy(text)
+        case .openInVSCode, .openInCodex, .openInCursor, .openInZed,
+             .openInSublimeText, .openInXcode, .openInJetBrains,
+             .openInDefaultApplication:
+            guard let application = ExternalApplication.forOpenAction(action)
+            else {
+                throw FinderActionError.invalidTarget
+            }
+            try open(context.effectiveURLs, with: application)
+        case let .createFile(template):
+            guard let directory = context.creationDirectory else {
+                throw FinderActionError.invalidTarget
+            }
+            let createdURL = try fileCreator.create(template, in: directory)
+            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+        case .createFolder:
+            guard let directory = context.creationDirectory else {
+                throw FinderActionError.invalidTarget
+            }
+            let createdURL = try fileCreator.createDirectory(in: directory)
+            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+        case .createFileFromClipboard:
+            guard let directory = context.creationDirectory,
+                  let text = NSPasteboard.general.string(forType: .string),
+                  !text.isEmpty else {
+                throw FinderActionError.invalidTarget
+            }
+            let createdURL = try fileCreator.create(
+                contents: Data(text.utf8),
+                preferredFilename: "Untitled.txt",
+                in: directory
+            )
+            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+        case .openInTerminal:
+            guard let token = currentToken() else {
+                throw FinderActionError.authenticationUnavailable
+            }
+            guard let directory = context.workingDirectory,
+                  let deepLink = TerminalInvocation(
+                      workingDirectory: directory,
+                      authenticationToken: token
+                  ).deepLink else {
+                throw FinderActionError.invalidWorkingDirectory
+            }
+            // 用哪个终端由宿主决定：扩展读不到用户设置。
+            openHost(with: deepLink)
+        case .runCodexCLI:
+            try openHost(for: .codex, context: context)
+        case .runClaudeCode:
+            try openHost(for: .claude, context: context)
+        }
+    }
+
     private func performConfiguredCLI(_ payload: ConfiguredCLIMenuItemPayload) {
-        let configuration = currentMenuConfiguration()
-        guard let profile = configuration.cliProfiles.first(where: {
-            $0.menuSlot == payload.menuSlot && $0.isEnabled && $0.isValid
-        }) else {
-            logger.error("动态 CLI 配置已不存在，slot=\(payload.menuSlot, privacy: .public)")
+        guard let profile = currentMenuConfiguration()
+            .cliProfile(forSlot: payload.menuSlot) else {
+            logger.error(
+                "动态 CLI 配置已不存在，slot=\(payload.menuSlot, privacy: .public)"
+            )
             return
         }
         let context = context(for: payload.placement)
-        do {
+        reporting("动态 CLI 启动失败") {
             guard let token = currentToken() else {
                 throw FinderActionError.authenticationUnavailable
             }
@@ -300,28 +305,24 @@ final class FinderSync: FIFinderSync {
                   ).deepLink else {
                 throw FinderActionError.invalidWorkingDirectory
             }
-            logger.notice(
-                "执行动态CLI id=\(profile.id, privacy: .public) slot=\(profile.menuSlot, privacy: .public)"
-            )
+            logger.notice("""
+                执行动态CLI id=\(profile.id, privacy: .public) \
+                slot=\(profile.menuSlot, privacy: .public)
+                """)
             openHost(with: deepLink)
-        } catch {
-            logger.error("动态 CLI 启动失败：\(error.localizedDescription, privacy: .public)")
-            if FinderActionPolicy.shouldReportToHost(error) {
-                reportToHost(error.localizedDescription)
-            }
         }
     }
 
     private func performCustomTemplate(_ payload: CustomTemplateMenuItemPayload) {
-        let configuration = currentMenuConfiguration()
-        guard let template = configuration.customTemplates.first(where: {
-            $0.menuSlot == payload.menuSlot && $0.isValid
-        }) else {
-            logger.error("自定义模板配置已不存在，slot=\(payload.menuSlot, privacy: .public)")
+        guard let template = currentMenuConfiguration()
+            .customTemplate(forSlot: payload.menuSlot) else {
+            logger.error(
+                "自定义模板配置已不存在，slot=\(payload.menuSlot, privacy: .public)"
+            )
             return
         }
         let context = context(for: payload.placement)
-        do {
+        reporting("自定义模板创建失败") {
             guard let directory = context.creationDirectory,
                   let configurationURL = MenuConfigurationFile.extensionURL() else {
                 throw FinderActionError.invalidTarget
@@ -336,11 +337,6 @@ final class FinderSync: FIFinderSync {
                 in: directory
             )
             NSWorkspace.shared.activateFileViewerSelecting([createdURL])
-        } catch {
-            logger.error("自定义模板创建失败：\(error.localizedDescription, privacy: .public)")
-            if FinderActionPolicy.shouldReportToHost(error) {
-                reportToHost(error.localizedDescription)
-            }
         }
     }
 

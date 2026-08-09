@@ -63,6 +63,7 @@ public enum RightClickMenu {
                 title: "更多复制方式",
                 isEnabled: hasSelection,
                 items: [
+                    .action(.copyRelativePath, isEnabled: hasSelection),
                     .action(.copyFileURL, isEnabled: hasSelection),
                     .action(.copyShellPath, isEnabled: hasSelection),
                     .action(.copyParentPath, isEnabled: hasSelection)

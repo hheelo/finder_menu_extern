@@ -42,6 +42,11 @@ struct SettingsView: View {
                         .help("下移")
                     }
                 }
+                Picker("多选复制时分隔符", selection: $model.clipboardSeparator) {
+                    ForEach(ClipboardSeparator.allCases, id: \.self) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
                 Text("修改后下一次打开 Finder 右键菜单立即生效，无需重启 Finder。")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -16,6 +16,11 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
     public var collapseIntoSubmenu: Bool
     /// 扩展用它判断所选终端是否具备运行 CLI 的能力；nil 等同 automatic。
     public var terminalProfileID: String?
+    /// 多选复制时的分隔方式；nil 或无法识别的值等同换行。
+    ///
+    /// 存 `String?` 而不是枚举：这个文件是跨版本、跨进程的输入，旧扩展遇到
+    /// 将来新增的分隔方式必须能降级，而不是整份配置解码失败。
+    public var copySeparator: String?
     public var cliProfiles: [CLIProfile]
     public var customTemplates: [CustomFileTemplate]
 
@@ -25,6 +30,7 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         actionOrder: [String] = [],
         collapseIntoSubmenu: Bool = false,
         terminalProfileID: String? = nil,
+        copySeparator: String? = nil,
         cliProfiles: [CLIProfile] = [],
         customTemplates: [CustomFileTemplate] = []
     ) {
@@ -33,15 +39,21 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         self.actionOrder = actionOrder
         self.collapseIntoSubmenu = collapseIntoSubmenu
         self.terminalProfileID = terminalProfileID
+        self.copySeparator = copySeparator
         self.cliProfiles = cliProfiles
         self.customTemplates = customTemplates
+    }
+
+    /// 解析后的分隔方式。未设置或无法识别时回退换行。
+    public var clipboardSeparator: ClipboardSeparator {
+        copySeparator.flatMap(ClipboardSeparator.init(rawValue:)) ?? .newline
     }
 
     public static let `default` = MenuConfiguration()
 
     private enum CodingKeys: String, CodingKey {
         case version, disabledActions, actionOrder, collapseIntoSubmenu
-        case terminalProfileID, cliProfiles, customTemplates
+        case terminalProfileID, copySeparator, cliProfiles, customTemplates
     }
 
     public init(from decoder: Decoder) throws {
@@ -62,6 +74,10 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         terminalProfileID = try values.decodeIfPresent(
             String.self,
             forKey: .terminalProfileID
+        )
+        copySeparator = try values.decodeIfPresent(
+            String.self,
+            forKey: .copySeparator
         )
         cliProfiles = try values.decodeIfPresent(
             [CLIProfile].self,
@@ -89,6 +105,20 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
                 && slots.insert(template.menuSlot).inserted
         }
         return copy
+    }
+
+    /// 点击动态 CLI 菜单项时按 slot 重新查配置。
+    ///
+    /// 命令和参数只存在于这份 0600 文件里，既不进 tag 也不进 URL；配置在菜单
+    /// 弹出后被删除或禁用时返回 nil，由调用方当成一次失败处理。
+    public func cliProfile(forSlot slot: Int) -> CLIProfile? {
+        cliProfiles.first {
+            $0.menuSlot == slot && $0.isEnabled && $0.isValid
+        }
+    }
+
+    public func customTemplate(forSlot slot: Int) -> CustomFileTemplate? {
+        customTemplates.first { $0.menuSlot == slot && $0.isValid }
     }
 }
 

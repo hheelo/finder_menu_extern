@@ -8,8 +8,8 @@ struct FinderActionPolicyTests {
             let expected: Bool
             switch action {
             case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
-                 .copyParentPath, .createFile, .createFolder,
-                 .createFileFromClipboard:
+                 .copyParentPath, .copyRelativePath, .createFile,
+                 .createFolder, .createFileFromClipboard:
                 expected = false
             case .openInVSCode, .openInCodex, .openInTerminal,
                  .runCodexCLI, .runClaudeCode, .openInCursor, .openInZed,

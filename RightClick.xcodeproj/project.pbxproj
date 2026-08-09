@@ -14,6 +14,7 @@
 		086FF6B08B62ADC4ADB0BB03 /* FinderSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 218C7594918DA8D3D2AFD1D2 /* FinderSessionManager.swift */; };
 		0CCEAF8B32654B9242B5B062 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E4749E7D55BE88F7397F35 /* AppModel.swift */; };
 		12BA83B817A2CAFCE4822D32 /* DeepLinkRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D751F802357CA9B0181743F2 /* DeepLinkRequestTests.swift */; };
+		14E46A026F97BD5A145135EA /* MenuItemPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78476825C4CFAA839E6429D5 /* MenuItemPayload.swift */; };
 		16253340E99F5D1CACC7939C /* DeepLinkRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB8EBD0D2081EB7B7B09A3B /* DeepLinkRequest.swift */; };
 		16F452C36BFD47B4E21188D1 /* DeepLinkSignature.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC2EE22B81F9AD888278DD4 /* DeepLinkSignature.swift */; };
 		1D5A81EF52B6F7697F49D27C /* TerminalInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66DD77E8ED9FD935977EF665 /* TerminalInvocationTests.swift */; };
@@ -26,9 +27,11 @@
 		27ABF8115AA82CA847C8FECA /* DeepLinkCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A521CE536B110E777962EC2 /* DeepLinkCoordinator.swift */; };
 		2C792D922DA3DA016B08BB3E /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D584FD06A4707D9D607F236 /* AppSettings.swift */; };
 		2D67D26F508B923F45CFB1F7 /* ExternalApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F84291164FBB1AFAD31C20 /* ExternalApplication.swift */; };
+		3032C0F8E46F1A0EF3104BF6 /* MenuItemPayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCFCFEAF3B705159595D3AF4 /* MenuItemPayloadTests.swift */; };
 		347C1094700707CF55BB91DC /* ExecutablePathParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABAAB2233E121EB1DBE50FD0 /* ExecutablePathParserTests.swift */; };
 		354102FD5DE7E4B2EA50814E /* UserNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698AFAA5FA64F71AA5349E36 /* UserNotifier.swift */; };
 		39FBDCE006FED38372FA2981 /* DeepLinkSignatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09EE54A57E21D5B2FB4A5A96 /* DeepLinkSignatureTests.swift */; };
+		3E07C49D72F645F5E95BCC2A /* ClipboardSeparator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6718321C7321758FBCE88F8 /* ClipboardSeparator.swift */; };
 		3E26172AB80B32DB2FA4C322 /* SelectionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A68AA4C0E0FA472C54F55ED1 /* SelectionContext.swift */; };
 		3F1F075E6DF6328DFBD23A35 /* AppConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00EBB4C077AED2C7F98DCDB5 /* AppConstants.swift */; };
 		3F5D6A87B3394566E2764373 /* LoginShellArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F47BD16FE8DCF235C5102C /* LoginShellArguments.swift */; };
@@ -69,6 +72,7 @@
 		AF0C12396B022F75B3453CC9 /* DiagnosticsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C706D3A66C5F3114A9FE949A /* DiagnosticsStoreTests.swift */; };
 		B0004930BC61205AFE67F669 /* FileCreator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A622FFA01AC38A389944D8D4 /* FileCreator.swift */; };
 		B01100C75843F03FB8586331 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42DBD87D7F4F1FE3843A8D6A /* AppLogger.swift */; };
+		B8E35CFB66FDA04EA3AAAA1E /* RelativePathResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F38E9527DBE463D08AE3CD29 /* RelativePathResolverTests.swift */; };
 		BACAFEC91715A2586A74D38E /* TerminalResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DED132C02302558804E661 /* TerminalResolver.swift */; };
 		BB46E3F7D38749239FB6ECA8 /* CLIInvocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27572AB5B8405DA8B6A415E6 /* CLIInvocation.swift */; };
 		BC7C7FA23B3973439B3CE7AF /* SelectionContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1619892FCF1A5FAEC0C177 /* SelectionContextTests.swift */; };
@@ -79,6 +83,7 @@
 		C267EF3E4B6C11FDB8D22DF1 /* UpdaterController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59270681F4795CFF7E10997C /* UpdaterController.swift */; };
 		C4BE8E47511A1E80BEAFC9C9 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42DBD87D7F4F1FE3843A8D6A /* AppLogger.swift */; };
 		C53240DB7D9C24DCDF65A2EE /* DeepLinkCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A521CE536B110E777962EC2 /* DeepLinkCoordinator.swift */; };
+		C64D8F307D128DEA211FF9F7 /* RelativePathResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 780AEDB3C8BDDBEC65D69AD4 /* RelativePathResolver.swift */; };
 		C66C5301703F6B12E5EBEEF9 /* RightClickCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C7950F9C644EF21CBB18E536 /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
 		C8F7739A1B1387BCE41A4111 /* FinderSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 218C7594918DA8D3D2AFD1D2 /* FinderSessionManager.swift */; };
@@ -224,6 +229,8 @@
 		698AFAA5FA64F71AA5349E36 /* UserNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotifier.swift; sourceTree = "<group>"; };
 		6BF2BD378512DC135ADC3016 /* ExecutablePathParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePathParser.swift; sourceTree = "<group>"; };
 		7299E52324848B5CC0E1CD18 /* ActionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionExecutor.swift; sourceTree = "<group>"; };
+		780AEDB3C8BDDBEC65D69AD4 /* RelativePathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativePathResolver.swift; sourceTree = "<group>"; };
+		78476825C4CFAA839E6429D5 /* MenuItemPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemPayload.swift; sourceTree = "<group>"; };
 		7945574CA07D3EE47247E5D8 /* RightClickAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightClickAction.swift; sourceTree = "<group>"; };
 		7B2926AF30A9E73C2CE257B6 /* OpenInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenInvocationTests.swift; sourceTree = "<group>"; };
 		84148B02F7F318AD2AD90ADD /* CLIInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInvocationTests.swift; sourceTree = "<group>"; };
@@ -252,9 +259,11 @@
 		C17563A88263BA4EB7059966 /* FinderActionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderActionPolicy.swift; sourceTree = "<group>"; };
 		C23218574160DD349614D608 /* AppPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPresentation.swift; sourceTree = "<group>"; };
 		C640BEF8B0B1629C71CE86FE /* ErrorInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorInvocation.swift; sourceTree = "<group>"; };
+		C6718321C7321758FBCE88F8 /* ClipboardSeparator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSeparator.swift; sourceTree = "<group>"; };
 		C706D3A66C5F3114A9FE949A /* DiagnosticsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsStoreTests.swift; sourceTree = "<group>"; };
 		C7D5B1DDABAF04AEA0F0B397 /* RightClick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RightClick.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA36F03C422E993540AD084A /* ClipboardTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardTextTests.swift; sourceTree = "<group>"; };
+		CCFCFEAF3B705159595D3AF4 /* MenuItemPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemPayloadTests.swift; sourceTree = "<group>"; };
 		CF176D79709AF1B56D418A05 /* ExtensionRequestTokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionRequestTokenStoreTests.swift; sourceTree = "<group>"; };
 		CFD59B4FACD0786B2B547A82 /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
 		D1510F2C551250C05C4CE18F /* FinderActionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderActionPolicyTests.swift; sourceTree = "<group>"; };
@@ -263,6 +272,7 @@
 		DDB1AB894D0D5908FB15419E /* ConfiguredCLIInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfiguredCLIInvocation.swift; sourceTree = "<group>"; };
 		E443EF553D797AE2521933E9 /* FileTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTemplate.swift; sourceTree = "<group>"; };
 		F149106428DBEA2AC3EFAB9D /* TerminalProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalProfile.swift; sourceTree = "<group>"; };
+		F38E9527DBE463D08AE3CD29 /* RelativePathResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativePathResolverTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -337,7 +347,9 @@
 				D1510F2C551250C05C4CE18F /* FinderActionPolicyTests.swift */,
 				C0D7AA581A31DC387EBBFF5D /* LoginShellArgumentsTests.swift */,
 				2BA521B6AEC24CF0ED08F5BA /* MenuConfigurationTests.swift */,
+				CCFCFEAF3B705159595D3AF4 /* MenuItemPayloadTests.swift */,
 				7B2926AF30A9E73C2CE257B6 /* OpenInvocationTests.swift */,
+				F38E9527DBE463D08AE3CD29 /* RelativePathResolverTests.swift */,
 				04661B92AADF75537DF480C3 /* RetryableTokenAvailabilityTests.swift */,
 				261326AEEF383C0858F03568 /* RightClickMenuTests.swift */,
 				3C1619892FCF1A5FAEC0C177 /* SelectionContextTests.swift */,
@@ -376,6 +388,7 @@
 				00EBB4C077AED2C7F98DCDB5 /* AppConstants.swift */,
 				1D584FD06A4707D9D607F236 /* AppSettings.swift */,
 				27572AB5B8405DA8B6A415E6 /* CLIInvocation.swift */,
+				C6718321C7321758FBCE88F8 /* ClipboardSeparator.swift */,
 				31DA93DE1BA183F60B69D058 /* ClipboardText.swift */,
 				DDB1AB894D0D5908FB15419E /* ConfiguredCLIInvocation.swift */,
 				134D7AD052AC8C10C58C5A15 /* DeepLinkComponents.swift */,
@@ -389,7 +402,9 @@
 				C17563A88263BA4EB7059966 /* FinderActionPolicy.swift */,
 				B3F47BD16FE8DCF235C5102C /* LoginShellArguments.swift */,
 				A620B3B3938DF58F4A33C24A /* MenuConfiguration.swift */,
+				78476825C4CFAA839E6429D5 /* MenuItemPayload.swift */,
 				4809F6985A7D2364B09E19B2 /* OpenInvocation.swift */,
+				780AEDB3C8BDDBEC65D69AD4 /* RelativePathResolver.swift */,
 				BCDE3B275B109EDAF49C7416 /* RetryableTokenAvailability.swift */,
 				7945574CA07D3EE47247E5D8 /* RightClickAction.swift */,
 				06A9732FD2DB7A80AB65FB97 /* RightClickMenu.swift */,
@@ -640,7 +655,9 @@
 				23FA9E4DA0795564EF357569 /* FinderActionPolicyTests.swift in Sources */,
 				8F9D9D7FCEAEC489CF6BBCF4 /* LoginShellArgumentsTests.swift in Sources */,
 				9A5850C71EF235EC66C4186E /* MenuConfigurationTests.swift in Sources */,
+				3032C0F8E46F1A0EF3104BF6 /* MenuItemPayloadTests.swift in Sources */,
 				7DD367448EE852EA42811C40 /* OpenInvocationTests.swift in Sources */,
+				B8E35CFB66FDA04EA3AAAA1E /* RelativePathResolverTests.swift in Sources */,
 				BEF588841F5D12E33CA528C6 /* RetryableTokenAvailabilityTests.swift in Sources */,
 				7BE4B4160BA3BECCD29702B4 /* RightClickMenuTests.swift in Sources */,
 				BC7C7FA23B3973439B3CE7AF /* SelectionContextTests.swift in Sources */,
@@ -687,6 +704,7 @@
 				3F1F075E6DF6328DFBD23A35 /* AppConstants.swift in Sources */,
 				2C792D922DA3DA016B08BB3E /* AppSettings.swift in Sources */,
 				BB46E3F7D38749239FB6ECA8 /* CLIInvocation.swift in Sources */,
+				3E07C49D72F645F5E95BCC2A /* ClipboardSeparator.swift in Sources */,
 				CFABAE7E3A171CBB90ED8C4C /* ClipboardText.swift in Sources */,
 				1DBA6A674FD3A31D96155B81 /* ConfiguredCLIInvocation.swift in Sources */,
 				43F2C3BE7608972A74F4F4DB /* DeepLinkComponents.swift in Sources */,
@@ -700,7 +718,9 @@
 				5746F02B9668224CA3A76139 /* FinderActionPolicy.swift in Sources */,
 				3F5D6A87B3394566E2764373 /* LoginShellArguments.swift in Sources */,
 				FEAE969F63C2BDD9AD5CE5D5 /* MenuConfiguration.swift in Sources */,
+				14E46A026F97BD5A145135EA /* MenuItemPayload.swift in Sources */,
 				9C1A3747FD6B74A2108D0331 /* OpenInvocation.swift in Sources */,
+				C64D8F307D128DEA211FF9F7 /* RelativePathResolver.swift in Sources */,
 				95236F7637C8DFD5F2925CA4 /* RetryableTokenAvailability.swift in Sources */,
 				CCBFA31B9C6D3E62B1AE9104 /* RightClickAction.swift in Sources */,
 				740FAA455B6AB83739DFD662 /* RightClickMenu.swift in Sources */,
@@ -858,7 +878,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 700;
+				CURRENT_PROJECT_VERSION = 701;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -879,7 +899,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1038,7 +1058,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 700;
+				CURRENT_PROJECT_VERSION = 701;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1053,7 +1073,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

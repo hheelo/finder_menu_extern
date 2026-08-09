@@ -71,7 +71,11 @@ struct RightClickMenuTests {
         #expect(nodes.contains(.action(.openInTerminal, isEnabled: true)))
         #expect(
             submenuItems(named: "更多复制方式", in: nodes)?.count
-                == 3
+                == 4
+        )
+        #expect(
+            submenuItems(named: "更多复制方式", in: nodes)?
+                .contains(.action(.copyRelativePath, isEnabled: true)) == true
         )
     }
 

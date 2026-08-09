@@ -20,6 +20,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
     case openInDefaultApplication
     case createFolder
     case createFileFromClipboard
+    case copyRelativePath
 
     public var title: String {
         switch self {
@@ -42,6 +43,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .openInDefaultApplication: "用默认应用打开"
         case .createFolder: "新建文件夹"
         case .createFileFromClipboard: "从剪贴板新建文本文件"
+        case .copyRelativePath: "复制相对路径"
         }
     }
 
@@ -69,6 +71,7 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .openInDefaultApplication: "openInDefaultApplication"
         case .createFolder: "createFolder"
         case .createFileFromClipboard: "createFileFromClipboard"
+        case .copyRelativePath: "copyRelativePath"
         }
     }
 
@@ -92,6 +95,7 @@ public extension RightClickAction {
             .openInJetBrains, .openInDefaultApplication
         ]
         + [.createFolder, .createFileFromClipboard]
+        + [.copyRelativePath]
 
     /// 菜单项要跨进程送到 Finder、再把点击送回扩展，途中只有 plist 安全的值
     /// 能存活；自定义对象放进 `representedObject` 到不了对面，回调里取到的是

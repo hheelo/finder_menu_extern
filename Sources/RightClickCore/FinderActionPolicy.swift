@@ -30,7 +30,7 @@ public enum FinderActionPolicy {
     ) -> Bool {
         switch action {
         case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
-             .copyParentPath, .createFile, .createFolder,
+             .copyParentPath, .copyRelativePath, .createFile, .createFolder,
              .createFileFromClipboard:
             false
         case .openInVSCode, .openInCodex, .openInTerminal,

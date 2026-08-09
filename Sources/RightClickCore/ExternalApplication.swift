@@ -185,6 +185,30 @@ public extension ExternalApplication {
         .cursor, .zed, .sublimeText, .xcode, .jetBrains, .systemDefault
     ]
 
+    /// 「用 X 打开」动作到白名单条目的唯一映射；其他动作返回 nil。
+    ///
+    /// 放在 Core 而不是扩展的 switch 里：新增 `openIn*` 动作却忘了接线时，
+    /// `ExternalApplicationTests` 会报红，而扩展 target 没有测试。
+    static func forOpenAction(
+        _ action: RightClickAction
+    ) -> ExternalApplication? {
+        switch action {
+        case .openInVSCode: .visualStudioCode
+        case .openInCodex: .codex
+        case .openInCursor: .cursor
+        case .openInZed: .zed
+        case .openInSublimeText: .sublimeText
+        case .openInXcode: .xcode
+        case .openInJetBrains: .jetBrains
+        case .openInDefaultApplication: .systemDefault
+        case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
+             .copyParentPath, .copyRelativePath, .openInTerminal,
+             .runCodexCLI, .runClaudeCode, .createFile, .createFolder,
+             .createFileFromClipboard:
+            nil
+        }
+    }
+
     init?(identifier: String) {
         guard let match = Self.known.first(
             where: { $0.identifier == identifier }

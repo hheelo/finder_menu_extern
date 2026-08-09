@@ -2,7 +2,9 @@
 
 RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者常用操作：
 
-- 复制所选文件的路径、文件名、file URL、Shell 引用路径或父目录（支持多选）
+- 复制所选文件的路径、文件名、相对路径、file URL、Shell 引用路径或父目录
+  （支持多选，分隔符可选换行 / 空格 / 逗号；相对路径以 git 仓库根为基准，
+  不在仓库里时以当前 Finder 窗口目录为基准）
 - 用 Visual Studio Code、ChatGPT、Cursor、Zed、Sublime Text、Xcode、JetBrains 或系统默认应用打开
 - 支持 Terminal、iTerm2、Warp、Ghostty、WezTerm、Kitty；可选新标签页或新窗口
 - 运行 Codex CLI / Claude Code，或配置自己的 CLI 可执行名和逐项参数
