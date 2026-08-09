@@ -10,6 +10,37 @@ struct MenuItemPayloadTests {
         #expect(RightClickAction.allMenuActions.count < 100)
     }
 
+    /// `menuTag` 是已发出的跨进程契约：Finder 里可能还挂着旧版本构建的菜单项。
+    /// 这里钉死若干已发布的编号，任何对 `allMenuActions` 的重排或插入都会报红。
+    /// 只允许在末尾追加——那不会改动下面任何一个数字。
+    @Test
+    func publishedMenuTagsNeverShift() {
+        let published: [(RightClickAction, Int)] = [
+            (.copyPath, 1),
+            (.copyFilename, 2),
+            (.openInVSCode, 3),
+            (.openInCodex, 4),
+            (.openInTerminal, 5),
+            (.runCodexCLI, 6),
+            (.runClaudeCode, 7),
+            (.createFile(.text), 8),
+            (.copyFileURL, 15),
+            (.copyShellPath, 16),
+            (.copyParentPath, 17),
+            (.openInCursor, 18),
+            (.openInDefaultApplication, 23),
+            (.createFolder, 24),
+            (.createFileFromClipboard, 25),
+            (.copyRelativePath, 26)
+        ]
+        for (action, tag) in published {
+            #expect(
+                action.menuTag == tag,
+                "\(action.logDescription) 的 tag 从 \(tag) 变成了 \(action.menuTag)"
+            )
+        }
+    }
+
     @Test
     func decodesEveryFixedActionBackToItself() {
         for placement in MenuPlacement.allCases {
