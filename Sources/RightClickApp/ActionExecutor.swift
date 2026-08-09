@@ -169,19 +169,38 @@ enum ProcessRunner {
 
 enum ActionExecutorError: LocalizedError {
     case processFailed(String)
+    case applicationNotFound(String)
+    case commandUnsupported(String)
 
     var errorDescription: String? {
         switch self {
         case let .processFailed(message):
             "终端启动失败：\(message)"
+        case let .applicationNotFound(name):
+            "未找到 \(name)，请先安装应用。"
+        case let .commandUnsupported(name):
+            "\(name) 当前只支持打开目录，不能运行 AI CLI。请在设置中选择其他终端。"
         }
     }
 }
 
 @MainActor
 protocol CLIExecuting {
+    func openDirectory(
+        _ directory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
+    ) async throws
+
     func execute(
         _ invocation: CLIInvocation,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
+    ) async throws
+
+    func executeConfigured(
+        _ profile: CLIProfile,
+        workingDirectory: URL,
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior
     ) async throws
@@ -189,26 +208,143 @@ protocol CLIExecuting {
 
 @MainActor
 struct ActionExecutor: CLIExecuting {
+    func openDirectory(
+        _ directory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
+    ) async throws {
+        switch terminalProfile {
+        case .automatic, .terminal, .iTerm:
+            let application = terminalProfile == .automatic
+                ? ExternalApplication.terminal
+                : terminalProfile.resolvedApplication
+            try await open(
+                [directory],
+                with: application
+            )
+        case .warp:
+            var components = URLComponents()
+            components.scheme = "warp"
+            components.host = "action"
+            components.path = terminalWindowBehavior == .newTab
+                ? "/new_tab"
+                : "/new_window"
+            components.queryItems = [
+                URLQueryItem(name: "path", value: directory.path)
+            ]
+            guard let url = components.url, NSWorkspace.shared.open(url) else {
+                throw ActionExecutorError.processFailed("无法打开 Warp URI。")
+            }
+        case .ghostty:
+            try await launch(
+                terminalProfile,
+                arguments: ["--working-directory=\(directory.path)"],
+                createsNewInstance: terminalWindowBehavior == .newWindow
+            )
+        case .wezTerm:
+            var arguments = ["start", "--cwd", directory.path]
+            if terminalWindowBehavior == .newTab {
+                arguments.append("--new-tab")
+            }
+            try await launch(
+                terminalProfile,
+                arguments: arguments,
+                createsNewInstance: terminalWindowBehavior == .newWindow
+            )
+        case .kitty:
+            try await launch(
+                terminalProfile,
+                arguments: ["--directory", directory.path],
+                // kitty 官方在 macOS 上建议 `open -a kitty.app -n`；没有启用
+                // remote control 时不能可靠地要求已有实例创建 tab。
+                createsNewInstance: true
+            )
+        }
+    }
+
     func execute(
         _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
+        guard terminalProfile.supportsCLIExecution else {
+            throw ActionExecutorError.commandUnsupported(terminalProfile.title)
+        }
         try await run(
-            invocation.command,
+            shellCommand: ShellCommandBuilder.command(
+                invocation.command,
+                in: invocation.workingDirectory
+            ),
             directory: invocation.workingDirectory,
             terminalProfile: terminalProfile,
             terminalWindowBehavior: terminalWindowBehavior
         )
     }
 
+    func executeConfigured(
+        _ profile: CLIProfile,
+        workingDirectory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
+    ) async throws {
+        guard profile.isValid else {
+            throw ActionExecutorError.processFailed("CLI 配置无效。")
+        }
+        guard terminalProfile.supportsCLIExecution else {
+            throw ActionExecutorError.commandUnsupported(terminalProfile.title)
+        }
+        try await run(
+            shellCommand: ShellCommandBuilder.command(
+                executable: profile.executable,
+                arguments: profile.arguments,
+                in: workingDirectory
+            ),
+            directory: workingDirectory,
+            terminalProfile: terminalProfile,
+            terminalWindowBehavior: terminalWindowBehavior
+        )
+    }
+
     private func run(
-        _ command: CLICommand,
+        shellCommand: String,
         directory: URL,
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
-        let shellCommand = ShellCommandBuilder.command(command, in: directory)
+        switch terminalProfile.launchStrategy {
+        case .openDirectoryOnly:
+            throw ActionExecutorError.commandUnsupported(terminalProfile.title)
+        case .executable:
+            let shellURL = Self.loginShellURL()
+            let shellArguments = LoginShellArguments.arguments(
+                shellName: shellURL.lastPathComponent,
+                script: shellCommand,
+                interactive: true
+            )
+            var arguments: [String]
+            switch terminalProfile {
+            case .wezTerm:
+                arguments = ["start", "--cwd", directory.path]
+                if terminalWindowBehavior == .newTab {
+                    arguments.append("--new-tab")
+                }
+                arguments += ["--", shellURL.path] + shellArguments
+            case .kitty:
+                arguments = ["--directory", directory.path, "--", shellURL.path]
+                    + shellArguments
+            default:
+                throw ActionExecutorError.commandUnsupported(terminalProfile.title)
+            }
+            try await launch(
+                terminalProfile,
+                arguments: arguments,
+                createsNewInstance: terminalProfile == .kitty
+                    || terminalWindowBehavior == .newWindow
+            )
+            return
+        case .appleScript:
+            break
+        }
         let script = Self.appleScript(
             terminalProfile: terminalProfile,
             terminalWindowBehavior: terminalWindowBehavior
@@ -309,6 +445,67 @@ struct ActionExecutor: CLIExecuting {
                 end tell
             end run
             """
+        case (.warp, _), (.ghostty, _), (.wezTerm, _), (.kitty, _):
+            // 这些 profile 不走 AppleScript；保持穷举，误调用时返回会失败的
+            // 明确信息，而不是悄悄落到 Terminal。
+            return "error \"该终端不支持 AppleScript 启动策略。\""
         }
+    }
+
+    private func open(
+        _ urls: [URL],
+        with application: ExternalApplication
+    ) async throws {
+        guard let applicationURL = installedURL(for: application) else {
+            throw ActionExecutorError.applicationNotFound(application.title)
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        _ = try await NSWorkspace.shared.open(
+            urls,
+            withApplicationAt: applicationURL,
+            configuration: configuration
+        )
+    }
+
+    private func launch(
+        _ profile: TerminalProfile,
+        arguments: [String],
+        createsNewInstance: Bool
+    ) async throws {
+        let application = profile.resolvedApplication
+        guard let applicationURL = installedURL(for: application) else {
+            throw ActionExecutorError.applicationNotFound(application.title)
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        configuration.arguments = arguments
+        configuration.createsNewApplicationInstance = createsNewInstance
+        do {
+            _ = try await NSWorkspace.shared.openApplication(
+                at: applicationURL,
+                configuration: configuration
+            )
+        } catch {
+            throw ActionExecutorError.processFailed(error.localizedDescription)
+        }
+    }
+
+    private func installedURL(for application: ExternalApplication) -> URL? {
+        let workspace = NSWorkspace.shared
+        return application.url(
+            bundleIdentifierLookup: {
+                workspace.urlForApplication(withBundleIdentifier: $0)
+            }
+        )
+    }
+
+    private static func loginShellURL() -> URL {
+        guard let user = getpwuid(getuid()),
+              let shell = user.pointee.pw_shell,
+              shell.pointee != 0 else {
+            return URL(fileURLWithPath: "/bin/zsh")
+        }
+        return URL(fileURLWithPath: String(cString: shell))
     }
 }

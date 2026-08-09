@@ -55,7 +55,7 @@ public struct TerminalInvocation: Equatable, Sendable {
             deepLink: deepLink,
             host: "terminal",
             allowedNames: [
-                "cwd", "token", "v", "ts", "nonce", "sig"
+                "cwd", "v", "ts", "nonce", "sig"
             ]
         ),
               DeepLinkSignature.authentication(in: deepLink) != nil,
@@ -64,7 +64,6 @@ public struct TerminalInvocation: Equatable, Sendable {
             return nil
         }
 
-        let authenticationToken = components.optionalSingle("token")
         let directory = URL(
             fileURLWithPath: path,
             isDirectory: true
@@ -78,7 +77,7 @@ public struct TerminalInvocation: Equatable, Sendable {
         }
 
         self.workingDirectory = directory
-        self.authenticationToken = authenticationToken
+        self.authenticationToken = nil
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {

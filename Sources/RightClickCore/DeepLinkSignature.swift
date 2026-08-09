@@ -9,7 +9,6 @@ public struct SignedDeepLinkAuthentication: Equatable, Sendable {
 
 public enum DeepLinkAuthentication: Equatable, Sendable {
     case unsigned
-    case legacyToken(String)
     case signed(SignedDeepLinkAuthentication)
 }
 
@@ -23,7 +22,7 @@ public enum DeepLinkSignature {
     public static let validityWindow: TimeInterval = 30
 
     private static let authenticationNames: Set<String> = [
-        "v", "ts", "nonce", "sig", "token"
+        "v", "ts", "nonce", "sig"
     ]
 
     public static func signedURL(
@@ -80,12 +79,6 @@ public enum DeepLinkSignature {
         }
         if authenticationItems.isEmpty {
             return .unsigned
-        }
-
-        if authenticationItems.count == 1,
-           let token = single("token", in: authenticationItems),
-           ExtensionRequestTokenStore.isValidToken(token) {
-            return .legacyToken(token)
         }
 
         guard authenticationItems.count == 4,

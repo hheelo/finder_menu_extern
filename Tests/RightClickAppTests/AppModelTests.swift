@@ -56,6 +56,31 @@ struct AppModelTests {
     }
 
     @Test
+    func configuredCLILooksUpLocalProfileBeforeExecution() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let profile = CLIProfile(
+            id: "gemini-main",
+            title: "Gemini",
+            executable: "gemini",
+            arguments: ["--model", "pro"],
+            menuSlot: 1
+        )
+        fixture.model.menuConfiguration.cliProfiles = [profile]
+        let invocation = ConfiguredCLIInvocation(
+            profileID: profile.id,
+            workingDirectory: fixture.directory,
+            authenticationToken: fixture.token
+        )
+
+        fixture.model.handle(url: try #require(invocation.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.executor.configuredProfiles == [profile])
+        #expect(fixture.executor.configuredDirectories == [fixture.directory])
+    }
+
+    @Test
     func multipleTrustedCLIRequestsExecuteWithoutAWindowQueue() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }
@@ -224,7 +249,7 @@ struct AppModelTests {
     }
 
     @Test
-    func legacyOpenRequestContinuesButRequestsFinderRestart() async throws {
+    func unsignedOpenRequestIsRejectedSilently() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }
         let invocation = OpenInvocation(
@@ -235,7 +260,6 @@ struct AppModelTests {
         fixture.model.handle(url: try #require(invocation.deepLink))
         await waitForMainQueue()
 
-        #expect(fixture.model.needsFinderRestartHint)
         #expect(fixture.notifier.messages.isEmpty)
         #expect(fixture.model.errorHistory.isEmpty)
     }
@@ -255,7 +279,6 @@ struct AppModelTests {
 
         #expect(fixture.notifier.messages.count == 1)
         #expect(fixture.model.errorHistory.count == 1)
-        #expect(!fixture.model.needsFinderRestartHint)
     }
 
     private func makeFixture() throws -> Fixture {
@@ -276,6 +299,9 @@ struct AppModelTests {
             extensionRequestToken: { token },
             notifier: notifier,
             applicationURL: { _ in nil },
+            menuConfigurationURL: directory.appendingPathComponent(
+                "menu.json"
+            ),
             performInitialRefresh: false
         )
         return Fixture(
@@ -311,7 +337,22 @@ struct AppModelTests {
 private final class RecordingExecutor: CLIExecuting {
     private(set) var invocations: [CLIInvocation] = []
     private(set) var windowBehaviors: [TerminalWindowBehavior] = []
+    private(set) var openedDirectories: [URL] = []
+    private(set) var configuredProfiles: [CLIProfile] = []
+    private(set) var configuredDirectories: [URL] = []
     var failureMessage: String?
+
+    func openDirectory(
+        _ directory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
+    ) async throws {
+        openedDirectories.append(directory)
+        windowBehaviors.append(terminalWindowBehavior)
+        if let failureMessage {
+            throw TestExecutionError(message: failureMessage)
+        }
+    }
 
     func execute(
         _ invocation: CLIInvocation,
@@ -319,6 +360,20 @@ private final class RecordingExecutor: CLIExecuting {
         terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
         invocations.append(invocation)
+        windowBehaviors.append(terminalWindowBehavior)
+        if let failureMessage {
+            throw TestExecutionError(message: failureMessage)
+        }
+    }
+
+    func executeConfigured(
+        _ profile: CLIProfile,
+        workingDirectory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior
+    ) async throws {
+        configuredProfiles.append(profile)
+        configuredDirectories.append(workingDirectory)
         windowBehaviors.append(terminalWindowBehavior)
         if let failureMessage {
             throw TestExecutionError(message: failureMessage)

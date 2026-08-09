@@ -38,9 +38,13 @@ final class FinderSync: FIFinderSync {
         }
 
         let context = context(for: placement)
+        // 不缓存：设置保存后下一次右键立即生效。缺失、损坏或未知版本
+        // 由 Core 回退完整默认菜单。
+        let configuration = currentMenuConfiguration()
         let nodes = RightClickMenu.nodes(
             placement: placement,
-            context: context
+            context: context,
+            configuration: configuration
         )
         guard !nodes.isEmpty else { return nil }
 
@@ -87,6 +91,32 @@ final class FinderSync: FIFinderSync {
                 placement: placement,
                 isEnabled: isEnabled
             )
+        case let .configuredCLI(profile, isEnabled):
+            let item = NSMenuItem(
+                title: "在终端运行 \(profile.title)",
+                action: #selector(performAction(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.tag = ConfiguredCLIMenuItemPayload(
+                menuSlot: profile.menuSlot,
+                placement: placement
+            ).menuTag
+            item.isEnabled = isEnabled && currentToken() != nil
+            return item
+        case let .customTemplate(template, isEnabled):
+            let item = NSMenuItem(
+                title: template.title,
+                action: #selector(performAction(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.tag = CustomTemplateMenuItemPayload(
+                menuSlot: template.menuSlot,
+                placement: placement
+            ).menuTag
+            item.isEnabled = isEnabled
+            return item
         case let .submenu(title, isEnabled, items):
             let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let submenu = Self.makeMenu(title: title)
@@ -125,7 +155,9 @@ final class FinderSync: FIFinderSync {
         ).menuTag
         // 宿主型动作全部依赖认证。令牌获取失败时菜单先置灰；下次构建菜单或
         // 执行动作会再次尝试，不会让一次初始化竞争锁死整个扩展进程。
-        item.isEnabled = isEnabled && (
+        let clipboardRequirementIsMet = action != .createFileFromClipboard
+            || NSPasteboard.general.string(forType: .string)?.isEmpty == false
+        item.isEnabled = isEnabled && clipboardRequirementIsMet && (
             !FinderActionPolicy.requiresAuthenticatedHost(action) ||
                 currentToken() != nil
         )
@@ -133,6 +165,14 @@ final class FinderSync: FIFinderSync {
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {
+        if let configured = ConfiguredCLIMenuItemPayload(menuTag: sender.tag) {
+            performConfiguredCLI(configured)
+            return
+        }
+        if let template = CustomTemplateMenuItemPayload(menuTag: sender.tag) {
+            performCustomTemplate(template)
+            return
+        }
         guard let payload = RightClickMenuItemPayload(menuTag: sender.tag) else {
             logger.error(
                 "菜单项未携带可识别的动作，tag=\(sender.tag, privacy: .public)"
@@ -174,10 +214,40 @@ final class FinderSync: FIFinderSync {
                 }
                 let createdURL = try fileCreator.create(template, in: directory)
                 NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+            case .createFolder:
+                guard let directory = context.creationDirectory else {
+                    throw FinderActionError.invalidTarget
+                }
+                let createdURL = try fileCreator.createDirectory(in: directory)
+                NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+            case .createFileFromClipboard:
+                guard let directory = context.creationDirectory,
+                      let text = NSPasteboard.general.string(forType: .string),
+                      !text.isEmpty else {
+                    throw FinderActionError.invalidTarget
+                }
+                let createdURL = try fileCreator.create(
+                    contents: Data(text.utf8),
+                    preferredFilename: "Untitled.txt",
+                    in: directory
+                )
+                NSWorkspace.shared.activateFileViewerSelecting([createdURL])
             case .openInVSCode:
                 try open(context.effectiveURLs, with: .visualStudioCode)
             case .openInCodex:
                 try open(context.effectiveURLs, with: .codex)
+            case .openInCursor:
+                try open(context.effectiveURLs, with: .cursor)
+            case .openInZed:
+                try open(context.effectiveURLs, with: .zed)
+            case .openInSublimeText:
+                try open(context.effectiveURLs, with: .sublimeText)
+            case .openInXcode:
+                try open(context.effectiveURLs, with: .xcode)
+            case .openInJetBrains:
+                try open(context.effectiveURLs, with: .jetBrains)
+            case .openInDefaultApplication:
+                try open(context.effectiveURLs, with: .systemDefault)
             case .openInTerminal:
                 guard let token = currentToken() else {
                     throw FinderActionError.authenticationUnavailable
@@ -207,6 +277,77 @@ final class FinderSync: FIFinderSync {
                 reportToHost(error.localizedDescription)
             }
         }
+    }
+
+    private func performConfiguredCLI(_ payload: ConfiguredCLIMenuItemPayload) {
+        let configuration = currentMenuConfiguration()
+        guard let profile = configuration.cliProfiles.first(where: {
+            $0.menuSlot == payload.menuSlot && $0.isEnabled && $0.isValid
+        }) else {
+            logger.error("动态 CLI 配置已不存在，slot=\(payload.menuSlot, privacy: .public)")
+            return
+        }
+        let context = context(for: payload.placement)
+        do {
+            guard let token = currentToken() else {
+                throw FinderActionError.authenticationUnavailable
+            }
+            guard let directory = context.workingDirectory,
+                  let deepLink = ConfiguredCLIInvocation(
+                      profileID: profile.id,
+                      workingDirectory: directory,
+                      authenticationToken: token
+                  ).deepLink else {
+                throw FinderActionError.invalidWorkingDirectory
+            }
+            logger.notice(
+                "执行动态CLI id=\(profile.id, privacy: .public) slot=\(profile.menuSlot, privacy: .public)"
+            )
+            openHost(with: deepLink)
+        } catch {
+            logger.error("动态 CLI 启动失败：\(error.localizedDescription, privacy: .public)")
+            if FinderActionPolicy.shouldReportToHost(error) {
+                reportToHost(error.localizedDescription)
+            }
+        }
+    }
+
+    private func performCustomTemplate(_ payload: CustomTemplateMenuItemPayload) {
+        let configuration = currentMenuConfiguration()
+        guard let template = configuration.customTemplates.first(where: {
+            $0.menuSlot == payload.menuSlot && $0.isValid
+        }) else {
+            logger.error("自定义模板配置已不存在，slot=\(payload.menuSlot, privacy: .public)")
+            return
+        }
+        let context = context(for: payload.placement)
+        do {
+            guard let directory = context.creationDirectory,
+                  let configurationURL = MenuConfigurationFile.extensionURL() else {
+                throw FinderActionError.invalidTarget
+            }
+            let source = MenuConfigurationFile.mirroredTemplatesDirectory(
+                configurationURL: configurationURL
+            ).appendingPathComponent(template.filename)
+            let contents = try Data(contentsOf: source)
+            let createdURL = try fileCreator.create(
+                contents: contents,
+                preferredFilename: template.filename,
+                in: directory
+            )
+            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+        } catch {
+            logger.error("自定义模板创建失败：\(error.localizedDescription, privacy: .public)")
+            if FinderActionPolicy.shouldReportToHost(error) {
+                reportToHost(error.localizedDescription)
+            }
+        }
+    }
+
+    private func currentMenuConfiguration() -> MenuConfiguration {
+        MenuConfigurationFile.extensionURL().map {
+            MenuConfigurationFile.load(from: $0)
+        } ?? .default
     }
 
     private func copy(_ value: String) throws {

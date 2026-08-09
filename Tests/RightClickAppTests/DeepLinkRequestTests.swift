@@ -23,27 +23,35 @@ struct DeepLinkRequestTests {
             targets: [directory],
             authenticationToken: token
         )
+        let configured = ConfiguredCLIInvocation(
+            profileID: "gemini-main",
+            workingDirectory: directory,
+            authenticationToken: token
+        )
 
         let cliRequest = try DeepLinkRequest(
                 deepLink: #require(cli.deepLink),
                 expectedAuthenticationToken: token
-            )
+        )
         #expect(cliRequest.payload == .cli(cli))
-        #expect(cliRequest.authentication == .authenticated)
 
         let terminalRequest = try DeepLinkRequest(
                 deepLink: #require(terminal.deepLink),
                 expectedAuthenticationToken: token
-            )
+        )
         #expect(terminalRequest.payload == .terminal(terminal))
-        #expect(terminalRequest.authentication == .authenticated)
 
         let openRequest = try DeepLinkRequest(
                 deepLink: #require(open.deepLink),
                 expectedAuthenticationToken: token
-            )
+        )
         #expect(openRequest.payload == .open(open))
-        #expect(openRequest.authentication == .authenticated)
+
+        let configuredRequest = try DeepLinkRequest(
+            deepLink: #require(configured.deepLink),
+            expectedAuthenticationToken: token
+        )
+        #expect(configuredRequest.payload == .configuredCLI(configured))
     }
 
     @Test
@@ -105,55 +113,29 @@ struct DeepLinkRequestTests {
     }
 
     @Test
-    func authenticatesTerminalAndOpenWithLegacyTransition() throws {
+    func rejectsUnsignedTerminalAndOpenAfterTransitionRemoval() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let expectedToken = ExtensionRequestTokenStore.makeToken()
-        let wrongToken = ExtensionRequestTokenStore.makeToken()
-
-        let legacyTerminal = TerminalInvocation(workingDirectory: directory)
-        let legacyOpen = OpenInvocation(
+        let unsignedTerminal = TerminalInvocation(workingDirectory: directory)
+        let unsignedOpen = OpenInvocation(
             application: .visualStudioCode,
             targets: [directory]
         )
-        #expect(
-            try DeepLinkRequest(
-                deepLink: #require(legacyTerminal.deepLink),
-                expectedAuthenticationToken: expectedToken
-            ).authentication == .legacyUnsigned
+        expectRejection(
+            try #require(unsignedTerminal.deepLink),
+            expected: .invalidTerminal,
+            authenticationToken: expectedToken
         )
-        #expect(
-            try DeepLinkRequest(
-                deepLink: #require(legacyOpen.deepLink),
-                expectedAuthenticationToken: expectedToken
-            ).authentication == .legacyUnsigned
+        expectRejection(
+            try #require(unsignedOpen.deepLink),
+            expected: .invalidOpen,
+            authenticationToken: expectedToken
         )
-
-        for url in [
-            TerminalInvocation(
-                workingDirectory: directory,
-                authenticationToken: wrongToken
-            ).deepLink,
-            OpenInvocation(
-                application: .visualStudioCode,
-                targets: [directory],
-                authenticationToken: wrongToken
-            ).deepLink
-        ] {
-            do {
-                _ = try DeepLinkRequest(
-                    deepLink: #require(url),
-                    expectedAuthenticationToken: expectedToken
-                )
-                Issue.record("令牌不匹配的请求本应被拒绝")
-            } catch let error as DeepLinkRequestError {
-                #expect(error == .invalidTerminal || error == .invalidOpen)
-            }
-        }
     }
 
     @Test
-    func acceptsLegacyTokenDuringUpgradeTransition() throws {
+    func rejectsLegacyPlaintextToken() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let token = ExtensionRequestTokenStore.makeToken()
@@ -166,11 +148,11 @@ struct DeepLinkRequestTests {
             URLQueryItem(name: "token", value: token)
         ]
 
-        let request = try DeepLinkRequest(
-            deepLink: #require(components.url),
-            expectedAuthenticationToken: token
+        expectRejection(
+            try #require(components.url),
+            expected: .invalidCLI,
+            authenticationToken: token
         )
-        #expect(request.authentication == .legacyToken)
     }
 
     @Test

@@ -46,7 +46,7 @@ public struct ErrorInvocation: Equatable, Sendable {
             deepLink: deepLink,
             host: "error",
             allowedNames: [
-                "message", "token", "v", "ts", "nonce", "sig"
+                "message", "v", "ts", "nonce", "sig"
             ]
         ),
         DeepLinkSignature.authentication(in: deepLink) != nil,
@@ -57,7 +57,7 @@ public struct ErrorInvocation: Equatable, Sendable {
         }
 
         self.message = message
-        self.authenticationToken = components.optionalSingle("token")
+        self.authenticationToken = nil
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {

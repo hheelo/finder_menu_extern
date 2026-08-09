@@ -12,6 +12,14 @@ public enum RightClickAction: Codable, Equatable, Sendable {
     case copyFileURL
     case copyShellPath
     case copyParentPath
+    case openInCursor
+    case openInZed
+    case openInSublimeText
+    case openInXcode
+    case openInJetBrains
+    case openInDefaultApplication
+    case createFolder
+    case createFileFromClipboard
 
     public var title: String {
         switch self {
@@ -26,6 +34,14 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .copyFileURL: "复制 file URL"
         case .copyShellPath: "复制 Shell 引用路径"
         case .copyParentPath: "复制父目录路径"
+        case .openInCursor: "用 Cursor 打开"
+        case .openInZed: "用 Zed 打开"
+        case .openInSublimeText: "用 Sublime Text 打开"
+        case .openInXcode: "用 Xcode 打开"
+        case .openInJetBrains: "用 JetBrains IDE 打开"
+        case .openInDefaultApplication: "用默认应用打开"
+        case .createFolder: "新建文件夹"
+        case .createFileFromClipboard: "从剪贴板新建文本文件"
         }
     }
 
@@ -45,8 +61,20 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .copyFileURL: "copyFileURL"
         case .copyShellPath: "copyShellPath"
         case .copyParentPath: "copyParentPath"
+        case .openInCursor: "openInCursor"
+        case .openInZed: "openInZed"
+        case .openInSublimeText: "openInSublimeText"
+        case .openInXcode: "openInXcode"
+        case .openInJetBrains: "openInJetBrains"
+        case .openInDefaultApplication: "openInDefaultApplication"
+        case .createFolder: "createFolder"
+        case .createFileFromClipboard: "createFileFromClipboard"
         }
     }
+
+    /// 菜单配置文件使用的稳定标识。它与 `menuTag` 分离：用户排序不能改变
+    /// 已发布的跨进程整数编码。
+    public var configurationID: String { logDescription }
 }
 
 public extension RightClickAction {
@@ -59,6 +87,11 @@ public extension RightClickAction {
         + FileTemplate.allCases.map { .createFile($0) }
         // 必须追加，不能插入前面：已发出的菜单 tag 是跨进程契约。
         + [.copyFileURL, .copyShellPath, .copyParentPath]
+        + [
+            .openInCursor, .openInZed, .openInSublimeText, .openInXcode,
+            .openInJetBrains, .openInDefaultApplication
+        ]
+        + [.createFolder, .createFileFromClipboard]
 
     /// 菜单项要跨进程送到 Finder、再把点击送回扩展，途中只有 plist 安全的值
     /// 能存活；自定义对象放进 `representedObject` 到不了对面，回调里取到的是
@@ -76,6 +109,15 @@ public extension RightClickAction {
         let index = menuTag - 1
         guard Self.allMenuActions.indices.contains(index) else { return nil }
         self = Self.allMenuActions[index]
+    }
+
+    init?(configurationID: String) {
+        guard let action = Self.allMenuActions.first(
+            where: { $0.configurationID == configurationID }
+        ) else {
+            return nil
+        }
+        self = action
     }
 }
 
@@ -108,7 +150,68 @@ public struct RightClickMenuItemPayload: Equatable, Sendable {
     }
 }
 
-private extension MenuPlacement {
+/// 动态 CLI 使用 501...900 的动作码，slot 持久化在 0600 配置文件中。
+/// 点击时扩展按 slot 重新查配置，因此命令和参数既不进入 tag，也不进入 URL。
+public struct ConfiguredCLIMenuItemPayload: Equatable, Sendable {
+    public let menuSlot: Int
+    public let placement: MenuPlacement
+
+    private static let actionStride = 1_000
+    private static let dynamicBase = 500
+
+    public init(menuSlot: Int, placement: MenuPlacement) {
+        self.menuSlot = menuSlot
+        self.placement = placement
+    }
+
+    public var menuTag: Int {
+        placement.menuTagCode * Self.actionStride
+            + Self.dynamicBase + menuSlot
+    }
+
+    public init?(menuTag: Int) {
+        let placementCode = menuTag / Self.actionStride
+        let actionCode = menuTag % Self.actionStride
+        let slot = actionCode - Self.dynamicBase
+        guard CLIProfile.validMenuSlots.contains(slot),
+              let placement = MenuPlacement(menuTagCode: placementCode) else {
+            return nil
+        }
+        self.init(menuSlot: slot, placement: placement)
+    }
+}
+
+/// 自定义模板使用 101...400 的动作码；文件名和内容只从 0600 镜像读取。
+public struct CustomTemplateMenuItemPayload: Equatable, Sendable {
+    public let menuSlot: Int
+    public let placement: MenuPlacement
+
+    private static let actionStride = 1_000
+    private static let dynamicBase = 100
+
+    public init(menuSlot: Int, placement: MenuPlacement) {
+        self.menuSlot = menuSlot
+        self.placement = placement
+    }
+
+    public var menuTag: Int {
+        placement.menuTagCode * Self.actionStride
+            + Self.dynamicBase + menuSlot
+    }
+
+    public init?(menuTag: Int) {
+        let placementCode = menuTag / Self.actionStride
+        let actionCode = menuTag % Self.actionStride
+        let slot = actionCode - Self.dynamicBase
+        guard CustomFileTemplate.validMenuSlots.contains(slot),
+              let placement = MenuPlacement(menuTagCode: placementCode) else {
+            return nil
+        }
+        self.init(menuSlot: slot, placement: placement)
+    }
+}
+
+extension MenuPlacement {
     var menuTagCode: Int {
         switch self {
         case .items: 1

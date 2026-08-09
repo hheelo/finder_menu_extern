@@ -56,4 +56,35 @@ struct FileCreatorTests {
         #expect(Set(created.map(\.lastPathComponent)).count == 8)
         #expect(created.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
     }
+
+    @Test
+    func createsFoldersAndClipboardStyleContentsWithoutOverwriting() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let creator = FileCreator()
+        let firstFolder = try creator.createDirectory(in: root)
+        let secondFolder = try creator.createDirectory(in: root)
+        let file = try creator.create(
+            contents: Data("clipboard text".utf8),
+            preferredFilename: "Untitled.txt",
+            in: root
+        )
+
+        #expect(firstFolder.lastPathComponent == "Untitled Folder")
+        #expect(secondFolder.lastPathComponent == "Untitled Folder 2")
+        #expect(try String(contentsOf: file, encoding: .utf8) == "clipboard text")
+        #expect(throws: FileCreatorError.self) {
+            try creator.create(
+                contents: Data(),
+                preferredFilename: "../escape",
+                in: root
+            )
+        }
+    }
 }

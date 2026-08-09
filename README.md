@@ -3,9 +3,11 @@
 RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者常用操作：
 
 - 复制所选文件的路径、文件名、file URL、Shell 引用路径或父目录（支持多选）
-- 用 Visual Studio Code 或 ChatGPT 打开
-- 在终端打开目录，或运行 Codex CLI / Claude Code；可选新标签页或新窗口，默认优先 iTerm2
-- 新建 TXT、Markdown、Python、Shell、HTML、JSON、CSV 文件
+- 用 Visual Studio Code、ChatGPT、Cursor、Zed、Sublime Text、Xcode、JetBrains 或系统默认应用打开
+- 支持 Terminal、iTerm2、Warp、Ghostty、WezTerm、Kitty；可选新标签页或新窗口
+- 运行 Codex CLI / Claude Code，或配置自己的 CLI 可执行名和逐项参数
+- 新建内置模板文件、自定义模板文件、文件夹，或从文本剪贴板新建文件
+- 可启用、禁用和排序菜单项，也可全部收进一个 RightClick 子菜单
 - 支持文件、文件夹、窗口空白处、桌面和 Finder 侧边栏
 - Finder 动作全程不显示宿主窗口；AI CLI 请求经本机扩展认证后直接打开终端
 - 宿主以附属应用运行，Dock 里不占图标；双击 App 即可打开设置与诊断
@@ -24,8 +26,9 @@ RightClickCore.framework
 └── 动作模型、选区规则、文件模板、CLI 链接与设置
 ```
 
-Finder 扩展直接完成复制、新建文件以及打开编辑器。运行 CLI 时，扩展通过只包含
-工具名称与工作目录的 `rightclick://run` 链接唤起宿主 App。项目不依赖 App
+Finder 扩展直接完成复制和文件创建；打开编辑器、终端或运行 CLI 时，通过签名
+深链唤起宿主 App。自定义 CLI 深链只包含配置 ID 与工作目录，不包含可执行名或参数。
+项目不依赖 App
 Group、开发团队或 provisioning profile。
 
 ## 安装
@@ -77,12 +80,12 @@ Finder，避免覆盖升级后继续使用旧扩展会话。
 
 ## 安全与诊断
 
-- `rightclick://` 只接受固定的 `codex` / `claude` 工具标识
+- `rightclick://` 只接受固定动作、白名单应用或本机 `0600` 配置中的 CLI ID
 - 工作目录必须是现有的绝对文件夹路径
 - Finder 的打开与 CLI 操作都由 RightClick 在后台处理，不显示宿主窗口
 - 新版深链使用 HMAC-SHA256 签名，随机密钥不进入 URL；时间戳与 nonce 限制重放
 - 路径通过 `osascript` 参数传递，不会插入 AppleScript 源码
-- 设置页会检测 Finder 扩展、编辑器、iTerm2 与 CLI
+- 设置页可管理菜单、终端、自定义 CLI 与模板，并检测 Finder 扩展、编辑器与 CLI
 - Terminal 的“新标签页”使用系统快捷键，首次使用需在“隐私与安全性 → 辅助功能”中允许 RightClick；也可改用新窗口
 - 主窗口可复制诊断信息，便于提交 Issue
 
@@ -109,7 +112,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.2.5 ./scripts/build-release.sh
+VERSION=0.7.0 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。

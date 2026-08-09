@@ -74,6 +74,7 @@ struct ExternalApplicationTests {
     func resolvesTerminalWithFallback() {
         let withITerm: (ExternalApplication) -> Bool = { _ in true }
         let withoutITerm: (ExternalApplication) -> Bool = { $0 != .iTerm }
+        let withoutOptionalTerminals: (ExternalApplication) -> Bool = { _ in false }
 
         #expect(TerminalProfile.automatic.resolved(isInstalled: withITerm) == .iTerm)
         #expect(TerminalProfile.automatic.resolved(isInstalled: withoutITerm) == .terminal)
@@ -88,5 +89,28 @@ struct ExternalApplicationTests {
             TerminalProfile.automatic.resolved(isInstalled: withoutITerm)
                 .resolvedApplication == .terminal
         )
+
+        #expect(
+            TerminalProfile.warp.resolved(
+                isInstalled: withoutOptionalTerminals
+            ) == .terminal
+        )
+        #expect(TerminalProfile.wezTerm.resolved(isInstalled: { _ in true }) == .wezTerm)
+        #expect(!TerminalProfile.warp.supportsCLIExecution)
+        #expect(!TerminalProfile.ghostty.supportsCLIExecution)
+        #expect(TerminalProfile.wezTerm.supportsCLIExecution)
+        #expect(TerminalProfile.kitty.supportsCLIExecution)
+    }
+
+    @Test
+    func editorAndTerminalWhitelistOnlyContainsStableUniqueIdentifiers() {
+        let identifiers = ExternalApplication.known.map(\.identifier)
+        #expect(Set(identifiers).count == identifiers.count)
+        for application in [
+            ExternalApplication.cursor, .zed, .sublimeText, .xcode,
+            .jetBrains, .warp, .ghostty, .wezTerm, .kitty
+        ] {
+            #expect(ExternalApplication(identifier: application.identifier) == application)
+        }
     }
 }

@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.6.2 ./scripts/build-release.sh
+VERSION=0.7.0 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -65,9 +65,16 @@ VERSION=0.6.2 ./scripts/build-release.sh
   `rightclick://` 链接，确认不会执行动作或显示通知
 - 对扩展生成的 v2 请求分别篡改工具、路径、参数顺序、时间戳和签名，确认全部拒绝；
   同一 URL 连续提交两次，第二次必须因 nonce 重放被拒绝
-- v0.6.x 过渡期：安装 v0.6.1 并触发一次动作，再升级但不重启 Finder；确认旧扩展
-  的 `token=` 请求仍可用。更早版本的无令牌 terminal/open 也应软过渡，主窗口
-  出现橙色“重启 Finder”提示。这些兼容分支计划在 v0.7.0 移除
+- 安装 v0.6.x 后升级到 v0.7.0，确认 App 自动刷新 Finder 会话；旧版 `token=` 与
+  无签名 terminal/open 链接必须被拒绝，重启 Finder 后所有新动作恢复正常
+- 在设置里禁用、排序菜单项并切换 RightClick 子菜单，确认下一次右键立即生效
+- 分别测试 Warp、Ghostty、WezTerm、Kitty；Warp/Ghostty 的 AI CLI 菜单应置灰，
+  WezTerm/Kitty 应能在所选目录运行命令。再逐一测试新增编辑器与默认应用
+- 添加带参数的自定义 CLI，确认 URL 中只有配置 ID、没有命令或参数，并测试含空格、
+  单引号的参数按单个参数传递
+- 向 `~/Library/Application Support/RightClick/Templates/` 放入普通文件、子目录和
+  符号链接，刷新后确认只出现普通文件；创建结果保留内容且不覆盖同名文件
+- 测试新建文件夹与从文本剪贴板新建文件；空剪贴板不得写入空文件
 - 卸载 VS Code 后触发“用 VS Code 打开”，确认收到本地通知、错误进入最近 10 条
   历史，并且 RightClick 不抢焦点；拒绝通知权限时仍应保留错误历史
 - 右键 `/Applications` 中的 App 新建 TXT，确认目标是 App 的父目录（或收到权限

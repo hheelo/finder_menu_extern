@@ -98,9 +98,91 @@ public extension ExternalApplication {
         names: ["iTerm", "iTerm2"]
     )
 
+    static let warp = ExternalApplication(
+        identifier: "warp",
+        title: "Warp",
+        bundleIdentifiers: ["dev.warp.Warp-Stable", "dev.warp.Warp-Preview"],
+        names: ["Warp", "WarpPreview"]
+    )
+
+    static let ghostty = ExternalApplication(
+        identifier: "ghostty",
+        title: "Ghostty",
+        bundleIdentifiers: ["com.mitchellh.ghostty"],
+        names: ["Ghostty"]
+    )
+
+    static let wezTerm = ExternalApplication(
+        identifier: "wezterm",
+        title: "WezTerm",
+        bundleIdentifiers: ["com.github.wez.wezterm"],
+        names: ["WezTerm"]
+    )
+
+    static let kitty = ExternalApplication(
+        identifier: "kitty",
+        title: "kitty",
+        bundleIdentifiers: ["net.kovidgoyal.kitty"],
+        names: ["kitty"]
+    )
+
+    static let cursor = ExternalApplication(
+        identifier: "cursor",
+        title: "Cursor",
+        bundleIdentifiers: ["com.todesktop.230313mzl4w4u92"],
+        names: ["Cursor"]
+    )
+
+    static let zed = ExternalApplication(
+        identifier: "zed",
+        title: "Zed",
+        bundleIdentifiers: ["dev.zed.Zed", "dev.zed.Zed-Preview"],
+        names: ["Zed", "Zed Preview"]
+    )
+
+    static let sublimeText = ExternalApplication(
+        identifier: "sublime-text",
+        title: "Sublime Text",
+        bundleIdentifiers: ["com.sublimetext.4", "com.sublimetext.3"],
+        names: ["Sublime Text"]
+    )
+
+    static let xcode = ExternalApplication(
+        identifier: "xcode",
+        title: "Xcode",
+        bundleIdentifiers: ["com.apple.dt.Xcode"],
+        names: ["Xcode"]
+    )
+
+    static let jetBrains = ExternalApplication(
+        identifier: "jetbrains",
+        title: "JetBrains IDE",
+        bundleIdentifiers: [
+            "com.jetbrains.intellij", "com.jetbrains.WebStorm",
+            "com.jetbrains.PyCharm", "com.jetbrains.CLion",
+            "com.jetbrains.goland", "com.jetbrains.rider",
+            "com.jetbrains.RubyMine", "com.jetbrains.datagrip"
+        ],
+        names: [
+            "IntelliJ IDEA", "WebStorm", "PyCharm", "CLion", "GoLand",
+            "Rider", "RubyMine", "DataGrip"
+        ]
+    )
+
+    /// 宿主把这个稳定标识解释为 `NSWorkspace` 的系统默认处理程序；没有
+    /// Bundle ID，因而不能走普通的应用定位分支。
+    static let systemDefault = ExternalApplication(
+        identifier: "system-default",
+        title: "默认应用",
+        bundleIdentifiers: [],
+        names: []
+    )
+
     /// 深链只接受这里列出的 App，避免宿主被诱导去启动任意程序。
     static let known: [ExternalApplication] = [
-        .visualStudioCode, .codex, .terminal, .iTerm
+        .visualStudioCode, .codex, .terminal, .iTerm,
+        .warp, .ghostty, .wezTerm, .kitty,
+        .cursor, .zed, .sublimeText, .xcode, .jetBrains, .systemDefault
     ]
 
     init?(identifier: String) {

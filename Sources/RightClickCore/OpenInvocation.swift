@@ -63,7 +63,7 @@ public struct OpenInvocation: Equatable, Sendable {
             deepLink: deepLink,
             host: "open",
             allowedNames: [
-                "app", "path", "token", "v", "ts", "nonce", "sig"
+                "app", "path", "v", "ts", "nonce", "sig"
             ]
         ),
               DeepLinkSignature.authentication(in: deepLink) != nil,
@@ -80,7 +80,6 @@ public struct OpenInvocation: Equatable, Sendable {
             return nil
         }
 
-        let authenticationToken = components.optionalSingle("token")
         let urls = paths.map {
             URL(fileURLWithPath: $0).standardizedFileURL
         }
@@ -90,7 +89,7 @@ public struct OpenInvocation: Equatable, Sendable {
 
         self.application = application
         self.targets = urls
-        self.authenticationToken = authenticationToken
+        self.authenticationToken = nil
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {

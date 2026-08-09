@@ -55,7 +55,6 @@ struct ContentView: View {
                     model.restartFinder()
                 }
                 .buttonStyle(.bordered)
-                .tint(model.needsFinderRestartHint ? .orange : .accentColor)
 
                 Label(
                     model.extensionEnabled
@@ -69,15 +68,6 @@ struct ContentView: View {
                     .foregroundStyle(
                         model.extensionEnabled ? .green : .secondary
                     )
-            }
-
-            if model.needsFinderRestartHint {
-                Label(
-                    "检测到升级前的 Finder 扩展会话；请重启 Finder 以启用完整的安全认证。",
-                    systemImage: "arrow.clockwise.circle.fill"
-                )
-                .font(.callout)
-                .foregroundStyle(.orange)
             }
 
             Divider()

@@ -4,23 +4,13 @@ import RightClickCore
 struct DeepLinkRequest: Equatable {
     enum Payload: Equatable {
         case cli(CLIInvocation)
+        case configuredCLI(ConfiguredCLIInvocation)
         case terminal(TerminalInvocation)
         case open(OpenInvocation)
         case error(ErrorInvocation)
     }
 
-    enum Authentication: Equatable {
-        case authenticated
-        /// v0.6.1 扩展仍会把令牌直接放进 URL。v0.7.0 与无签名
-        /// terminal/open 过渡分支一起移除。
-        case legacyToken
-        /// 只用于升级过渡：新宿主可能暂时收到旧 Finder 扩展发出的无令牌
-        /// terminal/open 请求。v0.7.0 移除该兼容分支。
-        case legacyUnsigned
-    }
-
     let payload: Payload
-    let authentication: Authentication
 
     init(
         deepLink url: URL,
@@ -38,6 +28,11 @@ struct DeepLinkRequest: Equatable {
                 throw DeepLinkRequestError.invalidCLI
             }
             payload = .cli(invocation)
+        case "run-configured":
+            guard let invocation = ConfiguredCLIInvocation(deepLink: url) else {
+                throw DeepLinkRequestError.invalidCLI
+            }
+            payload = .configuredCLI(invocation)
         case "terminal":
             guard let invocation = TerminalInvocation(deepLink: url) else {
                 throw DeepLinkRequestError.invalidTerminal
@@ -73,22 +68,8 @@ struct DeepLinkRequest: Equatable {
                   ), consumeNonce(signed.nonce, now) else {
                 throw Self.rejection(for: payload)
             }
-            authentication = .authenticated
-        case let .legacyToken(token):
-            guard ExtensionRequestTokenStore.tokensMatch(
-                token,
-                expectedAuthenticationToken
-            ) else {
-                throw Self.rejection(for: payload)
-            }
-            authentication = .legacyToken
         case .unsigned:
-            switch payload {
-            case .terminal, .open:
-                authentication = .legacyUnsigned
-            case .cli, .error:
-                throw Self.rejection(for: payload)
-            }
+            throw Self.rejection(for: payload)
         }
     }
 
@@ -96,7 +77,7 @@ struct DeepLinkRequest: Equatable {
         for payload: Payload
     ) -> DeepLinkRequestError {
         switch payload {
-        case .cli: .invalidCLI
+        case .cli, .configuredCLI: .invalidCLI
         case .terminal: .invalidTerminal
         case .open: .invalidOpen
         case .error: .invalidError

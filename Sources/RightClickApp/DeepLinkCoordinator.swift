@@ -4,7 +4,6 @@ import RightClickCore
 enum DeepLinkEvent {
     case status(String)
     case trustedFailure(String)
-    case legacyRequest
 }
 
 /// 深链的解析、认证与分派入口。AppModel 只发布状态并响应结果事件。
@@ -15,18 +14,23 @@ final class DeepLinkCoordinator {
     private let terminalResolver: TerminalResolver
     private let applicationURL: @MainActor (ExternalApplication) -> URL?
     private let nonceCache: NonceCache
+    private let menuConfiguration: @MainActor () -> MenuConfiguration
 
     init(
         extensionRequestToken: @escaping @MainActor () -> String?,
         executor: any CLIExecuting,
         terminalResolver: TerminalResolver = TerminalResolver(),
         nonceCache: NonceCache = NonceCache(),
+        menuConfiguration: @escaping @MainActor () -> MenuConfiguration = {
+            .default
+        },
         applicationURL: @escaping @MainActor (ExternalApplication) -> URL?
     ) {
         self.extensionRequestToken = extensionRequestToken
         self.executor = executor
         self.terminalResolver = terminalResolver
         self.nonceCache = nonceCache
+        self.menuConfiguration = menuConfiguration
         self.applicationURL = applicationURL
     }
 
@@ -54,15 +58,8 @@ final class DeepLinkCoordinator {
             return
         }
 
-        // 旧 token URL 在过渡期仍经过常数时间密钥校验，其失败
-        // 可以安全通知用户。只有无签名 terminal/open 不是可信来源。
-        let isAuthenticated = request.authentication != .legacyUnsigned
-        if request.authentication != .authenticated {
-            // 升级后 Finder 可能短暂保留旧扩展。这个兼容分支计划在 v0.7.0
-            // 移除；在此之前让动作继续工作，并提示用户刷新 Finder 会话。
-            appLogger.notice("收到旧版扩展请求，建议重启 Finder")
-            emit(.legacyRequest)
-        }
+        // 能到达分派层的请求都已通过 HMAC、时间窗口和 nonce 重放校验。
+        let isAuthenticated = true
 
         switch request.payload {
         case let .cli(invocation):
@@ -84,16 +81,34 @@ final class DeepLinkCoordinator {
                 isAuthenticated: isAuthenticated,
                 emit: emit
             )
+        case let .configuredCLI(invocation):
+            appLogger.notice(
+                "收到深链 类型=configured-cli id=\(invocation.profileID, privacy: .public)"
+            )
+            guard let profile = menuConfiguration().cliProfiles.first(where: {
+                $0.id == invocation.profileID && $0.isEnabled && $0.isValid
+            }) else {
+                reportFailure(
+                    "CLI 配置不存在或已停用。",
+                    isAuthenticated: isAuthenticated,
+                    emit: emit
+                )
+                return
+            }
+            executeConfigured(
+                profile,
+                directory: invocation.workingDirectory,
+                terminalProfile: terminalProfile,
+                terminalWindowBehavior: terminalWindowBehavior,
+                isAuthenticated: isAuthenticated,
+                emit: emit
+            )
         case let .terminal(invocation):
             appLogger.notice("收到深链 类型=terminal")
-            let application = terminalResolver.resolvedApplication(
-                for: terminalProfile
-            )
-            open(
-                OpenInvocation(
-                    application: application,
-                    targets: [invocation.workingDirectory]
-                ),
+            openTerminal(
+                invocation.workingDirectory,
+                terminalProfile: terminalProfile,
+                terminalWindowBehavior: terminalWindowBehavior,
                 isAuthenticated: isAuthenticated,
                 emit: emit
             )
@@ -124,6 +139,20 @@ final class DeepLinkCoordinator {
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         let workspace = NSWorkspace.shared
+        if invocation.application == .systemDefault {
+            emit(.status("正在用默认应用打开…"))
+            let results = invocation.targets.map { workspace.open($0) }
+            if results.allSatisfy({ $0 }) {
+                emit(.status("已用默认应用打开"))
+            } else {
+                reportFailure(
+                    "系统默认应用无法打开所选项目。",
+                    isAuthenticated: isAuthenticated,
+                    emit: emit
+                )
+            }
+            return
+        }
         guard let applicationURL = applicationURL(invocation.application) else {
             appLogger.error("目标 App 未安装")
             emit(.status("等待 Finder 操作"))
@@ -185,6 +214,63 @@ final class DeepLinkCoordinator {
                 appLogger.error(
                     "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
                 )
+                reportFailure(
+                    error.localizedDescription,
+                    isAuthenticated: isAuthenticated,
+                    emit: emit
+                )
+            }
+        }
+    }
+
+    private func openTerminal(
+        _ directory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior,
+        isAuthenticated: Bool,
+        emit: @escaping @MainActor (DeepLinkEvent) -> Void
+    ) {
+        let resolved = terminalResolver.resolvedProfile(for: terminalProfile)
+        emit(.status("正在用 \(resolved.title) 打开…"))
+        Task {
+            do {
+                try await executor.openDirectory(
+                    directory,
+                    terminalProfile: resolved,
+                    terminalWindowBehavior: terminalWindowBehavior
+                )
+                emit(.status("已用 \(resolved.title) 打开"))
+            } catch {
+                reportFailure(
+                    error.localizedDescription,
+                    isAuthenticated: isAuthenticated,
+                    emit: emit
+                )
+            }
+        }
+    }
+
+    private func executeConfigured(
+        _ profile: CLIProfile,
+        directory: URL,
+        terminalProfile: TerminalProfile,
+        terminalWindowBehavior: TerminalWindowBehavior,
+        isAuthenticated: Bool,
+        emit: @escaping @MainActor (DeepLinkEvent) -> Void
+    ) {
+        emit(.status("正在启动 \(profile.title)…"))
+        Task {
+            do {
+                try await executor.executeConfigured(
+                    profile,
+                    workingDirectory: directory,
+                    terminalProfile: terminalResolver.resolvedProfile(
+                        for: terminalProfile
+                    ),
+                    terminalWindowBehavior: terminalWindowBehavior
+                )
+                emit(.status("已启动 \(profile.title)"))
+            } catch {
                 reportFailure(
                     error.localizedDescription,
                     isAuthenticated: isAuthenticated,

@@ -1,16 +1,17 @@
 import Foundation
 
-public struct CLIInvocation: Equatable, Sendable {
-    public let command: CLICommand
+/// 动态 CLI 深链只携带配置 ID 与工作目录；可执行名和参数永不进入 URL。
+public struct ConfiguredCLIInvocation: Equatable, Sendable {
+    public let profileID: String
     public let workingDirectory: URL
     public let authenticationToken: String?
 
     public init(
-        command: CLICommand,
+        profileID: String,
         workingDirectory: URL,
         authenticationToken: String? = nil
     ) {
-        self.command = command
+        self.profileID = profileID
         self.workingDirectory = workingDirectory
         self.authenticationToken = authenticationToken
     }
@@ -20,19 +21,19 @@ public struct CLIInvocation: Equatable, Sendable {
     }
 
     public func deepLink(now: Date, nonce: String) -> URL? {
-        guard workingDirectory.isFileURL,
+        guard CLIProfile.isValidID(profileID),
+              workingDirectory.isFileURL,
               workingDirectory.path.hasPrefix("/"),
               authenticationToken.map(
                   ExtensionRequestTokenStore.isValidToken
               ) ?? true else {
             return nil
         }
-
         var components = URLComponents()
         components.scheme = AppConstants.deepLinkScheme
-        components.host = "run"
+        components.host = "run-configured"
         components.queryItems = [
-            URLQueryItem(name: "tool", value: command.rawValue),
+            URLQueryItem(name: "profile", value: profileID),
             URLQueryItem(name: "cwd", value: workingDirectory.path)
         ]
         return DeepLinkSignature.signedURL(
@@ -49,19 +50,16 @@ public struct CLIInvocation: Equatable, Sendable {
     ) {
         guard let components = DeepLinkComponents(
             deepLink: deepLink,
-            host: "run",
+            host: "run-configured",
             allowedNames: [
-                "tool", "cwd", "v", "ts", "nonce", "sig"
+                "profile", "cwd", "v", "ts", "nonce", "sig"
             ]
-        ),
-              DeepLinkSignature.authentication(in: deepLink) != nil,
-              let tool = components.single("tool"),
-              let command = CLICommand(rawValue: tool),
-              let path = components.single("cwd"),
-              path.hasPrefix("/") else {
+        ), DeepLinkSignature.authentication(in: deepLink) != nil,
+              let profileID = components.single("profile"),
+              CLIProfile.isValidID(profileID),
+              let path = components.single("cwd"), path.hasPrefix("/") else {
             return nil
         }
-
         let directory = URL(
             fileURLWithPath: path,
             isDirectory: true
@@ -73,15 +71,13 @@ public struct CLIInvocation: Equatable, Sendable {
         ), isDirectory.boolValue else {
             return nil
         }
-
-        self.command = command
+        self.profileID = profileID
         self.workingDirectory = directory
-        self.authenticationToken = nil
+        authenticationToken = nil
     }
 
-    /// 相等性表示「要执行的动作」相同，不比较传输层认证封装。
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.command == rhs.command &&
-            lhs.workingDirectory == rhs.workingDirectory
+        lhs.profileID == rhs.profileID
+            && lhs.workingDirectory == rhs.workingDirectory
     }
 }

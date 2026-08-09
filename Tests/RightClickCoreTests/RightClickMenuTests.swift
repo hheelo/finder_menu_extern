@@ -32,6 +32,10 @@ struct RightClickMenuTests {
             switch node {
             case let .action(_, isEnabled):
                 #expect(isEnabled == false)
+            case let .configuredCLI(_, isEnabled):
+                #expect(isEnabled == false)
+            case let .customTemplate(_, isEnabled):
+                #expect(isEnabled == false)
             case let .submenu(title, isEnabled, _):
                 #expect(isEnabled == false, "\(title) 应当置灰")
             case .separator:
@@ -48,6 +52,7 @@ struct RightClickMenuTests {
         #expect(nodes.contains(.action(.copyPath, isEnabled: true)))
         #expect(enabledSubmenu(named: "更多复制方式", in: nodes))
         #expect(nodes.contains(.action(.openInVSCode, isEnabled: true)))
+        #expect(enabledSubmenu(named: "用其他编辑器打开", in: nodes))
         #expect(enabledSubmenu(named: "新建文件", in: nodes))
         #expect(enabledSubmenu(named: "运行 AI CLI", in: nodes))
     }
@@ -59,7 +64,7 @@ struct RightClickMenuTests {
 
         #expect(
             submenuItems(named: "新建文件", in: nodes)?.count
-                == FileTemplate.allCases.count
+                == FileTemplate.allCases.count + 3
         )
         // 终端不再是子菜单：具体用哪个由宿主解析，菜单只提供一个动作。
         #expect(submenuItems(named: "在终端中打开", in: nodes) == nil)
@@ -120,6 +125,25 @@ struct RightClickMenuTests {
     }
 
     @Test
+    func dynamicPayloadRangesRoundTripWithoutColliding() {
+        for placement in MenuPlacement.allCases {
+            let template = CustomTemplateMenuItemPayload(
+                menuSlot: 300,
+                placement: placement
+            )
+            let cli = ConfiguredCLIMenuItemPayload(
+                menuSlot: 1,
+                placement: placement
+            )
+            #expect(CustomTemplateMenuItemPayload(menuTag: template.menuTag) == template)
+            #expect(ConfiguredCLIMenuItemPayload(menuTag: cli.menuTag) == cli)
+            #expect(template.menuTag != cli.menuTag)
+            #expect(RightClickMenuItemPayload(menuTag: template.menuTag) == nil)
+            #expect(RightClickMenuItemPayload(menuTag: cli.menuTag) == nil)
+        }
+    }
+
+    @Test
     func rejectsInvalidCombinedMenuTags() {
         #expect(RightClickMenuItemPayload(menuTag: 0) == nil)
         #expect(RightClickMenuItemPayload(menuTag: 999_001) == nil)
@@ -149,6 +173,12 @@ struct RightClickMenuTests {
                 case let .action(action, _):
                     #expect(action.menuTag > 0, "\(action.title) 缺少编号")
                     checked += 1
+                case let .configuredCLI(profile, _):
+                    #expect(profile.isValid)
+                    checked += 1
+                case let .customTemplate(template, _):
+                    #expect(template.isValid)
+                    checked += 1
                 case let .submenu(_, _, items):
                     verify(items)
                 case .separator:
@@ -177,6 +207,55 @@ struct RightClickMenuTests {
         )
     }
 
+    @Test
+    func configurationDisablesOrdersAndCollapsesWithoutChangingTags() throws {
+        let context = SelectionContext(selectedURLs: [], targetedURL: folder)
+        let copyPathTag = RightClickAction.copyPath.menuTag
+        let configuration = MenuConfiguration(
+            disabledActions: [RightClickAction.copyFilename.configurationID],
+            actionOrder: [
+                RightClickAction.copyShellPath.configurationID,
+                RightClickAction.copyFileURL.configurationID,
+                // 重复与未知 id 都不应让 Finder 菜单崩溃。
+                RightClickAction.copyShellPath.configurationID,
+                "future-action"
+            ],
+            collapseIntoSubmenu: true
+        )
+
+        let nodes = RightClickMenu.nodes(
+            placement: .container,
+            context: context,
+            configuration: configuration
+        )
+        let rootItems = try #require(submenuItems(named: "RightClick", in: nodes))
+        #expect(!contains(.copyFilename, in: rootItems))
+        let copyItems = try #require(
+            submenuItems(named: "更多复制方式", in: rootItems)
+        )
+        #expect(actions(in: copyItems).prefix(2) == [.copyShellPath, .copyFileURL])
+        #expect(RightClickAction.copyPath.menuTag == copyPathTag)
+        #expect(RightClickAction(menuTag: copyPathTag) == .copyPath)
+    }
+
+    @Test
+    func terminalWithoutCommandCapabilityDisablesCLISubmenu() throws {
+        let context = SelectionContext(selectedURLs: [], targetedURL: folder)
+        let nodes = RightClickMenu.nodes(
+            placement: .container,
+            context: context,
+            configuration: MenuConfiguration(
+                terminalProfileID: TerminalProfile.warp.rawValue
+            )
+        )
+        let items = try #require(submenuItems(named: "运行 AI CLI", in: nodes))
+        #expect(!enabledSubmenu(named: "运行 AI CLI", in: nodes))
+        #expect(items.allSatisfy { node in
+            guard case let .action(_, isEnabled) = node else { return false }
+            return !isEnabled
+        })
+    }
+
     private func submenuItems(
         named title: String,
         in nodes: [RightClickMenuNode]
@@ -199,6 +278,29 @@ struct RightClickMenuTests {
                 return false
             }
             return name == title && isEnabled
+        }
+    }
+
+
+    private func contains(
+        _ action: RightClickAction,
+        in nodes: [RightClickMenuNode]
+    ) -> Bool {
+        nodes.contains { node in
+            switch node {
+            case let .action(candidate, _): candidate == action
+            case .configuredCLI: false
+            case .customTemplate: false
+            case let .submenu(_, _, items): contains(action, in: items)
+            case .separator: false
+            }
+        }
+    }
+
+    private func actions(in nodes: [RightClickMenuNode]) -> [RightClickAction] {
+        nodes.compactMap { node in
+            guard case let .action(action, _) = node else { return nil }
+            return action
         }
     }
 }

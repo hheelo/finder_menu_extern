@@ -49,10 +49,13 @@
 
 ## M3：可配置版本
 
-- [ ] 菜单项启用、排序和分组
-- [ ] 自定义文件模板、默认文件名与编码
-- [ ] 可配置 CLI 命令与参数
-- [ ] 增加 Warp、Ghostty、WezTerm、Kitty
+- [x] 菜单项启用、排序和收进 RightClick 子菜单
+- [x] 自定义文件模板目录与扩展容器镜像
+- [ ] 为内置模板配置默认文件名与编码
+- [x] 可配置 CLI 命令与参数
+- [x] 增加 Warp、Ghostty、WezTerm、Kitty
+- [x] 增加 Cursor、Zed、Sublime Text、Xcode、JetBrains 与系统默认应用
+- [x] 新建文件夹、从文本剪贴板新建文件
 - [ ] 用户选择监控目录并持久化设置
 - [ ] 中文 / 英文本地化
 

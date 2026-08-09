@@ -5,12 +5,17 @@ public enum TerminalProfile: String, CaseIterable, Codable, Sendable {
     case automatic
     case terminal
     case iTerm
+    case warp
+    case ghostty
+    case wezTerm
+    case kitty
 
     public var title: String {
         switch self {
         case .automatic: "自动（优先 iTerm2）"
         // 与 `ExternalApplication` 共用显示名，避免两处各写一份。
-        case .terminal, .iTerm: resolvedApplication.title
+        case .terminal, .iTerm, .warp, .ghostty, .wezTerm, .kitty:
+            resolvedApplication.title
         }
     }
 
@@ -28,6 +33,8 @@ public enum TerminalProfile: String, CaseIterable, Codable, Sendable {
             return .terminal
         case .automatic, .iTerm:
             return isInstalled(.iTerm) ? .iTerm : .terminal
+        case .warp, .ghostty, .wezTerm, .kitty:
+            return isInstalled(resolvedApplication) ? self : .terminal
         }
     }
 
@@ -36,11 +43,43 @@ public enum TerminalProfile: String, CaseIterable, Codable, Sendable {
         switch self {
         case .terminal: .terminal
         case .automatic, .iTerm: .iTerm
+        case .warp: .warp
+        case .ghostty: .ghostty
+        case .wezTerm: .wezTerm
+        case .kitty: .kitty
         }
     }
 
     /// 可供用户显式选择的项，`.automatic` 在最前面作为默认。
     public static var selectableCases: [TerminalProfile] { allCases }
+}
+
+public enum TerminalLaunchStrategy: Equatable, Sendable {
+    /// Terminal 与 iTerm2：支持 AppleScript 写入命令。
+    case appleScript
+    /// Warp / Ghostty：当前只使用官方稳定的按目录启动能力。
+    case openDirectoryOnly
+    /// App bundle 内可执行文件支持 cwd 与待运行程序参数。
+    case executable(relativePath: String)
+}
+
+public extension TerminalProfile {
+    var launchStrategy: TerminalLaunchStrategy {
+        switch self {
+        case .automatic, .terminal, .iTerm:
+            .appleScript
+        case .warp, .ghostty:
+            .openDirectoryOnly
+        case .wezTerm:
+            .executable(relativePath: "Contents/MacOS/wezterm")
+        case .kitty:
+            .executable(relativePath: "Contents/MacOS/kitty")
+        }
+    }
+
+    var supportsCLIExecution: Bool {
+        launchStrategy != .openDirectoryOnly
+    }
 }
 
 public enum TerminalWindowBehavior: String, CaseIterable, Codable, Sendable {
@@ -73,6 +112,15 @@ public enum ShellCommandBuilder {
         in directory: URL
     ) -> String {
         "cd \(quote(directory.path)) && \(command.rawValue)"
+    }
+
+    public static func command(
+        executable: String,
+        arguments: [String],
+        in directory: URL
+    ) -> String {
+        let invocation = ([executable] + arguments).map(quote).joined(separator: " ")
+        return "cd \(quote(directory.path)) && \(invocation)"
     }
 
     public static func quote(_ value: String) -> String {

@@ -8,10 +8,13 @@ struct FinderActionPolicyTests {
             let expected: Bool
             switch action {
             case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
-                 .copyParentPath, .createFile:
+                 .copyParentPath, .createFile, .createFolder,
+                 .createFileFromClipboard:
                 expected = false
             case .openInVSCode, .openInCodex, .openInTerminal,
-                 .runCodexCLI, .runClaudeCode:
+                 .runCodexCLI, .runClaudeCode, .openInCursor, .openInZed,
+                 .openInSublimeText, .openInXcode, .openInJetBrains,
+                 .openInDefaultApplication:
                 expected = true
             }
             #expect(

@@ -2,11 +2,14 @@ import Foundation
 
 public enum FileCreatorError: LocalizedError {
     case destinationIsNotDirectory(URL)
+    case invalidFilename(String)
 
     public var errorDescription: String? {
         switch self {
         case let .destinationIsNotDirectory(url):
             "无法在“\(url.path)”中新建文件：目标不是文件夹。"
+        case let .invalidFilename(filename):
+            "无法使用“\(filename)”作为文件名。"
         }
     }
 }
@@ -20,10 +23,26 @@ public struct FileCreator {
 
     @discardableResult
     public func create(_ template: FileTemplate, in directory: URL) throws -> URL {
+        try create(
+            contents: Data(template.initialContents.utf8),
+            preferredFilename: template.preferredFilename,
+            in: directory
+        )
+    }
+
+    @discardableResult
+    public func create(
+        contents: Data,
+        preferredFilename: String,
+        in directory: URL
+    ) throws -> URL {
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory),
               isDirectory.boolValue else {
             throw FileCreatorError.destinationIsNotDirectory(directory)
+        }
+        guard Self.isSafeFilename(preferredFilename) else {
+            throw FileCreatorError.invalidFilename(preferredFilename)
         }
 
         // 检查空闲名称与实际写入之间存在竞争窗口（连续点击或多个 Finder
@@ -32,11 +51,11 @@ public struct FileCreator {
         var lastConflict: Error?
         for _ in 0..<8 {
             let destination = availableURL(
-                named: template.preferredFilename,
+                named: preferredFilename,
                 in: directory
             )
             do {
-                try Data(template.initialContents.utf8).write(
+                try contents.write(
                     to: destination,
                     options: .withoutOverwriting
                 )
@@ -48,6 +67,49 @@ public struct FileCreator {
             }
         }
         throw lastConflict ?? CocoaError(.fileWriteFileExists)
+    }
+
+    @discardableResult
+    public func createDirectory(
+        preferredName: String = "Untitled Folder",
+        in directory: URL
+    ) throws -> URL {
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else {
+            throw FileCreatorError.destinationIsNotDirectory(directory)
+        }
+        guard Self.isSafeFilename(preferredName) else {
+            throw FileCreatorError.invalidFilename(preferredName)
+        }
+
+        var lastConflict: Error?
+        for _ in 0..<8 {
+            let destination = availableURL(named: preferredName, in: directory)
+            do {
+                try fileManager.createDirectory(
+                    at: destination,
+                    withIntermediateDirectories: false
+                )
+                return destination
+            } catch let error as NSError
+                where error.domain == NSCocoaErrorDomain &&
+                    error.code == NSFileWriteFileExistsError {
+                lastConflict = error
+            }
+        }
+        throw lastConflict ?? CocoaError(.fileWriteFileExists)
+    }
+
+    public static func isSafeFilename(_ filename: String) -> Bool {
+        !filename.isEmpty
+            && filename.count <= 255
+            && filename != "."
+            && filename != ".."
+            && !filename.contains("/")
+            && !filename.contains("\0")
+            && !filename.contains("\n")
+            && !filename.contains("\r")
     }
 
     private func availableURL(named filename: String, in directory: URL) -> URL {
