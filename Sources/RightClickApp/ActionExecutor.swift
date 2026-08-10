@@ -15,9 +15,17 @@ enum ProcessRunnerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .timedOut(seconds):
-            "进程执行超过 \(Int(seconds)) 秒，已终止。"
+            L10n.format(
+                "error.process_timeout",
+                fallback: "进程执行超过 %lld 秒，已终止。",
+                Int64(seconds)
+            )
         case let .outputLimitExceeded(bytes):
-            "进程输出超过 \(bytes / 1_024) KB，已终止。"
+            L10n.format(
+                "error.output_limit",
+                fallback: "进程输出超过 %lld KB，已终止。",
+                Int64(bytes / 1_024)
+            )
         }
     }
 }
@@ -175,11 +183,23 @@ enum ActionExecutorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .processFailed(message):
-            "终端启动失败：\(message)"
+            L10n.format(
+                "error.terminal_launch",
+                fallback: "终端启动失败：%@",
+                message
+            )
         case let .applicationNotFound(name):
-            "未找到 \(name)，请先安装应用。"
+            L10n.format(
+                "error.application_not_found",
+                fallback: "未找到 %@，请先安装应用。",
+                name
+            )
         case let .commandUnsupported(name):
-            "\(name) 当前只支持打开目录，不能运行 AI CLI。请在设置中选择其他终端。"
+            L10n.format(
+                "error.command_unsupported",
+                fallback: "%@ 当前只支持打开目录，不能运行 AI CLI。请在设置中选择其他终端。",
+                name
+            )
         }
     }
 }
@@ -233,7 +253,10 @@ struct ActionExecutor: CLIExecuting {
                 URLQueryItem(name: "path", value: directory.path)
             ]
             guard let url = components.url, NSWorkspace.shared.open(url) else {
-                throw ActionExecutorError.processFailed("无法打开 Warp URI。")
+                throw ActionExecutorError.processFailed(L10n.text(
+                    "error.warp_uri",
+                    fallback: "无法打开 Warp URI。"
+                ))
             }
         case .ghostty:
             try await launch(
@@ -288,7 +311,10 @@ struct ActionExecutor: CLIExecuting {
         terminalWindowBehavior: TerminalWindowBehavior
     ) async throws {
         guard profile.isValid else {
-            throw ActionExecutorError.processFailed("CLI 配置无效。")
+            throw ActionExecutorError.processFailed(L10n.text(
+                "error.cli_configuration_invalid",
+                fallback: "CLI 配置无效。"
+            ))
         }
         guard terminalProfile.supportsCLIExecution else {
             throw ActionExecutorError.commandUnsupported(terminalProfile.title)
@@ -366,7 +392,11 @@ struct ActionExecutor: CLIExecuting {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw ActionExecutorError.processFailed(
                 message.isEmpty
-                    ? "osascript 返回状态 \(result.terminationStatus)"
+                    ? L10n.format(
+                        "error.osascript_status",
+                        fallback: "osascript 返回状态 %lld",
+                        Int64(result.terminationStatus)
+                    )
                     : message
             )
         }
@@ -392,6 +422,10 @@ struct ActionExecutor: CLIExecuting {
             // Terminal 的 AppleScript 字典把 tabs 暴露成只读集合，不能像
             // iTerm2 一样直接 make。用系统的新标签页快捷键，并确认标签数量
             // 确实增加后才写入命令，防止权限被拒时污染当前会话。
+            let accessibilityError = appleScriptStringLiteral(L10n.text(
+                "error.terminal_accessibility",
+                fallback: "无法创建 Terminal 标签页；请在系统设置的隐私与安全性中允许 RightClick 使用辅助功能。"
+            ))
             return """
             on run argv
                 tell application "Terminal"
@@ -407,7 +441,7 @@ struct ActionExecutor: CLIExecuting {
                             delay 0.05
                         end repeat
                         if (count of tabs of targetWindow) is oldTabCount then
-                            error "无法创建 Terminal 标签页；请在系统设置的隐私与安全性中允许 RightClick 使用辅助功能。"
+                            error "\(accessibilityError)"
                         end if
                         do script (item 1 of argv) in selected tab of targetWindow
                     end if
@@ -448,8 +482,18 @@ struct ActionExecutor: CLIExecuting {
         case (.warp, _), (.ghostty, _), (.wezTerm, _), (.kitty, _):
             // 这些 profile 不走 AppleScript；保持穷举，误调用时返回会失败的
             // 明确信息，而不是悄悄落到 Terminal。
-            return "error \"该终端不支持 AppleScript 启动策略。\""
+            let message = appleScriptStringLiteral(L10n.text(
+                "error.unsupported_applescript",
+                fallback: "该终端不支持 AppleScript 启动策略。"
+            ))
+            return "error \"\(message)\""
         }
+    }
+
+    private static func appleScriptStringLiteral(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     private func open(

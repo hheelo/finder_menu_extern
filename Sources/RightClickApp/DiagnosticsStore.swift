@@ -8,23 +8,29 @@ final class DiagnosticsStore {
 
     private struct Snapshot: Codable {
         let capturedAt: Date
+        let languageIdentifier: String
         let items: [DiagnosticItem]
     }
 
     private let settings: AppSettings
     private let now: () -> Date
+    private let languageIdentifier: () -> String
     private let collector: (Bool) async -> [DiagnosticItem]
     private var isCollecting = false
 
     init(
         settings: AppSettings = .shared,
         now: @escaping () -> Date = Date.init,
+        languageIdentifier: @escaping () -> String = {
+            L10n.currentLanguageIdentifier
+        },
         collector: @escaping (Bool) async -> [DiagnosticItem] = {
             await AppDiagnostics.collect(extensionEnabled: $0)
         }
     ) {
         self.settings = settings
         self.now = now
+        self.languageIdentifier = languageIdentifier
         self.collector = collector
     }
 
@@ -60,7 +66,11 @@ final class DiagnosticsStore {
         let collected = await collector(extensionEnabled)
         let cacheable = collected.filter { $0.id != "extension" }
         if let data = try? JSONEncoder().encode(
-            Snapshot(capturedAt: now(), items: cacheable)
+            Snapshot(
+                capturedAt: now(),
+                languageIdentifier: languageIdentifier(),
+                items: cacheable
+            )
         ) {
             settings.cachedDiagnostics = data
         }
@@ -83,7 +93,9 @@ final class DiagnosticsStore {
 
     private func isFresh(_ snapshot: Snapshot) -> Bool {
         let age = now().timeIntervalSince(snapshot.capturedAt)
-        return age >= 0 && age < Self.cacheLifetime
+        return age >= 0
+            && age < Self.cacheLifetime
+            && snapshot.languageIdentifier == languageIdentifier()
     }
 
     private func withExtensionState(
@@ -93,9 +105,11 @@ final class DiagnosticsStore {
         [
             DiagnosticItem(
                 id: "extension",
-                title: "Finder 扩展",
+                title: L10n.text("diagnostic.extension", fallback: "Finder 扩展"),
                 passed: enabled,
-                detail: enabled ? "已启用" : "未启用"
+                detail: enabled
+                    ? L10n.text("diagnostic.enabled", fallback: "已启用")
+                    : L10n.text("diagnostic.not_enabled", fallback: "未启用")
             )
         ] + items.filter { $0.id != "extension" }
     }

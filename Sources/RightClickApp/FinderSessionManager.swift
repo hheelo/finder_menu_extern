@@ -10,11 +10,21 @@ enum FinderSessionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unableToTerminate:
-            "无法重启 Finder，请退出登录后重试。"
+            L10n.text(
+                "error.finder_restart",
+                fallback: "无法重启 Finder，请退出登录后重试。"
+            )
         case .terminationTimedOut:
-            "Finder 未能退出，请退出登录后重试。"
+            L10n.text(
+                "error.finder_timeout",
+                fallback: "Finder 未能退出，请退出登录后重试。"
+            )
         case let .unableToReopen(message):
-            "无法重新打开 Finder：\(message)"
+            L10n.format(
+                "error.finder_reopen",
+                fallback: "无法重新打开 Finder：%@",
+                message
+            )
         }
     }
 }

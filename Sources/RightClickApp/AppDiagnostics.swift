@@ -30,19 +30,29 @@ enum AppDiagnostics {
         return [
             DiagnosticItem(
                 id: "extension",
-                title: "Finder 扩展",
+                title: L10n.text("diagnostic.extension", fallback: "Finder 扩展"),
                 passed: extensionEnabled,
-                detail: extensionEnabled ? "已启用" : "未启用"
+                detail: extensionEnabled
+                    ? L10n.text("diagnostic.enabled", fallback: "已启用")
+                    : L10n.text("diagnostic.not_enabled", fallback: "未启用")
             ),
             DiagnosticItem(
                 id: "login-shell",
-                title: "登录 Shell",
+                title: L10n.text("diagnostic.login_shell", fallback: "登录 Shell"),
                 passed: true,
                 detail: loginShellURL.path
             ),
             applicationItem(id: "vscode", title: "Visual Studio Code", url: vscode),
             applicationItem(id: "codex-app", title: "ChatGPT", url: codexApp),
-            applicationItem(id: "iterm", title: "iTerm2（可选）", url: iTerm),
+            applicationItem(
+                id: "iterm",
+                title: L10n.format(
+                    "diagnostic.optional",
+                    fallback: "%@（可选）",
+                    "iTerm2"
+                ),
+                url: iTerm
+            ),
             commandItem(command: .codex, path: resolvedCodexPath),
             commandItem(command: .claude, path: resolvedClaudePath)
         ]
@@ -55,20 +65,38 @@ enum AppDiagnostics {
     ) -> String {
         let version = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? "未知"
+        ) as? String ?? L10n.text("diagnostic.unknown", fallback: "未知")
         let build = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleVersion"
-        ) as? String ?? "未知"
+        ) as? String ?? L10n.text("diagnostic.unknown", fallback: "未知")
+        let missing = L10n.text("diagnostic.missing", fallback: "缺失")
         let rows = items.map {
-            "[\($0.passed ? "OK" : "缺失")] \($0.title)：\($0.detail)"
+            "[\($0.passed ? "OK" : missing)] \($0.title): \($0.detail)"
         }.joined(separator: "\n")
+
+        let defaultTerminal = L10n.text(
+            "diagnostic.default_terminal",
+            fallback: "默认终端"
+        )
+        let terminalBehavior = L10n.text(
+            "diagnostic.cli_terminal_behavior",
+            fallback: "CLI 终端行为"
+        )
+        let cliLaunch = L10n.text(
+            "diagnostic.cli_launch",
+            fallback: "CLI 启动"
+        )
+        let authenticatedOnly = L10n.text(
+            "diagnostic.authenticated_only",
+            fallback: "仅接受本机 Finder 扩展认证请求"
+        )
 
         return """
         RightClick \(version) (\(build))
         macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
-        默认终端：\(terminalProfile.title)
-        CLI 终端行为：\(terminalWindowBehavior.title)
-        CLI 启动：仅接受本机 Finder 扩展认证请求
+        \(defaultTerminal): \(terminalProfile.title)
+        \(terminalBehavior): \(terminalWindowBehavior.title)
+        \(cliLaunch): \(authenticatedOnly)
 
         \(rows)
         """
@@ -83,7 +111,10 @@ enum AppDiagnostics {
             id: id,
             title: title,
             passed: url != nil,
-            detail: url?.path ?? "未找到"
+            detail: url?.path ?? L10n.text(
+                "diagnostic.not_found",
+                fallback: "未找到"
+            )
         )
     }
 
@@ -95,7 +126,10 @@ enum AppDiagnostics {
             id: command.rawValue,
             title: command.title,
             passed: path != nil,
-            detail: path ?? "登录 Shell 中未找到"
+            detail: path ?? L10n.text(
+                "diagnostic.not_found_in_shell",
+                fallback: "登录 Shell 中未找到"
+            )
         )
     }
 

@@ -12,14 +12,33 @@ extension_path="${app_path}/Contents/PlugIns/RightClickFinderExtension.appex"
 core_path="${app_path}/Contents/Frameworks/RightClickCore.framework"
 sparkle_path="${app_path}/Contents/Frameworks/Sparkle.framework"
 icon_path="${app_path}/Contents/Resources/AppIcon.icns"
+extension_core_path="${extension_path}/Contents/Frameworks/RightClickCore.framework"
 
 if [[ ! -d "${extension_path}" ||
       ! -d "${core_path}" ||
+      ! -d "${extension_core_path}" ||
       ! -d "${sparkle_path}" ||
       ! -f "${icon_path}" ]]; then
     echo "App 缺少 Finder 扩展、RightClickCore/Sparkle.framework 或 AppIcon" >&2
     exit 1
 fi
+
+# 本地化资源必须同时存在于宿主和扩展各自嵌入的 Core framework 中。
+# 只检查宿主副本会漏掉 Finder 菜单退回硬编码文案的打包回归。
+localized_resources=(
+    "${app_path}/Contents/Resources/en.lproj/InfoPlist.strings"
+    "${app_path}/Contents/Resources/zh-Hans.lproj/InfoPlist.strings"
+    "${core_path}/Resources/en.lproj/Localizable.strings"
+    "${core_path}/Resources/zh-Hans.lproj/Localizable.strings"
+    "${extension_core_path}/Resources/en.lproj/Localizable.strings"
+    "${extension_core_path}/Resources/zh-Hans.lproj/Localizable.strings"
+)
+for resource in "${localized_resources[@]}"; do
+    if [[ ! -f "${resource}" ]]; then
+        echo "App 缺少本地化资源：${resource}" >&2
+        exit 1
+    fi
+done
 
 codesign --verify --deep --strict "${app_path}"
 

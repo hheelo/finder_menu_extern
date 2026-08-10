@@ -1,4 +1,5 @@
 import SwiftUI
+import RightClickCore
 
 struct ContentView: View {
     let updater: UpdaterController
@@ -14,7 +15,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("RightClick")
                         .font(.largeTitle.bold())
-                    Text("给 Finder 右键菜单加上开发者常用操作")
+                    Text(L10n.text("home.subtitle", fallback: "给 Finder 右键菜单加上开发者常用操作"))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -23,43 +24,60 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     FeatureRow(
                         icon: "doc.on.doc",
-                        title: "复制",
-                        detail: "文件路径、文件名；多选时每行一个"
+                        title: L10n.text("home.feature.copy_title", fallback: "复制"),
+                        detail: L10n.text(
+                            "home.feature.copy_detail",
+                            fallback: "文件路径、文件名；支持多选"
+                        )
                     )
                     FeatureRow(
                         icon: "rectangle.and.hand.point.up.left",
-                        title: "打开",
-                        detail: "Visual Studio Code、ChatGPT"
+                        title: L10n.text("home.feature.open_title", fallback: "打开"),
+                        detail: L10n.text(
+                            "home.feature.open_detail",
+                            fallback: "VS Code、ChatGPT 与更多编辑器"
+                        )
                     )
                     FeatureRow(
                         icon: "terminal",
-                        title: "终端",
-                        detail: "在终端打开（优先 iTerm2），或运行 AI CLI"
+                        title: L10n.text("home.feature.terminal_title", fallback: "终端"),
+                        detail: L10n.text(
+                            "home.feature.terminal_detail",
+                            fallback: "打开终端或运行 AI CLI"
+                        )
                     )
                     FeatureRow(
                         icon: "doc.badge.plus",
-                        title: "新建",
-                        detail: "TXT、Markdown、Python、Shell、HTML、JSON、CSV"
+                        title: L10n.text("home.feature.create_title", fallback: "新建"),
+                        detail: L10n.text(
+                            "home.feature.create_detail",
+                            fallback: "内置与自定义模板、文件夹、剪贴板文本"
+                        )
                     )
                 }
                 .padding(8)
             }
 
             HStack {
-                Button(model.extensionEnabled ? "管理扩展" : "启用 Finder 扩展") {
+                Button(model.extensionEnabled
+                    ? L10n.text("button.manage_extension", fallback: "管理扩展")
+                    : L10n.text("button.enable_extension", fallback: "启用 Finder 扩展")) {
                     model.openExtensionSettings()
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("重启 Finder") {
+                Button(L10n.text("button.restart_finder", fallback: "重启 Finder")) {
                     model.restartFinder()
                 }
                 .buttonStyle(.bordered)
 
                 Label(
                     model.extensionEnabled
-                        ? "Finder 扩展已启用"
-                        : "还差一步：请在系统设置中启用扩展",
+                        ? L10n.text("home.extension_enabled", fallback: "Finder 扩展已启用")
+                        : L10n.text(
+                            "home.extension_disabled",
+                            fallback: "还差一步：请在系统设置中启用扩展"
+                        ),
                     systemImage: model.extensionEnabled
                         ? "checkmark.circle.fill"
                         : "exclamationmark.circle"
@@ -79,24 +97,28 @@ struct ContentView: View {
                 // LSUIElement 附属应用没有可依赖的常驻菜单栏，必须在主窗口里
                 // 提供明确入口，否则默认终端设置无法到达。
                 SettingsLink {
-                    Text("设置…")
+                    Text(L10n.text("button.settings", fallback: "设置…"))
                 }
-                Button("检查更新") {
+                Button(L10n.text("button.check_updates", fallback: "检查更新")) {
                     updater.checkForUpdates()
                 }
-                Button("复制诊断信息") {
+                Button(L10n.text("button.copy_diagnostics", fallback: "复制诊断信息")) {
                     model.copyDiagnostics()
                 }
                 // 附属应用没有 Dock 图标也没有菜单栏，必须给一个显式的退出入口，
                 // 否则用户只能去活动监视器里结束进程。
-                Button("退出 RightClick") {
+                Button(L10n.text("button.quit", fallback: "退出 RightClick")) {
                     NSApp.terminate(nil)
                 }
             }
 
             if !model.errorHistory.isEmpty {
                 DisclosureGroup(
-                    "最近错误（\(model.errorHistory.count)）",
+                    L10n.format(
+                        "home.errors",
+                        fallback: "最近错误（%lld）",
+                        Int64(model.errorHistory.count)
+                    ),
                     isExpanded: $errorsExpanded
                 ) {
                     ScrollView {
@@ -125,7 +147,7 @@ struct ContentView: View {
 
                     HStack {
                         Spacer()
-                        Button("清除") {
+                        Button(L10n.text("button.clear", fallback: "清除")) {
                             model.clearErrors()
                         }
                     }

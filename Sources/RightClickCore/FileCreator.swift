@@ -7,9 +7,17 @@ public enum FileCreatorError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case let .destinationIsNotDirectory(url):
-            "无法在“\(url.path)”中新建文件：目标不是文件夹。"
+            L10n.format(
+                "error.destination_not_directory",
+                fallback: "无法在“%@”中新建文件：目标不是文件夹。",
+                url.path
+            )
         case let .invalidFilename(filename):
-            "无法使用“\(filename)”作为文件名。"
+            L10n.format(
+                "error.invalid_filename",
+                fallback: "无法使用“%@”作为文件名。",
+                filename
+            )
         }
     }
 }
@@ -71,7 +79,10 @@ public struct FileCreator {
 
     @discardableResult
     public func createDirectory(
-        preferredName: String = "Untitled Folder",
+        preferredName: String = L10n.text(
+            "file.untitled_folder",
+            fallback: "未命名文件夹"
+        ),
         in directory: URL
     ) throws -> URL {
         var isDirectory: ObjCBool = false

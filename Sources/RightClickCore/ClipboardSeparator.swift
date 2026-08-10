@@ -11,9 +11,9 @@ public enum ClipboardSeparator: String, Codable, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .newline: "换行"
-        case .space: "空格"
-        case .comma: "逗号"
+        case .newline: L10n.text("clipboard.newline", fallback: "换行")
+        case .space: L10n.text("clipboard.space", fallback: "空格")
+        case .comma: L10n.text("clipboard.comma", fallback: "逗号")
         }
     }
 

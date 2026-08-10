@@ -65,7 +65,13 @@ struct ExternalApplicationTests {
     func explicitTerminalProfilesShareTheApplicationTitle() {
         #expect(TerminalProfile.terminal.title == ExternalApplication.terminal.title)
         #expect(TerminalProfile.iTerm.title == ExternalApplication.iTerm.title)
-        #expect(TerminalProfile.automatic.title == "自动（优先 iTerm2）")
+        #expect(
+            TerminalProfile.automatic.title
+                == L10n.text(
+                    "terminal.automatic",
+                    fallback: "自动（优先 iTerm2）"
+                )
+        )
     }
 
     /// 优先 iTerm2；没装 iTerm2 时——包括用户显式选了它——都要回退到 Terminal，

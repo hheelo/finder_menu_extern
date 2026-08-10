@@ -68,7 +68,12 @@ final class DeepLinkCoordinator {
             // 缓存缺失或一次检测失败把原本能用的功能挡住。
             if commandAvailability(invocation.command) == false {
                 reportFailure(
-                    "未在登录 Shell 中找到 \(invocation.command.rawValue)，请先安装 \(invocation.command.title)。",
+                    L10n.format(
+                        "error.command_missing",
+                        fallback: "未在登录 Shell 中找到 %1$@，请先安装 %2$@。",
+                        invocation.command.rawValue,
+                        invocation.command.title
+                    ),
                     isAuthenticated: isAuthenticated,
                     emit: emit
                 )
@@ -89,7 +94,10 @@ final class DeepLinkCoordinator {
                 $0.id == invocation.profileID && $0.isEnabled && $0.isValid
             }) else {
                 reportFailure(
-                    "CLI 配置不存在或已停用。",
+                    L10n.text(
+                        "error.cli_configuration_missing",
+                        fallback: "CLI 配置不存在或已停用。"
+                    ),
                     isAuthenticated: isAuthenticated,
                     emit: emit
                 )
@@ -140,13 +148,28 @@ final class DeepLinkCoordinator {
     ) {
         let workspace = NSWorkspace.shared
         if invocation.application == .systemDefault {
-            emit(.status("正在用默认应用打开…"))
+            let defaultApp = L10n.text(
+                "status.default_app",
+                fallback: "默认应用"
+            )
+            emit(.status(L10n.format(
+                "status.opening_with",
+                fallback: "正在用 %@ 打开…",
+                defaultApp
+            )))
             let results = invocation.targets.map { workspace.open($0) }
             if results.allSatisfy({ $0 }) {
-                emit(.status("已用默认应用打开"))
+                emit(.status(L10n.format(
+                    "status.opened_with",
+                    fallback: "已用 %@ 打开",
+                    defaultApp
+                )))
             } else {
                 reportFailure(
-                    "系统默认应用无法打开所选项目。",
+                    L10n.text(
+                        "error.default_app_open",
+                        fallback: "系统默认应用无法打开所选项目。"
+                    ),
                     isAuthenticated: isAuthenticated,
                     emit: emit
                 )
@@ -155,16 +178,27 @@ final class DeepLinkCoordinator {
         }
         guard let applicationURL = applicationURL(invocation.application) else {
             appLogger.error("目标 App 未安装")
-            emit(.status("等待 Finder 操作"))
+            emit(.status(L10n.text(
+                "status.waiting",
+                fallback: "等待 Finder 操作"
+            )))
             reportFailure(
-                "未找到 \(invocation.application.title)，请先安装应用。",
+                L10n.format(
+                    "error.application_not_found",
+                    fallback: "未找到 %@，请先安装应用。",
+                    invocation.application.title
+                ),
                 isAuthenticated: isAuthenticated,
                 emit: emit
             )
             return
         }
 
-        emit(.status("正在用 \(invocation.application.title) 打开…"))
+        emit(.status(L10n.format(
+            "status.opening_with",
+            fallback: "正在用 %@ 打开…",
+            invocation.application.title
+        )))
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
 
@@ -178,7 +212,11 @@ final class DeepLinkCoordinator {
                 appLogger.notice(
                     "打开成功 app=\(invocation.application.identifier, privacy: .public)"
                 )
-                emit(.status("已用 \(invocation.application.title) 打开"))
+                emit(.status(L10n.format(
+                    "status.opened_with",
+                    fallback: "已用 %@ 打开",
+                    invocation.application.title
+                )))
             } catch {
                 reportFailure(
                     error.localizedDescription,
@@ -196,7 +234,11 @@ final class DeepLinkCoordinator {
         isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
-        emit(.status("正在启动 \(invocation.command.title)…"))
+        emit(.status(L10n.format(
+            "status.starting",
+            fallback: "正在启动 %@…",
+            invocation.command.title
+        )))
         Task {
             do {
                 try await executor.execute(
@@ -209,7 +251,11 @@ final class DeepLinkCoordinator {
                 appLogger.notice(
                     "CLI 启动成功 tool=\(invocation.command.rawValue, privacy: .public)"
                 )
-                emit(.status("已启动 \(invocation.command.title)"))
+                emit(.status(L10n.format(
+                    "status.started",
+                    fallback: "已启动 %@",
+                    invocation.command.title
+                )))
             } catch {
                 appLogger.error(
                     "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
@@ -231,7 +277,11 @@ final class DeepLinkCoordinator {
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         let resolved = terminalResolver.resolvedProfile(for: terminalProfile)
-        emit(.status("正在用 \(resolved.title) 打开…"))
+        emit(.status(L10n.format(
+            "status.opening_with",
+            fallback: "正在用 %@ 打开…",
+            resolved.title
+        )))
         Task {
             do {
                 try await executor.openDirectory(
@@ -239,7 +289,11 @@ final class DeepLinkCoordinator {
                     terminalProfile: resolved,
                     terminalWindowBehavior: terminalWindowBehavior
                 )
-                emit(.status("已用 \(resolved.title) 打开"))
+                emit(.status(L10n.format(
+                    "status.opened_with",
+                    fallback: "已用 %@ 打开",
+                    resolved.title
+                )))
             } catch {
                 reportFailure(
                     error.localizedDescription,
@@ -258,7 +312,11 @@ final class DeepLinkCoordinator {
         isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
-        emit(.status("正在启动 \(profile.title)…"))
+        emit(.status(L10n.format(
+            "status.starting",
+            fallback: "正在启动 %@…",
+            profile.title
+        )))
         Task {
             do {
                 try await executor.executeConfigured(
@@ -269,7 +327,11 @@ final class DeepLinkCoordinator {
                     ),
                     terminalWindowBehavior: terminalWindowBehavior
                 )
-                emit(.status("已启动 \(profile.title)"))
+                emit(.status(L10n.format(
+                    "status.started",
+                    fallback: "已启动 %@",
+                    profile.title
+                )))
             } catch {
                 reportFailure(
                     error.localizedDescription,

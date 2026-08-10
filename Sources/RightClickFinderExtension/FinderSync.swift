@@ -93,7 +93,11 @@ final class FinderSync: FIFinderSync {
             )
         case let .configuredCLI(profile, isEnabled):
             let item = NSMenuItem(
-                title: "在终端运行 \(profile.title)",
+                title: L10n.format(
+                    "extension.run_profile",
+                    fallback: "在终端运行 %@",
+                    profile.title
+                ),
                 action: #selector(performAction(_:)),
                 keyEquivalent: ""
             )
@@ -102,6 +106,10 @@ final class FinderSync: FIFinderSync {
                 menuSlot: profile.menuSlot,
                 placement: placement
             ).menuTag
+            item.image = Self.menuImage(
+                named: "terminal.fill",
+                accessibilityDescription: profile.title
+            )
             item.isEnabled = isEnabled && currentToken() != nil
             return item
         case let .customTemplate(template, isEnabled):
@@ -115,6 +123,10 @@ final class FinderSync: FIFinderSync {
                 menuSlot: template.menuSlot,
                 placement: placement
             ).menuTag
+            item.image = Self.menuImage(
+                named: "doc.badge.plus",
+                accessibilityDescription: template.title
+            )
             item.isEnabled = isEnabled
             return item
         case let .submenu(title, isEnabled, items):
@@ -153,6 +165,10 @@ final class FinderSync: FIFinderSync {
             action: action,
             placement: placement
         ).menuTag
+        item.image = Self.menuImage(
+            named: action.systemImageName,
+            accessibilityDescription: action.title
+        )
         // 宿主型动作全部依赖认证。令牌获取失败时菜单先置灰；下次构建菜单或
         // 执行动作会再次尝试，不会让一次初始化竞争锁死整个扩展进程。
         let clipboardRequirementIsMet = action != .createFileFromClipboard
@@ -162,6 +178,18 @@ final class FinderSync: FIFinderSync {
                 currentToken() != nil
         )
         return item
+    }
+
+    private static func menuImage(
+        named systemName: String,
+        accessibilityDescription: String
+    ) -> NSImage? {
+        let image = NSImage(
+            systemSymbolName: systemName,
+            accessibilityDescription: accessibilityDescription
+        )
+        image?.isTemplate = true
+        return image
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {

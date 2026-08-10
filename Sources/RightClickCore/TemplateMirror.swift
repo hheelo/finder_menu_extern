@@ -7,9 +7,16 @@ public enum TemplateMirrorError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .tooManyTemplates:
-            "自定义模板数量已达到上限。"
+            L10n.text(
+                "error.too_many_templates",
+                fallback: "自定义模板数量已达到上限。"
+            )
         case let .templateTooLarge(filename):
-            "模板“\(filename)”超过 10 MB，未同步。"
+            L10n.format(
+                "error.template_too_large",
+                fallback: "模板“%@”超过 10 MB，未同步。",
+                filename
+            )
         }
     }
 }

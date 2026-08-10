@@ -19,7 +19,10 @@ final class AppModel: ObservableObject {
     @Published var menuConfiguration: MenuConfiguration {
         didSet { persistMenuConfiguration() }
     }
-    @Published var lastStatus = "等待 Finder 操作"
+    @Published var lastStatus = L10n.text(
+        "status.waiting",
+        fallback: "等待 Finder 操作"
+    )
     @Published var lastError: String?
     @Published private(set) var errorHistory: [AppErrorRecord] = []
     @Published private(set) var extensionEnabled = false
@@ -150,7 +153,10 @@ final class AppModel: ObservableObject {
         )
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(report, forType: .string)
-        lastStatus = "诊断信息已复制"
+        lastStatus = L10n.text(
+            "status.copied_diagnostics",
+            fallback: "诊断信息已复制"
+        )
         lastError = nil
     }
 
@@ -216,14 +222,20 @@ final class AppModel: ObservableObject {
         guard let slot = CLIProfile.validMenuSlots.first(where: {
             !usedSlots.contains($0)
         }) else {
-            recordFailure("自定义 CLI 数量已达到上限。")
+            recordFailure(L10n.text(
+                "error.cli_limit",
+                fallback: "自定义 CLI 数量已达到上限。"
+            ))
             return
         }
         var updated = menuConfiguration
         updated.cliProfiles.append(
             CLIProfile(
                 id: UUID().uuidString.lowercased(),
-                title: "自定义 CLI",
+                title: L10n.text(
+                    "settings.default_cli_title",
+                    fallback: "自定义 CLI"
+                ),
                 executable: "command",
                 menuSlot: slot
             )
@@ -247,7 +259,11 @@ final class AppModel: ObservableObject {
             )
             NSWorkspace.shared.open(customTemplatesDirectory)
         } catch {
-            recordFailure("无法打开自定义模板目录：\(error.localizedDescription)")
+            recordFailure(L10n.format(
+                "error.open_templates",
+                fallback: "无法打开自定义模板目录：%@",
+                error.localizedDescription
+            ))
         }
     }
 
@@ -263,9 +279,17 @@ final class AppModel: ObservableObject {
             var updated = menuConfiguration
             updated.customTemplates = templates
             menuConfiguration = updated
-            lastStatus = "已同步 \(templates.count) 个自定义模板"
+            lastStatus = L10n.format(
+                "status.synced_templates",
+                fallback: "已同步 %lld 个自定义模板",
+                Int64(templates.count)
+            )
         } catch {
-            recordFailure("无法同步自定义模板：\(error.localizedDescription)")
+            recordFailure(L10n.format(
+                "error.sync_templates",
+                fallback: "无法同步自定义模板：%@",
+                error.localizedDescription
+            ))
         }
     }
 
@@ -275,14 +299,24 @@ final class AppModel: ObservableObject {
                 menuConfiguration,
                 to: menuConfigurationURL
             )
-            lastStatus = "Finder 菜单设置已保存"
+            lastStatus = L10n.text(
+                "status.menu_saved",
+                fallback: "Finder 菜单设置已保存"
+            )
         } catch {
-            recordFailure("无法保存 Finder 菜单设置：\(error.localizedDescription)")
+            recordFailure(L10n.format(
+                "error.save_menu",
+                fallback: "无法保存 Finder 菜单设置：%@",
+                error.localizedDescription
+            ))
         }
     }
 
     func restartFinder() {
-        restartFinder(successStatus: "Finder 已重新启动")
+        restartFinder(successStatus: L10n.text(
+            "status.restarted_finder",
+            fallback: "Finder 已重新启动"
+        ))
     }
 
     private func apply(_ event: DeepLinkEvent) {
@@ -308,7 +342,9 @@ final class AppModel: ObservableObject {
                 id: item.id,
                 title: item.title,
                 passed: extensionEnabled,
-                detail: extensionEnabled ? "已启用" : "未启用"
+                detail: extensionEnabled
+                    ? L10n.text("diagnostic.enabled", fallback: "已启用")
+                    : L10n.text("diagnostic.not_enabled", fallback: "未启用")
             )
         }
     }
@@ -324,11 +360,17 @@ final class AppModel: ObservableObject {
 
     private func refreshFinderSessionIfNeeded() {
         guard finderSessionManager.consumeRequiredRefresh() else { return }
-        restartFinder(successStatus: "已为当前版本重新加载 Finder")
+        restartFinder(successStatus: L10n.text(
+            "status.reloaded_finder",
+            fallback: "已为当前版本重新加载 Finder"
+        ))
     }
 
     private func restartFinder(successStatus: String) {
-        lastStatus = "正在重启 Finder"
+        lastStatus = L10n.text(
+            "status.restarting_finder",
+            fallback: "正在重启 Finder"
+        )
         lastError = nil
 
         Task { @MainActor [weak self] in

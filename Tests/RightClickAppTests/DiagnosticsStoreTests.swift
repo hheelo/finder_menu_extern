@@ -108,6 +108,30 @@ struct DiagnosticsStoreTests {
         #expect(collections == 1)
     }
 
+    @Test
+    func cacheRefreshesAfterThePreferredLanguageChanges() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        var language = "zh-Hans"
+        var collections = 0
+        let store = DiagnosticsStore(
+            settings: fixture.settings,
+            now: { fixture.now },
+            languageIdentifier: { language },
+            collector: { enabled in
+                collections += 1
+                return Self.items(extensionEnabled: enabled)
+            }
+        )
+
+        _ = await store.collect(extensionEnabled: false, force: true)
+        language = "en"
+
+        #expect(!store.hasFreshCache)
+        _ = await store.collect(extensionEnabled: false, force: false)
+        #expect(collections == 2)
+    }
+
     private static func items(extensionEnabled: Bool) -> [DiagnosticItem] {
         [
             DiagnosticItem(

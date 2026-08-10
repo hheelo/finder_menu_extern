@@ -13,10 +13,10 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.7.0 ./scripts/build-release.sh
+VERSION=0.8.0 ./scripts/build-release.sh
 ```
 
-第二条命令会验证 App、Finder 扩展、通用架构、Ad-hoc 签名与 DMG 内容。
+第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
 
 `RightClickAppTests` 是无宿主逻辑测试：被测文件直接编入测试包，不启动
 `LSUIElement` App，也不依赖已安装的同 Bundle ID 副本或 Sparkle。装有
@@ -77,6 +77,8 @@ VERSION=0.7.0 ./scripts/build-release.sh
 - 安装 v0.6.x 后升级到 v0.7.0，确认 App 自动刷新 Finder 会话；旧版 `token=` 与
   无签名 terminal/open 链接必须被拒绝，重启 Finder 后所有新动作恢复正常
 - 在设置里禁用、排序菜单项并切换 RightClick 子菜单，确认下一次右键立即生效
+- 确认所有内置、自定义 CLI 和自定义模板菜单项都带有可读的
+  SF Symbols 图标，置灰时图标与文字状态一致
 - 分别测试 Warp、Ghostty、WezTerm、Kitty；Warp/Ghostty 的 AI CLI 菜单应置灰，
   WezTerm/Kitty 应能在所选目录运行命令。再逐一测试新增编辑器与默认应用
 - 添加带参数的自定义 CLI，确认 URL 中只有配置 ID、没有命令或参数，并测试含空格、
@@ -94,6 +96,19 @@ VERSION=0.7.0 ./scripts/build-release.sh
   且右键菜单加载的是新扩展
 - 运行 `pluginkit -m -A -D -v -i com.hheelo.RightClick.FinderExtension`，
   确认只列出 Applications 中的一份扩展
+
+## 本地化
+
+- 在“系统设置 → 通用 → 语言与地区 → 应用程序”中分别把
+  RightClick 设为简体中文和英语，每次完全退出后重开，检查主窗口、
+  设置、诊断报告和错误通知，确认没有中英混排或裁切
+- Finder 扩展跟随 Finder 进程的语言环境，不得用宿主的 App 级语言
+  替代验证。切换系统首选语言并重新登录后，分别检查英文和简体中文
+  Finder 菜单，包括动态 CLI 标题和所有子菜单
+- 在两种语言下各新建一个 HTML 文件，确认 `<html lang>` 分别为
+  `en` 与 `zh-CN`；新建文件夹的默认名也应随语言变化
+- 清空诊断缓存后用一种语言刷新，再切换语言重开 App；确认 24 小时
+  缓存不会让旧语言的诊断标题继续显示
 
 ## 存储位置
 

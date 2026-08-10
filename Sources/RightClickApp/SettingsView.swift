@@ -6,9 +6,12 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Finder 菜单") {
+            Section(L10n.text("settings.finder_menu", fallback: "Finder 菜单")) {
                 Toggle(
-                    "收进一个 RightClick 子菜单",
+                    L10n.text(
+                        "settings.collapse_menu",
+                        fallback: "收进一个 RightClick 子菜单"
+                    ),
                     isOn: $model.menuConfiguration.collapseIntoSubmenu
                 )
                 ForEach(
@@ -31,7 +34,7 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.borderless)
                         .disabled(index == 0)
-                        .help("上移")
+                        .help(L10n.text("settings.move_up", fallback: "上移"))
                         Button {
                             model.moveMenuAction(action, by: 1)
                         } label: {
@@ -39,51 +42,71 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.borderless)
                         .disabled(index == model.configuredMenuActions.count - 1)
-                        .help("下移")
+                        .help(L10n.text("settings.move_down", fallback: "下移"))
                     }
                 }
-                Picker("多选复制时分隔符", selection: $model.clipboardSeparator) {
+                Picker(
+                    L10n.text("settings.copy_separator", fallback: "多选复制时分隔符"),
+                    selection: $model.clipboardSeparator
+                ) {
                     ForEach(ClipboardSeparator.allCases, id: \.self) { option in
                         Text(option.title).tag(option)
                     }
                 }
-                Text("修改后下一次打开 Finder 右键菜单立即生效，无需重启 Finder。")
+                Text(L10n.text(
+                    "settings.menu_immediate_help",
+                    fallback: "修改后下一次打开 Finder 右键菜单立即生效，无需重启 Finder。"
+                ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("终端") {
-                Picker("默认终端", selection: $model.terminalProfile) {
+            Section(L10n.text("settings.terminal", fallback: "终端")) {
+                Picker(
+                    L10n.text("settings.terminal_picker", fallback: "默认终端"),
+                    selection: $model.terminalProfile
+                ) {
                     ForEach(TerminalProfile.selectableCases, id: \.self) { terminal in
                         Text(
                             terminal.title + (
-                                terminal.supportsCLIExecution ? "" : "（仅打开目录）"
+                                terminal.supportsCLIExecution ? "" : L10n.text(
+                                    "separator.only_open_directory",
+                                    fallback: "（仅打开目录）"
+                                )
                             )
                         ).tag(terminal)
                     }
                 }
-                Picker("运行 AI CLI 时", selection: $model.terminalWindowBehavior) {
+                Picker(
+                    L10n.text("settings.run_cli_behavior", fallback: "运行 AI CLI 时"),
+                    selection: $model.terminalWindowBehavior
+                ) {
                     ForEach(TerminalWindowBehavior.allCases, id: \.self) { behavior in
                         Text(behavior.title).tag(behavior)
                     }
                 }
-                Text("「在终端中打开」与「运行 AI CLI」都使用默认终端。"
-                    + "选自动时优先 iTerm2；未安装的终端回退到 Terminal。"
-                    + "Warp 与 Ghostty 当前只支持打开目录。")
+                Text(L10n.text(
+                    "settings.terminal_help",
+                    fallback: "“在终端中打开”与“运行 AI CLI”都使用默认终端。选自动时优先 iTerm2；未安装的终端回退到 Terminal。Warp 与 Ghostty 当前只支持打开目录。"
+                ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("自定义 AI CLI") {
+            Section(L10n.text("settings.cli_title", fallback: "自定义 AI CLI")) {
                 ForEach($model.menuConfiguration.cliProfiles) { $profile in
                     DisclosureGroup(profile.title) {
-                        Toggle("显示在 Finder 菜单", isOn: $profile.isEnabled)
-                        TextField("显示名称", text: $profile.title)
-                        TextField("可执行名", text: $profile.executable)
+                        Toggle(L10n.text("settings.show_in_finder", fallback: "显示在 Finder 菜单"), isOn: $profile.isEnabled)
+                        TextField(L10n.text("settings.display_name", fallback: "显示名称"), text: $profile.title)
+                        TextField(L10n.text("settings.cli_executable", fallback: "可执行名"), text: $profile.executable)
                         ForEach(profile.arguments.indices, id: \.self) { index in
                             HStack {
                                 TextField(
-                                    "参数 \(index + 1)",
+                                    L10n.format(
+                                        "settings.argument_number",
+                                        fallback: "参数 %lld",
+                                        Int64(index + 1)
+                                    ),
                                     text: $profile.arguments[index]
                                 )
                                 Button(role: .destructive) {
@@ -95,42 +118,52 @@ struct SettingsView: View {
                             }
                         }
                         HStack {
-                            Button("添加参数") {
+                            Button(L10n.text("button.add_argument", fallback: "添加参数")) {
                                 profile.arguments.append("")
                             }
                             Spacer()
-                            Button("删除配置", role: .destructive) {
+                            Button(L10n.text("button.delete_cli", fallback: "删除配置"), role: .destructive) {
                                 model.removeCLIProfile(id: profile.id)
                             }
                         }
                     }
                 }
-                Button("添加 CLI 配置") {
+                Button(L10n.text("button.add_cli", fallback: "添加 CLI 配置")) {
                     model.addCLIProfile()
                 }
-                Text("深链只携带配置 ID；可执行名与参数保存在权限为 0600 的本机配置文件中。每个参数单独填写，不解析整行 shell 命令。")
+                Text(L10n.text(
+                    "settings.cli_security_help",
+                    fallback: "深链只携带配置 ID；可执行名与参数保存在权限为 0600 的本机配置文件中。每个参数单独填写，不解析整行 shell 命令。"
+                ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("自定义文件模板") {
+            Section(L10n.text("settings.templates", fallback: "自定义文件模板")) {
                 HStack {
-                    Button("打开模板目录") {
+                    Button(L10n.text("button.open_templates", fallback: "打开模板目录")) {
                         model.openCustomTemplatesDirectory()
                     }
-                    Button("刷新模板") {
+                    Button(L10n.text("button.refresh", fallback: "刷新模板")) {
                         model.refreshCustomTemplates()
                     }
                     Spacer()
-                    Text("已同步 \(model.menuConfiguration.customTemplates.count) 个")
+                    Text(L10n.format(
+                        "settings.synced_templates",
+                        fallback: "已同步 %lld 个",
+                        Int64(model.menuConfiguration.customTemplates.count)
+                    ))
                         .foregroundStyle(.secondary)
                 }
-                Text("把文件放入 ~/Library/Application Support/RightClick/Templates/，刷新后会按原文件名出现在 Finder 的“新建文件”菜单中。")
+                Text(L10n.text(
+                    "settings.templates_help",
+                    fallback: "把文件放入 ~/Library/Application Support/RightClick/Templates/，刷新后会按原文件名出现在 Finder 的“新建文件”菜单中。"
+                ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("环境诊断") {
+            Section(L10n.text("settings.diagnostics", fallback: "环境诊断")) {
                 ForEach(model.diagnostics) { item in
                     LabeledContent {
                         Text(item.detail)
@@ -153,7 +186,7 @@ struct SettingsView: View {
                 }
 
                 HStack {
-                    Button("重新检测") {
+                    Button(L10n.text("button.recheck", fallback: "重新检测")) {
                         Task { await model.refreshDiagnostics(force: true) }
                     }
                     .disabled(model.isRefreshingDiagnostics)
@@ -165,19 +198,17 @@ struct SettingsView: View {
 
                     Spacer()
 
-                    Button("复制诊断信息") {
+                    Button(L10n.text("button.copy_diagnostics", fallback: "复制诊断信息")) {
                         model.copyDiagnostics()
                     }
                 }
             }
 
             Section {
-                Text(
-                    "首次运行终端命令时，macOS 可能询问是否允许 "
-                        + "RightClick 控制 Terminal 或 iTerm2。Finder 动作会在"
-                        + "后台交给 RightClick 处理，不会显示宿主窗口。Terminal 的"
-                        + "新标签页还需要允许 RightClick 使用辅助功能。"
-                )
+                Text(L10n.text(
+                    "settings.security_help",
+                    fallback: "首次运行终端命令时，macOS 可能询问是否允许 RightClick 控制 Terminal 或 iTerm2。Finder 动作会在后台交给 RightClick 处理，不会显示宿主窗口。Terminal 的新标签页还需要允许 RightClick 使用辅助功能。"
+                ))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

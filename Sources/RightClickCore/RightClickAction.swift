@@ -24,26 +24,46 @@ public enum RightClickAction: Codable, Equatable, Sendable {
 
     public var title: String {
         switch self {
-        case .copyPath: "复制文件路径"
-        case .copyFilename: "复制文件名"
-        case .openInVSCode: "用 VS Code 打开"
-        case .openInCodex: "用 ChatGPT 打开"
-        case .openInTerminal: "在终端中打开"
-        case .runCodexCLI: "在终端运行 Codex CLI"
-        case .runClaudeCode: "在终端运行 Claude Code"
+        case .copyPath: L10n.text("action.copy_path", fallback: "复制文件路径")
+        case .copyFilename:
+            L10n.text("action.copy_filename", fallback: "复制文件名")
+        case .openInVSCode:
+            L10n.text("action.open_vscode", fallback: "用 VS Code 打开")
+        case .openInCodex:
+            L10n.text("action.open_chatgpt", fallback: "用 ChatGPT 打开")
+        case .openInTerminal:
+            L10n.text("action.open_terminal", fallback: "在终端中打开")
+        case .runCodexCLI:
+            L10n.text("action.run_codex", fallback: "在终端运行 Codex CLI")
+        case .runClaudeCode:
+            L10n.text("action.run_claude", fallback: "在终端运行 Claude Code")
         case let .createFile(template): template.title
-        case .copyFileURL: "复制 file URL"
-        case .copyShellPath: "复制 Shell 引用路径"
-        case .copyParentPath: "复制父目录路径"
-        case .openInCursor: "用 Cursor 打开"
-        case .openInZed: "用 Zed 打开"
-        case .openInSublimeText: "用 Sublime Text 打开"
-        case .openInXcode: "用 Xcode 打开"
-        case .openInJetBrains: "用 JetBrains IDE 打开"
-        case .openInDefaultApplication: "用默认应用打开"
-        case .createFolder: "新建文件夹"
-        case .createFileFromClipboard: "从剪贴板新建文本文件"
-        case .copyRelativePath: "复制相对路径"
+        case .copyFileURL:
+            L10n.text("action.copy_file_url", fallback: "复制 file URL")
+        case .copyShellPath:
+            L10n.text("action.copy_shell_path", fallback: "复制 Shell 引用路径")
+        case .copyParentPath:
+            L10n.text("action.copy_parent_path", fallback: "复制父目录路径")
+        case .openInCursor:
+            L10n.text("action.open_cursor", fallback: "用 Cursor 打开")
+        case .openInZed: L10n.text("action.open_zed", fallback: "用 Zed 打开")
+        case .openInSublimeText:
+            L10n.text("action.open_sublime", fallback: "用 Sublime Text 打开")
+        case .openInXcode:
+            L10n.text("action.open_xcode", fallback: "用 Xcode 打开")
+        case .openInJetBrains:
+            L10n.text("action.open_jetbrains", fallback: "用 JetBrains IDE 打开")
+        case .openInDefaultApplication:
+            L10n.text("action.open_default", fallback: "用默认应用打开")
+        case .createFolder:
+            L10n.text("action.create_folder", fallback: "新建文件夹")
+        case .createFileFromClipboard:
+            L10n.text(
+                "action.create_clipboard_file",
+                fallback: "从剪贴板新建文本文件"
+            )
+        case .copyRelativePath:
+            L10n.text("action.copy_relative_path", fallback: "复制相对路径")
         }
     }
 
@@ -72,6 +92,30 @@ public enum RightClickAction: Codable, Equatable, Sendable {
         case .createFolder: "createFolder"
         case .createFileFromClipboard: "createFileFromClipboard"
         case .copyRelativePath: "copyRelativePath"
+        }
+    }
+
+    /// Finder 菜单使用的稳定 SF Symbol。扩展只负责渲染，不根据
+    /// 本地化后的标题猜图标，否则切换语言会改变行为。
+    public var systemImageName: String {
+        switch self {
+        case .copyPath, .copyFilename, .copyRelativePath,
+             .copyFileURL, .copyShellPath, .copyParentPath:
+            "doc.on.doc"
+        case .openInVSCode, .openInCodex, .openInCursor, .openInZed,
+             .openInSublimeText, .openInXcode, .openInJetBrains,
+             .openInDefaultApplication:
+            "square.and.arrow.up"
+        case .openInTerminal:
+            "terminal"
+        case .runCodexCLI, .runClaudeCode:
+            "terminal.fill"
+        case .createFile:
+            "doc.badge.plus"
+        case .createFolder:
+            "folder.badge.plus"
+        case .createFileFromClipboard:
+            "doc.on.clipboard"
         }
     }
 

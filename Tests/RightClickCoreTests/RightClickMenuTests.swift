@@ -50,11 +50,11 @@ struct RightClickMenuTests {
         let nodes = RightClickMenu.nodes(placement: .container, context: context)
 
         #expect(nodes.contains(.action(.copyPath, isEnabled: true)))
-        #expect(enabledSubmenu(named: "更多复制方式", in: nodes))
+        #expect(enabledSubmenu(named: moreCopyTitle, in: nodes))
         #expect(nodes.contains(.action(.openInVSCode, isEnabled: true)))
-        #expect(enabledSubmenu(named: "用其他编辑器打开", in: nodes))
-        #expect(enabledSubmenu(named: "新建文件", in: nodes))
-        #expect(enabledSubmenu(named: "运行 AI CLI", in: nodes))
+        #expect(enabledSubmenu(named: moreEditorsTitle, in: nodes))
+        #expect(enabledSubmenu(named: newFileTitle, in: nodes))
+        #expect(enabledSubmenu(named: runCLITitle, in: nodes))
     }
 
     @Test
@@ -63,18 +63,18 @@ struct RightClickMenuTests {
         let nodes = RightClickMenu.nodes(placement: .items, context: context)
 
         #expect(
-            submenuItems(named: "新建文件", in: nodes)?.count
+            submenuItems(named: newFileTitle, in: nodes)?.count
                 == FileTemplate.allCases.count + 3
         )
         // 终端不再是子菜单：具体用哪个由宿主解析，菜单只提供一个动作。
         #expect(submenuItems(named: "在终端中打开", in: nodes) == nil)
         #expect(nodes.contains(.action(.openInTerminal, isEnabled: true)))
         #expect(
-            submenuItems(named: "更多复制方式", in: nodes)?.count
+            submenuItems(named: moreCopyTitle, in: nodes)?.count
                 == 4
         )
         #expect(
-            submenuItems(named: "更多复制方式", in: nodes)?
+            submenuItems(named: moreCopyTitle, in: nodes)?
                 .contains(.action(.copyRelativePath, isEnabled: true)) == true
         )
     }
@@ -91,7 +91,7 @@ struct RightClickMenuTests {
         let nodes = RightClickMenu.nodes(placement: .items, context: context)
 
         #expect(nodes.contains(.action(.copyFilename, isEnabled: true)))
-        #expect(enabledSubmenu(named: "新建文件", in: nodes))
+        #expect(enabledSubmenu(named: newFileTitle, in: nodes))
         #expect(
             context.creationDirectory?.path
                 == file.deletingLastPathComponent().path
@@ -212,6 +212,20 @@ struct RightClickMenuTests {
     }
 
     @Test
+    func everyActionHasAStableMenuIcon() {
+        #expect(
+            RightClickAction.allMenuActions.allSatisfy {
+                !$0.systemImageName.isEmpty
+            }
+        )
+        #expect(RightClickAction.openInTerminal.systemImageName == "terminal")
+        #expect(
+            RightClickAction.createFolder.systemImageName
+                == "folder.badge.plus"
+        )
+    }
+
+    @Test
     func configurationDisablesOrdersAndCollapsesWithoutChangingTags() throws {
         let context = SelectionContext(selectedURLs: [], targetedURL: folder)
         let copyPathTag = RightClickAction.copyPath.menuTag
@@ -235,7 +249,7 @@ struct RightClickMenuTests {
         let rootItems = try #require(submenuItems(named: "RightClick", in: nodes))
         #expect(!contains(.copyFilename, in: rootItems))
         let copyItems = try #require(
-            submenuItems(named: "更多复制方式", in: rootItems)
+            submenuItems(named: moreCopyTitle, in: rootItems)
         )
         #expect(actions(in: copyItems).prefix(2) == [.copyShellPath, .copyFileURL])
         #expect(RightClickAction.copyPath.menuTag == copyPathTag)
@@ -252,8 +266,8 @@ struct RightClickMenuTests {
                 terminalProfileID: TerminalProfile.warp.rawValue
             )
         )
-        let items = try #require(submenuItems(named: "运行 AI CLI", in: nodes))
-        #expect(!enabledSubmenu(named: "运行 AI CLI", in: nodes))
+        let items = try #require(submenuItems(named: runCLITitle, in: nodes))
+        #expect(!enabledSubmenu(named: runCLITitle, in: nodes))
         #expect(items.allSatisfy { node in
             guard case let .action(_, isEnabled) = node else { return false }
             return !isEnabled
@@ -271,6 +285,22 @@ struct RightClickMenuTests {
             }
             return items
         }.first
+    }
+
+    private var moreCopyTitle: String {
+        L10n.text("menu.more_copy_options", fallback: "更多复制方式")
+    }
+
+    private var moreEditorsTitle: String {
+        L10n.text("menu.more_editors", fallback: "用其他编辑器打开")
+    }
+
+    private var newFileTitle: String {
+        L10n.text("menu.new_file", fallback: "新建文件")
+    }
+
+    private var runCLITitle: String {
+        L10n.text("menu.run_ai_cli", fallback: "运行 AI CLI")
     }
 
     private func enabledSubmenu(

@@ -12,7 +12,8 @@ public enum TerminalProfile: String, CaseIterable, Codable, Sendable {
 
     public var title: String {
         switch self {
-        case .automatic: "自动（优先 iTerm2）"
+        case .automatic:
+            L10n.text("terminal.automatic", fallback: "自动（优先 iTerm2）")
         // 与 `ExternalApplication` 共用显示名，避免两处各写一份。
         case .terminal, .iTerm, .warp, .ghostty, .wezTerm, .kitty:
             resolvedApplication.title
@@ -88,8 +89,8 @@ public enum TerminalWindowBehavior: String, CaseIterable, Codable, Sendable {
 
     public var title: String {
         switch self {
-        case .newTab: "新标签页"
-        case .newWindow: "新窗口"
+        case .newTab: L10n.text("terminal.new_tab", fallback: "新标签页")
+        case .newWindow: L10n.text("terminal.new_window", fallback: "新窗口")
         }
     }
 }

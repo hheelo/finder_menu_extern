@@ -173,7 +173,7 @@ public extension ExternalApplication {
     /// Bundle ID，因而不能走普通的应用定位分支。
     static let systemDefault = ExternalApplication(
         identifier: "system-default",
-        title: "默认应用",
+        title: L10n.text("app.default_application", fallback: "默认应用"),
         bundleIdentifiers: [],
         names: []
     )

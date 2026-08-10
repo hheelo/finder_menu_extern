@@ -60,7 +60,10 @@ public enum RightClickMenu {
             .action(.copyPath, isEnabled: hasSelection),
             .action(.copyFilename, isEnabled: hasSelection),
             .submenu(
-                title: "更多复制方式",
+                title: L10n.text(
+                    "menu.more_copy_options",
+                    fallback: "更多复制方式"
+                ),
                 isEnabled: hasSelection,
                 items: [
                     .action(.copyRelativePath, isEnabled: hasSelection),
@@ -73,7 +76,10 @@ public enum RightClickMenu {
             .action(.openInVSCode, isEnabled: hasSelection),
             .action(.openInCodex, isEnabled: hasSelection),
             .submenu(
-                title: "用其他编辑器打开",
+                title: L10n.text(
+                    "menu.more_editors",
+                    fallback: "用其他编辑器打开"
+                ),
                 isEnabled: hasSelection,
                 items: [
                     .action(.openInCursor, isEnabled: hasSelection),
@@ -88,7 +94,7 @@ public enum RightClickMenu {
             // 所以这里只有一个动作，不再列出具体终端。
             .action(.openInTerminal, isEnabled: hasWorkingDirectory),
             .submenu(
-                title: "运行 AI CLI",
+                title: L10n.text("menu.run_ai_cli", fallback: "运行 AI CLI"),
                 isEnabled: canRunCLI,
                 items: [
                     .action(.runCodexCLI, isEnabled: canRunCLI),
@@ -101,7 +107,7 @@ public enum RightClickMenu {
             ),
             .separator,
             .submenu(
-                title: "新建文件",
+                title: L10n.text("menu.new_file", fallback: "新建文件"),
                 isEnabled: canCreateFile,
                 items: [
                     .action(.createFolder, isEnabled: canCreateFile),

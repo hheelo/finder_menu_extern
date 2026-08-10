@@ -1,5 +1,6 @@
 @preconcurrency import UserNotifications
 import Foundation
+import RightClickCore
 
 struct AppErrorRecord: Identifiable, Equatable {
     let id: UUID
@@ -41,7 +42,10 @@ struct SystemUserNotifier: UserNotifying {
             guard authorized else { return }
 
             let content = UNMutableNotificationContent()
-            content.title = "RightClick 操作失败"
+            content.title = L10n.text(
+                "notification.failure_title",
+                fallback: "RightClick 操作失败"
+            )
             content.body = message
             content.sound = .default
             let request = UNNotificationRequest(

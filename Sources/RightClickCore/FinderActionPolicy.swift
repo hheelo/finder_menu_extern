@@ -10,15 +10,29 @@ public enum FinderActionError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .invalidTarget:
-            "所选项目无法作为打开目标。"
+            L10n.text("error.invalid_target", fallback: "所选项目无法作为打开目标。")
         case .invalidWorkingDirectory:
-            "无法确定有效的工作目录。"
+            L10n.text(
+                "error.invalid_working_directory",
+                fallback: "无法确定有效的工作目录。"
+            )
         case let .tooManyOpenTargets(count, maximum):
-            "一次最多打开 \(maximum) 个项目，当前选中 \(count) 个。"
+            L10n.format(
+                "error.too_many_open_targets",
+                fallback: "一次最多打开 %1$lld 个项目，当前选中 %2$lld 个。",
+                Int64(maximum),
+                Int64(count)
+            )
         case .authenticationUnavailable:
-            "无法建立 Finder 扩展与 RightClick 的安全连接。"
+            L10n.text(
+                "error.authentication_unavailable",
+                fallback: "无法建立 Finder 扩展与 RightClick 的安全连接。"
+            )
         case .hostApplicationUnavailable:
-            "无法启动 RightClick，请确认 App 仍位于 Applications 文件夹中。"
+            L10n.text(
+                "error.host_unavailable",
+                fallback: "无法启动 RightClick，请确认 App 仍位于 Applications 文件夹中。"
+            )
         }
     }
 }

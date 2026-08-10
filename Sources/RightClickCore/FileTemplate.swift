@@ -11,13 +11,14 @@ public enum FileTemplate: String, CaseIterable, Codable, Sendable {
 
     public var title: String {
         switch self {
-        case .text: "TXT 文件"
-        case .markdown: "Markdown 文件"
-        case .python: "Python 文件"
-        case .shell: "Shell 文件"
-        case .html: "HTML 文件"
-        case .json: "JSON 文件"
-        case .csv: "CSV 文件"
+        case .text: L10n.text("template.text", fallback: "TXT 文件")
+        case .markdown:
+            L10n.text("template.markdown", fallback: "Markdown 文件")
+        case .python: L10n.text("template.python", fallback: "Python 文件")
+        case .shell: L10n.text("template.shell", fallback: "Shell 文件")
+        case .html: L10n.text("template.html", fallback: "HTML 文件")
+        case .json: L10n.text("template.json", fallback: "JSON 文件")
+        case .csv: L10n.text("template.csv", fallback: "CSV 文件")
         }
     }
 
@@ -36,15 +37,19 @@ public enum FileTemplate: String, CaseIterable, Codable, Sendable {
     public var initialContents: String {
         switch self {
         case .text, .markdown, .csv:
-            ""
+            return ""
         case .python:
-            "#!/usr/bin/env python3\n\n"
+            return "#!/usr/bin/env python3\n\n"
         case .shell:
-            "#!/bin/zsh\n\n"
+            return "#!/bin/zsh\n\n"
         case .html:
-            """
+            let languageTag = L10n.text(
+                "html.language_tag",
+                fallback: "zh-CN"
+            )
+            return """
             <!doctype html>
-            <html lang="zh-CN">
+            <html lang="\(languageTag)">
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -57,7 +62,7 @@ public enum FileTemplate: String, CaseIterable, Codable, Sendable {
 
             """
         case .json:
-            "{\n  \n}\n"
+            return "{\n  \n}\n"
         }
     }
 }

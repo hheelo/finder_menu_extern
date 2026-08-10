@@ -76,8 +76,12 @@ struct FileCreatorTests {
             in: root
         )
 
-        #expect(firstFolder.lastPathComponent == "Untitled Folder")
-        #expect(secondFolder.lastPathComponent == "Untitled Folder 2")
+        let folderName = L10n.text(
+            "file.untitled_folder",
+            fallback: "未命名文件夹"
+        )
+        #expect(firstFolder.lastPathComponent == folderName)
+        #expect(secondFolder.lastPathComponent == "\(folderName) 2")
         #expect(try String(contentsOf: file, encoding: .utf8) == "clipboard text")
         #expect(throws: FileCreatorError.self) {
             try creator.create(
