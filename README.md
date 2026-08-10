@@ -7,7 +7,7 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
   不在仓库里时以当前 Finder 窗口目录为基准）
 - 用 Visual Studio Code、ChatGPT、Cursor、Zed、Sublime Text、Xcode、JetBrains 或系统默认应用打开
 - 支持 Terminal、iTerm2、Warp、Ghostty、WezTerm、Kitty；可选新标签页或新窗口
-- 运行 Codex CLI / Claude Code，或配置自己的 CLI 可执行名和逐项参数
+- 运行 Codex CLI / Claude Code，或用 PATH 命令名、绝对路径和逐项参数配置自己的 CLI
 - 新建内置模板文件、自定义模板文件、文件夹，或从文本剪贴板新建文件
 - 可启用、禁用和排序菜单项，也可全部收进一个 RightClick 子菜单
 - 宿主界面、Finder 菜单、错误通知与系统权限说明支持简体中文和英文
@@ -115,7 +115,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.8.0 ./scripts/build-release.sh
+VERSION=0.8.1 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。

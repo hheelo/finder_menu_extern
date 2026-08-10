@@ -95,10 +95,10 @@ struct SettingsView: View {
 
             Section(L10n.text("settings.cli_title", fallback: "自定义 AI CLI")) {
                 ForEach($model.menuConfiguration.cliProfiles) { $profile in
-                    DisclosureGroup(profile.title) {
+                    DisclosureGroup {
                         Toggle(L10n.text("settings.show_in_finder", fallback: "显示在 Finder 菜单"), isOn: $profile.isEnabled)
                         TextField(L10n.text("settings.display_name", fallback: "显示名称"), text: $profile.title)
-                        TextField(L10n.text("settings.cli_executable", fallback: "可执行名"), text: $profile.executable)
+                        TextField(L10n.text("settings.cli_executable", fallback: "命令名或绝对路径"), text: $profile.executable)
                         ForEach(profile.arguments.indices, id: \.self) { index in
                             HStack {
                                 TextField(
@@ -121,10 +121,30 @@ struct SettingsView: View {
                             Button(L10n.text("button.add_argument", fallback: "添加参数")) {
                                 profile.arguments.append("")
                             }
+                        }
+                    } label: {
+                        HStack {
+                            Text(profile.title.isEmpty
+                                ? L10n.text(
+                                    "settings.default_cli_title",
+                                    fallback: "自定义 CLI"
+                                )
+                                : profile.title)
                             Spacer()
-                            Button(L10n.text("button.delete_cli", fallback: "删除配置"), role: .destructive) {
+                            Button(role: .destructive) {
                                 model.removeCLIProfile(id: profile.id)
+                            } label: {
+                                Image(systemName: "trash")
                             }
+                            .buttonStyle(.borderless)
+                            .help(L10n.text(
+                                "button.delete_cli",
+                                fallback: "删除配置"
+                            ))
+                            .accessibilityLabel(L10n.text(
+                                "button.delete_cli",
+                                fallback: "删除配置"
+                            ))
                         }
                     }
                 }
@@ -133,7 +153,7 @@ struct SettingsView: View {
                 }
                 Text(L10n.text(
                     "settings.cli_security_help",
-                    fallback: "深链只携带配置 ID；可执行名与参数保存在权限为 0600 的本机配置文件中。每个参数单独填写，不解析整行 shell 命令。"
+                    fallback: "可填写 PATH 中的命令名或可执行文件的绝对路径。深链只携带配置 ID；命令与参数保存在权限为 0600 的本机配置文件中。每个参数单独填写，不解析整行 shell 命令。"
                 ))
                     .font(.caption)
                     .foregroundStyle(.secondary)

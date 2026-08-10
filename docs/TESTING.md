@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.8.0 ./scripts/build-release.sh
+VERSION=0.8.1 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -81,8 +81,8 @@ VERSION=0.8.0 ./scripts/build-release.sh
   SF Symbols 图标，置灰时图标与文字状态一致
 - 分别测试 Warp、Ghostty、WezTerm、Kitty；Warp/Ghostty 的 AI CLI 菜单应置灰，
   WezTerm/Kitty 应能在所选目录运行命令。再逐一测试新增编辑器与默认应用
-- 添加带参数的自定义 CLI，确认 URL 中只有配置 ID、没有命令或参数，并测试含空格、
-  单引号的参数按单个参数传递
+- 添加带参数的自定义 CLI，分别测试 PATH 命令名与含空格的绝对路径；确认 URL 中
+  只有配置 ID、没有命令或参数，并测试含空格、单引号的参数按单个参数传递
 - 向 `~/Library/Application Support/RightClick/Templates/` 放入普通文件、子目录和
   符号链接，刷新后确认只出现普通文件；创建结果保留内容且不覆盖同名文件
 - 测试新建文件夹与从文本剪贴板新建文件；空剪贴板不得写入空文件

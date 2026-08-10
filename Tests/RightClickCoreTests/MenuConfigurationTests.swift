@@ -114,6 +114,31 @@ struct MenuConfigurationTests {
         )
     }
 
+    @Test
+    func customCLIAllowsCommandNamesAndAbsoluteExecutablePaths() {
+        #expect(CLIProfile.isValidExecutable("gemini"))
+        #expect(CLIProfile.isValidExecutable("/opt/homebrew/bin/gemini"))
+        #expect(CLIProfile.isValidExecutable("/Applications/AI Tools/gemini-cli"))
+
+        #expect(!CLIProfile.isValidExecutable("bin/gemini"))
+        #expect(!CLIProfile.isValidExecutable("gemini --yolo"))
+        #expect(!CLIProfile.isValidExecutable("/"))
+        #expect(!CLIProfile.isValidExecutable("/opt/homebrew/bin/"))
+    }
+
+    @Test
+    func configuredCommandQuotesAbsoluteExecutablePath() {
+        let command = ShellCommandBuilder.command(
+            executable: "/Applications/AI Tools/gemini-cli",
+            arguments: ["--resume"],
+            in: URL(fileURLWithPath: "/tmp/project")
+        )
+        #expect(
+            command
+                == "cd '/tmp/project' && '/Applications/AI Tools/gemini-cli' '--resume'"
+        )
+    }
+
     private func temporaryURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

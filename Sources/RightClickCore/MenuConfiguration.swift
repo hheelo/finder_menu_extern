@@ -184,15 +184,33 @@ public struct CLIProfile: Codable, Equatable, Identifiable, Sendable {
             && id.unicodeScalars.allSatisfy(characters.contains)
     }
 
-    public var isValid: Bool {
+    /// 自定义 CLI 可以是 shell 能从 PATH 中解析的简单命令名，也可以是用户
+    /// 明确填写的绝对路径。两种形式在执行前都会被逐项 shell quote；不接受
+    /// 相对路径，避免配置的含义随 Finder/宿主进程的启动目录变化。
+    public static func isValidExecutable(_ executable: String) -> Bool {
+        guard (1...1024).contains(executable.count),
+              !executable.contains("\0"),
+              !executable.contains("\n") else {
+            return false
+        }
+
+        if executable.contains("/") {
+            return executable.hasPrefix("/")
+                && executable != "/"
+                && !executable.hasSuffix("/")
+        }
+
         let executableCharacters = CharacterSet(
             charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._+-"
         )
+        return executable.unicodeScalars.allSatisfy(executableCharacters.contains)
+    }
+
+    public var isValid: Bool {
         return Self.isValidID(id)
             && (1...64).contains(title.count)
             && !title.contains("\n")
-            && (1...128).contains(executable.count)
-            && executable.unicodeScalars.allSatisfy(executableCharacters.contains)
+            && Self.isValidExecutable(executable)
             && arguments.count <= 64
             && arguments.allSatisfy {
                 $0.count <= 512 && !$0.contains("\0") && !$0.contains("\n")
