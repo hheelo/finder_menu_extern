@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+enum AppWindow {
+    static let mainID = "main"
+}
+
 /// URL 事件由 AppDelegate 直接接收，不能挂在 SwiftUI 窗口上。
 /// `WindowGroup.onOpenURL` 会为了投递事件先创建并显示一个窗口，随后再收起也会
 /// 肉眼可见地闪一下。共享模型按首次访问初始化，URL 先到也可以直接处理。
@@ -119,16 +123,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 enum WindowPresenter {
     /// 启动期收起窗口时用：本进程是否曾显式请出过窗口。
     private(set) static var isPresentationRequested = false
+    private static weak var mainWindow: NSWindow?
+
+    static var hasMainWindow: Bool {
+        mainWindow != nil
+    }
+
+    static func registerMainWindow(_ window: NSWindow) {
+        mainWindow = window
+    }
 
     static var hasPresentableWindow: Bool {
         presentableWindow != nil
     }
 
     static func bringToFront() {
-        guard let window = presentableWindow else {
+        guard let window = mainWindow ?? presentableWindow else {
             appLogger.error("无法请出窗口：没有可恢复窗口")
             return
         }
+        present(window)
+    }
+
+    static func bringMainWindowToFront() {
+        guard let mainWindow else {
+            appLogger.error("无法返回主窗口：主窗口已不存在")
+            return
+        }
+        present(mainWindow)
+    }
+
+    private static func present(_ window: NSWindow) {
         notePresentationRequested()
         NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -148,6 +173,24 @@ enum WindowPresenter {
     }
 }
 
+@MainActor
+private final class MainWindowTrackingView: NSView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let window {
+            WindowPresenter.registerMainWindow(window)
+        }
+    }
+}
+
+private struct MainWindowReader: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        MainWindowTrackingView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
 @main
 struct RightClickApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
@@ -156,10 +199,11 @@ struct RightClickApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: AppWindow.mainID) {
             ContentView(updater: updater)
                 .environmentObject(model)
                 .frame(minWidth: 640, minHeight: 440)
+                .background(MainWindowReader())
                 .task {
                     // 只在用户自己打开 App 时刷新与查更新；深链唤起时不做，
                     // 避免右键路径启动登录 shell 或冒出更新界面。

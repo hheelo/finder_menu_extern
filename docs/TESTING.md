@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.8.1 ./scripts/build-release.sh
+VERSION=0.8.2 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。

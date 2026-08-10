@@ -51,6 +51,7 @@
     "terminal.new_tab" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "New Tab" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "新标签页" } } } },
     "terminal.new_window" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "New Window" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "新窗口" } } } },
     "button.add_argument" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Argument" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加参数" } } } },
+    "button.back" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "返回" } } } },
     "button.add_cli" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Add CLI Profile" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加 CLI 配置" } } } },
     "button.check_updates" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Check for Updates" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "检查更新" } } } },
     "button.clear" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清除" } } } },

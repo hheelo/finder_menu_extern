@@ -3,6 +3,8 @@ import RightClickCore
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Form {
@@ -235,5 +237,30 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    returnToMainWindow()
+                } label: {
+                    Label(
+                        L10n.text("button.back", fallback: "返回"),
+                        systemImage: "chevron.left"
+                    )
+                }
+                .help(L10n.text("button.back", fallback: "返回"))
+            }
+        }
+    }
+
+    private func returnToMainWindow() {
+        let mainWindowExists = WindowPresenter.hasMainWindow
+        dismiss()
+        if mainWindowExists {
+            DispatchQueue.main.async {
+                WindowPresenter.bringMainWindowToFront()
+            }
+        } else {
+            openWindow(id: AppWindow.mainID)
+        }
     }
 }
