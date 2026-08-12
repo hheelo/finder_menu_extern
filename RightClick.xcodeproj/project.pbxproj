@@ -71,6 +71,7 @@
 		9320B783BBE29258B928382C /* DiagnosticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B07C78FB63B792F77E26AD8 /* DiagnosticsStore.swift */; };
 		94D25B747EEE3B0ECAF86A49 /* MenuConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35615BB162D8EA95F24922DC /* MenuConfigurationStore.swift */; };
 		95236F7637C8DFD5F2925CA4 /* RetryableTokenAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDE3B275B109EDAF49C7416 /* RetryableTokenAvailability.swift */; };
+		971368A07B58CEFF1D25A5B7 /* AppDiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D141035472591634AE6A5A /* AppDiagnosticsTests.swift */; };
 		9A5850C71EF235EC66C4186E /* MenuConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA521B6AEC24CF0ED08F5BA /* MenuConfigurationTests.swift */; };
 		9B55D904E8658B0F23991B03 /* TemplateMirrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0FB24F6CFDC0ACDF4E3D74 /* TemplateMirrorTests.swift */; };
 		9C1A3747FD6B74A2108D0331 /* OpenInvocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4809F6985A7D2364B09E19B2 /* OpenInvocation.swift */; };
@@ -242,6 +243,7 @@
 		456CECCB7E8690209C278E69 /* ErrorInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorInvocationTests.swift; sourceTree = "<group>"; };
 		4809F6985A7D2364B09E19B2 /* OpenInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenInvocation.swift; sourceTree = "<group>"; };
 		4B45B2F0C41B89F0B23D6B42 /* LoginShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginShell.swift; sourceTree = "<group>"; };
+		53D141035472591634AE6A5A /* AppDiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDiagnosticsTests.swift; sourceTree = "<group>"; };
 		59270681F4795CFF7E10997C /* UpdaterController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterController.swift; sourceTree = "<group>"; };
 		636A04A2E7190FA424AF2E04 /* RightClickAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RightClickAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		66DD77E8ED9FD935977EF665 /* TerminalInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInvocationTests.swift; sourceTree = "<group>"; };
@@ -463,6 +465,7 @@
 		915C75C49A13372DD2691B15 /* RightClickAppTests */ = {
 			isa = PBXGroup;
 			children = (
+				53D141035472591634AE6A5A /* AppDiagnosticsTests.swift */,
 				30568F1902D0E7645E5EE2BF /* AppModelTests.swift */,
 				3B3A440353A1852A97CE6930 /* AppVersionTests.swift */,
 				D751F802357CA9B0181743F2 /* DeepLinkRequestTests.swift */,
@@ -741,6 +744,7 @@
 			files = (
 				F4EC95622A3AAD29D247F7D9 /* ActionExecutor.swift in Sources */,
 				BE42E6190D94EB0D17C8F590 /* AppDiagnostics.swift in Sources */,
+				971368A07B58CEFF1D25A5B7 /* AppDiagnosticsTests.swift in Sources */,
 				C4BE8E47511A1E80BEAFC9C9 /* AppLogger.swift in Sources */,
 				0CCEAF8B32654B9242B5B062 /* AppModel.swift in Sources */,
 				FC5B9474E3B7DE66A075CDC4 /* AppModelTests.swift in Sources */,
@@ -962,7 +966,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 803;
+				CURRENT_PROJECT_VERSION = 900;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -983,7 +987,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.8.3;
+				MARKETING_VERSION = 0.9.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1142,7 +1146,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 803;
+				CURRENT_PROJECT_VERSION = 900;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1157,7 +1161,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.8.3;
+				MARKETING_VERSION = 0.9.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

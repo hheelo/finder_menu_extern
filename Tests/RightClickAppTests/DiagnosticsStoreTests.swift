@@ -12,14 +12,14 @@ struct DiagnosticsStoreTests {
         let store = DiagnosticsStore(
             settings: fixture.settings,
             now: { fixture.now },
-            collector: { enabled in
+            collector: { enabled, _, _ in
                 collections += 1
                 return Self.items(extensionEnabled: enabled)
             }
         )
 
-        _ = await store.collect(extensionEnabled: false, force: true)
-        let cached = await store.collect(extensionEnabled: true, force: false)
+        _ = await collect(store, extensionEnabled: false, force: true)
+        let cached = await collect(store, extensionEnabled: true, force: false)
 
         #expect(collections == 1)
         #expect(cached?.first?.id == "extension")
@@ -35,7 +35,7 @@ struct DiagnosticsStoreTests {
         let store = DiagnosticsStore(
             settings: fixture.settings,
             now: { currentDate },
-            collector: { enabled in
+            collector: { enabled, _, _ in
                 [
                     DiagnosticItem(
                         id: "extension",
@@ -52,15 +52,12 @@ struct DiagnosticsStoreTests {
                 ]
             }
         )
-        _ = await store.collect(extensionEnabled: false, force: true)
+        _ = await collect(store, extensionEnabled: false, force: true)
         currentDate.addTimeInterval(DiagnosticsStore.cacheLifetime + 1)
         detail = "second"
 
-        #expect(store.cached(extensionEnabled: false)?[1].detail == "first")
-        let refreshed = await store.collect(
-            extensionEnabled: false,
-            force: false
-        )
+        #expect(cached(store, extensionEnabled: false)?[1].detail == "first")
+        let refreshed = await collect(store, extensionEnabled: false, force: false)
         #expect(refreshed?[1].detail == "second")
     }
 
@@ -73,17 +70,17 @@ struct DiagnosticsStoreTests {
         let store = DiagnosticsStore(
             settings: fixture.settings,
             now: { currentDate },
-            collector: { enabled in
+            collector: { enabled, _, _ in
                 collections += 1
                 return Self.items(extensionEnabled: enabled)
             }
         )
 
-        _ = await store.collect(extensionEnabled: false, force: true)
+        _ = await collect(store, extensionEnabled: false, force: true)
         currentDate.addTimeInterval(-1)
 
-        #expect(!store.hasFreshCache)
-        _ = await store.collect(extensionEnabled: false, force: false)
+        #expect(!hasFreshCache(store))
+        _ = await collect(store, extensionEnabled: false, force: false)
         #expect(collections == 2)
     }
 
@@ -96,15 +93,15 @@ struct DiagnosticsStoreTests {
         let store = DiagnosticsStore(
             settings: fixture.settings,
             now: { fixture.now },
-            collector: { enabled in
+            collector: { enabled, _, _ in
                 collections += 1
                 return Self.items(extensionEnabled: enabled)
             }
         )
 
-        #expect(store.cached(extensionEnabled: false) == nil)
-        #expect(!store.hasFreshCache)
-        _ = await store.collect(extensionEnabled: false, force: false)
+        #expect(cached(store, extensionEnabled: false) == nil)
+        #expect(!hasFreshCache(store))
+        _ = await collect(store, extensionEnabled: false, force: false)
         #expect(collections == 1)
     }
 
@@ -118,18 +115,112 @@ struct DiagnosticsStoreTests {
             settings: fixture.settings,
             now: { fixture.now },
             languageIdentifier: { language },
-            collector: { enabled in
+            collector: { enabled, _, _ in
                 collections += 1
                 return Self.items(extensionEnabled: enabled)
             }
         )
 
-        _ = await store.collect(extensionEnabled: false, force: true)
+        _ = await collect(store, extensionEnabled: false, force: true)
         language = "en"
 
-        #expect(!store.hasFreshCache)
-        _ = await store.collect(extensionEnabled: false, force: false)
+        #expect(!hasFreshCache(store))
+        _ = await collect(store, extensionEnabled: false, force: false)
         #expect(collections == 2)
+    }
+
+    @Test
+    func terminalProfileChangeInvalidatesTheCache() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        var collections = 0
+        let store = DiagnosticsStore(
+            settings: fixture.settings,
+            now: { fixture.now },
+            collector: { enabled, _, _ in
+                collections += 1
+                return Self.items(extensionEnabled: enabled)
+            }
+        )
+
+        _ = await collect(store, extensionEnabled: false, force: true)
+        #expect(!store.hasFreshCache(
+            terminalProfile: .ghostty,
+            menuConfiguration: Self.menuConfiguration
+        ))
+        _ = await store.collect(
+            extensionEnabled: false,
+            force: false,
+            terminalProfile: .ghostty,
+            menuConfiguration: Self.menuConfiguration
+        )
+        #expect(collections == 2)
+    }
+
+    @Test
+    func menuConfigurationChangeInvalidatesTheCache() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        var collections = 0
+        let store = DiagnosticsStore(
+            settings: fixture.settings,
+            now: { fixture.now },
+            collector: { enabled, _, _ in
+                collections += 1
+                return Self.items(extensionEnabled: enabled)
+            }
+        )
+        var changed = Self.menuConfiguration
+        changed.disabledActions.insert(RightClickAction.openInZed.configurationID)
+
+        _ = await collect(store, extensionEnabled: false, force: true)
+        #expect(!store.hasFreshCache(
+            terminalProfile: Self.terminalProfile,
+            menuConfiguration: changed
+        ))
+        _ = await store.collect(
+            extensionEnabled: false,
+            force: false,
+            terminalProfile: Self.terminalProfile,
+            menuConfiguration: changed
+        )
+        #expect(collections == 2)
+    }
+
+    private static let terminalProfile = TerminalProfile.terminal
+    private static let menuConfiguration = MenuConfiguration(
+        terminalProfileID: TerminalProfile.terminal.rawValue
+    )
+
+    private func collect(
+        _ store: DiagnosticsStore,
+        extensionEnabled: Bool,
+        force: Bool
+    ) async -> [DiagnosticItem]? {
+        await store.collect(
+            extensionEnabled: extensionEnabled,
+            force: force,
+            terminalProfile: Self.terminalProfile,
+            menuConfiguration: Self.menuConfiguration
+        )
+    }
+
+    private func cached(
+        _ store: DiagnosticsStore,
+        extensionEnabled: Bool
+    ) -> [DiagnosticItem]? {
+        store.cached(
+            extensionEnabled: extensionEnabled,
+            terminalProfile: Self.terminalProfile,
+            menuConfiguration: Self.menuConfiguration
+        )
+    }
+
+    private func hasFreshCache(_ store: DiagnosticsStore) -> Bool {
+        store.hasFreshCache(
+            terminalProfile: Self.terminalProfile,
+            menuConfiguration: Self.menuConfiguration
+        )
     }
 
     private static func items(extensionEnabled: Bool) -> [DiagnosticItem] {

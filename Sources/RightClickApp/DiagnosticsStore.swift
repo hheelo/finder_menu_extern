@@ -9,13 +9,19 @@ final class DiagnosticsStore {
     private struct Snapshot: Codable {
         let capturedAt: Date
         let languageIdentifier: String
+        let terminalProfileID: String
+        let menuConfiguration: MenuConfiguration
         let items: [DiagnosticItem]
     }
 
     private let settings: AppSettings
     private let now: () -> Date
     private let languageIdentifier: () -> String
-    private let collector: (Bool) async -> [DiagnosticItem]
+    private let collector: (
+        Bool,
+        TerminalProfile,
+        MenuConfiguration
+    ) async -> [DiagnosticItem]
     private var isCollecting = false
 
     init(
@@ -24,8 +30,16 @@ final class DiagnosticsStore {
         languageIdentifier: @escaping () -> String = {
             L10n.currentLanguageIdentifier
         },
-        collector: @escaping (Bool) async -> [DiagnosticItem] = {
-            await AppDiagnostics.collect(extensionEnabled: $0)
+        collector: @escaping (
+            Bool,
+            TerminalProfile,
+            MenuConfiguration
+        ) async -> [DiagnosticItem] = {
+            await AppDiagnostics.collect(
+                extensionEnabled: $0,
+                terminalProfile: $1,
+                menuConfiguration: $2
+            )
         }
     ) {
         self.settings = settings
@@ -35,25 +49,49 @@ final class DiagnosticsStore {
     }
 
     /// 冷启动先展示上次结果；Finder 扩展状态变化频繁，永远使用本次实况。
-    func cached(extensionEnabled: Bool) -> [DiagnosticItem]? {
-        guard let snapshot = loadSnapshot() else { return nil }
+    func cached(
+        extensionEnabled: Bool,
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration
+    ) -> [DiagnosticItem]? {
+        guard let snapshot = loadSnapshot(),
+              matchesContext(
+                  snapshot,
+                  terminalProfile: terminalProfile,
+                  menuConfiguration: menuConfiguration
+              ) else {
+            return nil
+        }
         return withExtensionState(
             snapshot.items,
             enabled: extensionEnabled
         )
     }
 
-    var hasFreshCache: Bool {
+    func hasFreshCache(
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration
+    ) -> Bool {
         guard let snapshot = loadSnapshot() else { return false }
-        return isFresh(snapshot)
+        return isFresh(
+            snapshot,
+            terminalProfile: terminalProfile,
+            menuConfiguration: menuConfiguration
+        )
     }
 
     func collect(
         extensionEnabled: Bool,
-        force: Bool
+        force: Bool,
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration
     ) async -> [DiagnosticItem]? {
         guard !isCollecting else { return nil }
-        if !force, let snapshot = loadSnapshot(), isFresh(snapshot) {
+        if !force, let snapshot = loadSnapshot(), isFresh(
+            snapshot,
+            terminalProfile: terminalProfile,
+            menuConfiguration: menuConfiguration
+        ) {
             return withExtensionState(
                 snapshot.items,
                 enabled: extensionEnabled
@@ -63,12 +101,18 @@ final class DiagnosticsStore {
         isCollecting = true
         defer { isCollecting = false }
 
-        let collected = await collector(extensionEnabled)
+        let collected = await collector(
+            extensionEnabled,
+            terminalProfile,
+            menuConfiguration
+        )
         let cacheable = collected.filter { $0.id != "extension" }
         if let data = try? JSONEncoder().encode(
             Snapshot(
                 capturedAt: now(),
                 languageIdentifier: languageIdentifier(),
+                terminalProfileID: terminalProfile.rawValue,
+                menuConfiguration: menuConfiguration,
                 items: cacheable
             )
         ) {
@@ -91,11 +135,29 @@ final class DiagnosticsStore {
         return snapshot
     }
 
-    private func isFresh(_ snapshot: Snapshot) -> Bool {
+    private func isFresh(
+        _ snapshot: Snapshot,
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration
+    ) -> Bool {
         let age = now().timeIntervalSince(snapshot.capturedAt)
         return age >= 0
             && age < Self.cacheLifetime
-            && snapshot.languageIdentifier == languageIdentifier()
+            && matchesContext(
+                snapshot,
+                terminalProfile: terminalProfile,
+                menuConfiguration: menuConfiguration
+            )
+    }
+
+    private func matchesContext(
+        _ snapshot: Snapshot,
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration
+    ) -> Bool {
+        snapshot.languageIdentifier == languageIdentifier()
+            && snapshot.terminalProfileID == terminalProfile.rawValue
+            && snapshot.menuConfiguration == menuConfiguration
     }
 
     private func withExtensionState(

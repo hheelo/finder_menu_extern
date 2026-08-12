@@ -41,7 +41,8 @@ public struct TemplateMirror {
         try createPrivateDirectory(mirrorDirectory)
 
         let keys: Set<URLResourceKey> = [
-            .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey
+            .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey,
+            .contentModificationDateKey
         ]
         let sources = try fileManager.contentsOfDirectory(
             at: sourceDirectory,
@@ -80,11 +81,42 @@ public struct TemplateMirror {
             let filename = source.lastPathComponent
             expectedNames.insert(filename)
             let destination = mirrorDirectory.appendingPathComponent(filename)
-            try Data(contentsOf: source).write(to: destination, options: .atomic)
-            try fileManager.setAttributes(
-                [.posixPermissions: 0o600],
-                ofItemAtPath: destination.path
+            let mirroredValues = try? destination.resourceValues(
+                forKeys: [.fileSizeKey, .contentModificationDateKey]
             )
+            let sourceDate = values.contentModificationDate
+            let mirroredDate = mirroredValues?.contentModificationDate
+            // Foundation 通过文件属性回写 Date 时可能损失亚毫秒精度；这种精度
+            // 舍入不代表源文件变化，否则每次同步仍会原子替换镜像。
+            let modificationDateMatches = sourceDate.flatMap { sourceDate in
+                mirroredDate.map {
+                    abs($0.timeIntervalSince(sourceDate)) < 0.001
+                }
+            } ?? false
+            let isUnchanged = sourceDate != nil
+                && mirroredValues?.fileSize == values.fileSize
+                && modificationDateMatches
+
+            // B1 之后每次宿主界面呈现都会同步。模板上限是 300 × 10 MB，
+            // 未变化时不能继续全量读写。size + mtime 相同但内容不同的极端情况
+            // 会被跳过；这里的目标正是避免为内容哈希读取全文，且镜像不是安全边界。
+            if !isUnchanged {
+                try Data(contentsOf: source).write(
+                    to: destination,
+                    options: .atomic
+                )
+                try fileManager.setAttributes(
+                    [.posixPermissions: 0o600],
+                    ofItemAtPath: destination.path
+                )
+                if let sourceDate {
+                    // 原子写会使用当前时间；显式对齐后下一次才能命中快速路径。
+                    try fileManager.setAttributes(
+                        [.modificationDate: sourceDate],
+                        ofItemAtPath: destination.path
+                    )
+                }
+            }
 
             if let previous = existingByFilename[filename], previous.isValid {
                 templates.append(previous)

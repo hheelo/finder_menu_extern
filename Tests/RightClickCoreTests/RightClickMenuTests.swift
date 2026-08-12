@@ -257,6 +257,41 @@ struct RightClickMenuTests {
     }
 
     @Test
+    func dynamicIdentifiersDoNotReorderTheirParentSubmenus() {
+        let context = SelectionContext(selectedURLs: [], targetedURL: folder)
+        let profile = CLIProfile(
+            id: "custom",
+            title: "Custom",
+            executable: "custom",
+            menuSlot: 1
+        )
+        let template = CustomFileTemplate(
+            id: "note",
+            title: "Note",
+            filename: "Note.md",
+            menuSlot: 1
+        )
+        let baseline = MenuConfiguration(
+            cliProfiles: [profile],
+            customTemplates: [template]
+        )
+        var legacy = baseline
+        legacy.actionOrder = [profile.configurationID, template.configurationID]
+
+        #expect(
+            RightClickMenu.nodes(
+                placement: .container,
+                context: context,
+                configuration: legacy
+            ) == RightClickMenu.nodes(
+                placement: .container,
+                context: context,
+                configuration: baseline
+            )
+        )
+    }
+
+    @Test
     func terminalWithoutCommandCapabilityDisablesCLISubmenu() throws {
         let context = SelectionContext(selectedURLs: [], targetedURL: folder)
         let nodes = RightClickMenu.nodes(

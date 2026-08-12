@@ -45,6 +45,17 @@ public enum FinderActionError: LocalizedError, Equatable {
 
 /// Finder 扩展的纯决策层。FinderSync 只负责读系统状态和执行 AppKit 调用。
 public enum FinderActionPolicy {
+    /// 动作的额外前置条件。扩展只负责提供系统探测结果，不再自行决定什么算满足。
+    public static func isSatisfied(
+        _ action: RightClickAction,
+        hasClipboardText: Bool
+    ) -> Bool {
+        switch action {
+        case .createFileFromClipboard: hasClipboardText
+        default: true
+        }
+    }
+
     public static func requiresAuthenticatedHost(
         _ action: RightClickAction
     ) -> Bool {

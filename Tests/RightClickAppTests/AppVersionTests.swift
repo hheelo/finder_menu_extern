@@ -5,18 +5,18 @@ struct AppVersionTests {
     @Test
     func combinesShortVersionAndBuild() throws {
         let version = try #require(AppVersion.resolve(infoDictionary: [
-            "CFBundleShortVersionString": "0.8.3",
-            "CFBundleVersion": "803"
+            "CFBundleShortVersionString": "0.9.0",
+            "CFBundleVersion": "900"
         ]))
-        #expect(version.displayString == "0.8.3 (803)")
+        #expect(version.displayString == "0.9.0 (900)")
     }
 
     @Test
     func fallsBackToShortVersionWhenBuildIsMissing() throws {
         let version = try #require(AppVersion.resolve(infoDictionary: [
-            "CFBundleShortVersionString": "0.8.3"
+            "CFBundleShortVersionString": "0.9.0"
         ]))
-        #expect(version.displayString == "0.8.3")
+        #expect(version.displayString == "0.9.0")
     }
 
     @Test

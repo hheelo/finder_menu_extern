@@ -64,6 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async { self.hideWindows() }
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        sharedAppModel.flushPendingMenuConfiguration()
+    }
+
     private func hideWindows() {
         guard !WindowPresenter.isPresentationRequested else {
             appLogger.notice("窗口已被显式请出，跳过收起")

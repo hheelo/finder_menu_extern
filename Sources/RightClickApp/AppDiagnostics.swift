@@ -10,7 +10,11 @@ struct DiagnosticItem: Codable, Identifiable, Sendable {
 
 @MainActor
 enum AppDiagnostics {
-    static func collect(extensionEnabled: Bool) async -> [DiagnosticItem] {
+    static func collect(
+        extensionEnabled: Bool,
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration
+    ) async -> [DiagnosticItem] {
         let loginShellURL = UserLoginShell.resolve()
         async let codexPath = executablePath(
             for: .codex,
@@ -21,12 +25,53 @@ enum AppDiagnostics {
             loginShellURL: loginShellURL
         )
 
-        let vscode = applicationURL(for: .visualStudioCode)
-        let codexApp = applicationURL(for: .codex)
-        let iTerm = applicationURL(for: .iTerm)
+        let relevant = relevantApplications(
+            terminalProfile: terminalProfile,
+            menuConfiguration: menuConfiguration
+        )
+        let terminalApplication = relevant[0]
+        let terminalURL = applicationURL(for: terminalApplication)
+        let missingEditors = Array(relevant.dropFirst())
 
         let resolvedCodexPath = await codexPath
         let resolvedClaudePath = await claudePath
+        let terminalItem = DiagnosticItem(
+            id: "default-terminal",
+            title: L10n.format(
+                "diagnostic.default_terminal_named",
+                fallback: "默认终端（%@）",
+                terminalApplication.title
+            ),
+            passed: terminalURL != nil,
+            detail: terminalURL?.path ?? L10n.text(
+                "diagnostic.terminal_fallback",
+                fallback: "未找到，将回退到 Terminal"
+            )
+        )
+        let editorItems: [DiagnosticItem]
+        if missingEditors.isEmpty {
+            editorItems = [DiagnosticItem(
+                id: "enabled-editors",
+                title: L10n.text(
+                    "diagnostic.enabled_editors",
+                    fallback: "已启用的编辑器"
+                ),
+                passed: true,
+                detail: L10n.text(
+                    "diagnostic.all_installed",
+                    fallback: "均已安装"
+                )
+            )]
+        } else {
+            editorItems = missingEditors.map {
+                applicationItem(
+                    id: "application-\($0.identifier)",
+                    title: $0.title,
+                    url: nil
+                )
+            }
+        }
+
         return [
             DiagnosticItem(
                 id: "extension",
@@ -42,20 +87,35 @@ enum AppDiagnostics {
                 passed: true,
                 detail: loginShellURL.path
             ),
-            applicationItem(id: "vscode", title: "Visual Studio Code", url: vscode),
-            applicationItem(id: "codex-app", title: "ChatGPT", url: codexApp),
-            applicationItem(
-                id: "iterm",
-                title: L10n.format(
-                    "diagnostic.optional",
-                    fallback: "%@（可选）",
-                    "iTerm2"
-                ),
-                url: iTerm
-            ),
+            terminalItem
+        ] + editorItems + [
             commandItem(command: .codex, path: resolvedCodexPath),
             commandItem(command: .claude, path: resolvedClaudePath)
         ]
+    }
+
+    /// 只诊断与当前配置有关的应用：所选终端始终保留；编辑器只保留已启用但
+    /// 缺失的条目，避免一长串绿色应用淹没真正需要处理的问题。
+    static func relevantApplications(
+        terminalProfile: TerminalProfile,
+        menuConfiguration: MenuConfiguration,
+        applicationURL: (ExternalApplication) -> URL? = {
+            AppDiagnostics.applicationURL(for: $0)
+        }
+    ) -> [ExternalApplication] {
+        var seen: Set<String> = []
+        let enabledEditors: [ExternalApplication] = RightClickAction
+            .allMenuActions.compactMap { action in
+                guard !menuConfiguration.disabledActions.contains(
+                    action.configurationID
+                ), let application = ExternalApplication.forOpenAction(action),
+                   application != .systemDefault,
+                   seen.insert(application.identifier).inserted else {
+                    return nil
+                }
+                return applicationURL(application) == nil ? application : nil
+            }
+        return [terminalProfile.resolvedApplication] + enabledEditors
     }
 
     static func report(

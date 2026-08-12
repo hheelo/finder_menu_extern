@@ -12,6 +12,8 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
 
     public var version: Int
     public var disabledActions: Set<String>
+    /// 只包含内置 `RightClickAction.configurationID`。动态 CLI 与模板按各自稳定的
+    /// menuSlot 排列，不叠加第二套 actionOrder 顺序。
     public var actionOrder: [String]
     public var collapseIntoSubmenu: Bool
     /// 扩展用它判断所选终端是否具备运行 CLI 的能力；nil 等同 automatic。

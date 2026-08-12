@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.8.3 ./scripts/build-release.sh
+VERSION=0.9.0 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -61,6 +61,8 @@ VERSION=0.8.3 ./scripts/build-release.sh
   使用还应提示辅助功能权限，拒绝后不得把命令写进原标签页
 - 分别选择“新标签页”和“新窗口”。连续触发三次 CLI 时，前者应增加三个标签页
   而非三个窗口；完全退出终端后触发一次，应只出现一个窗口
+- 不安装 Ghostty，把默认终端选成 Ghostty，确认诊断立即显示“未找到，将回退到
+  Terminal”而不沿用 24 小时缓存；卸载 Cursor 后应出现缺失项，重装后应消失
 - 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台、不增加窗口，
   界面也不会短暂闪现
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
@@ -79,6 +81,8 @@ VERSION=0.8.3 ./scripts/build-release.sh
 - 安装 v0.6.x 后升级到 v0.7.0，确认 App 自动刷新 Finder 会话；旧版 `token=` 与
   无签名 terminal/open 链接必须被拒绝，重启 Finder 后所有新动作恢复正常
 - 在设置里禁用、排序菜单项并切换 RightClick 子菜单，确认下一次右键立即生效
+- 在设置页连续输入一个长命令名并同时反复右键，确认动态 CLI 不会随半成品配置
+  闪烁；输入到一半直接按 ⌘Q，重开 App 后确认最后输入仍然保留
 - 确认所有内置、自定义 CLI 和自定义模板菜单项都带有可读的
   SF Symbols 图标，置灰时图标与文字状态一致
 - 分别测试 Warp、Ghostty、WezTerm、Kitty；Warp/Ghostty 的 AI CLI 菜单应置灰，
@@ -92,8 +96,9 @@ VERSION=0.8.3 ./scripts/build-release.sh
   并重新呈现宿主完成同步。回到旧菜单点击，确认收到“配置已被修改”通知而非无反应
 - 主窗口版本号应可选中复制，并与“复制诊断信息”首行及 Finder“显示简介”一致；
   VoiceOver 应读出版本号和构建号，而不是逐字念数字
-- 在 macOS 15/26 把文本放入剪贴板后反复打开 Finder 右键菜单，肉眼确认无隐私提示，
-  并用 pasteboard 子系统日志复核；这是 B7 改动前的发布门禁
+- 在 macOS 15/26 把 50 MB 文本放入剪贴板后反复打开 Finder 右键菜单，确认无
+  隐私提示、无可感知延迟，并用 pasteboard 子系统日志复核；只有真正点击创建时
+  才读取内容
 - 测试新建文件夹与从文本剪贴板新建文件；空剪贴板不得写入空文件
 - 卸载 VS Code 后触发“用 VS Code 打开”，确认收到本地通知、错误进入最近 10 条
   历史，并且 RightClick 不抢焦点；拒绝通知权限时仍应保留错误历史
@@ -101,6 +106,8 @@ VERSION=0.8.3 ./scripts/build-release.sh
   错误），绝不能写入 `.app` 包内部
 - 右键 `.xcodeproj` 后“在终端中打开”，确认终端目录是工程包的父目录
 - 升级旧版本，确认 Applications 中只留下一个 RightClick.app
+- 将默认终端设为 Ghostty，删除扩展容器中的 `menu.json` 后重开 App，确认文件被
+  重建且带有 `terminalProfileID: ghostty`，不支持 CLI 的菜单仍保持置灰
 - 保持 Finder 运行并升级旧版本；启动新 App 后确认 Finder 自动退出并重新打开，
   且右键菜单加载的是新扩展
 - 运行 `pluginkit -m -A -D -v -i com.hheelo.RightClick.FinderExtension`，

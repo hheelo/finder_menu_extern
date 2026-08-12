@@ -3,6 +3,19 @@ import Testing
 
 struct FinderActionPolicyTests {
     @Test
+    func onlyClipboardCreationDependsOnClipboardText() {
+        for action in RightClickAction.allMenuActions {
+            #expect(FinderActionPolicy.isSatisfied(action, hasClipboardText: true))
+            #expect(
+                FinderActionPolicy.isSatisfied(
+                    action,
+                    hasClipboardText: false
+                ) == (action != .createFileFromClipboard)
+            )
+        }
+    }
+
+    @Test
     func onlyHostActionsRequireAuthentication() {
         for action in RightClickAction.allMenuActions {
             let expected: Bool

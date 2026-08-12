@@ -67,6 +67,7 @@ struct AppModelTests {
             menuSlot: 1
         )
         fixture.model.menuConfiguration.cliProfiles = [profile]
+        fixture.model.persistMenuConfigurationImmediately()
         let invocation = ConfiguredCLIInvocation(
             profileID: profile.id,
             workingDirectory: fixture.directory,
@@ -78,6 +79,28 @@ struct AppModelTests {
 
         #expect(fixture.executor.configuredProfiles == [profile])
         #expect(fixture.executor.configuredDirectories == [fixture.directory])
+    }
+
+    @Test
+    func movingAnActionDropsLegacyDynamicOrderIdentifiers() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        fixture.model.menuConfiguration.actionOrder = [
+            "cli:legacy",
+            "template:legacy"
+        ]
+
+        fixture.model.moveMenuAction(.copyFilename, by: -1)
+
+        #expect(
+            fixture.model.menuConfiguration.actionOrder.allSatisfy {
+                RightClickAction(configurationID: $0) != nil
+            }
+        )
+        #expect(
+            fixture.model.menuConfiguration.actionOrder.count
+                == RightClickAction.allMenuActions.count
+        )
     }
 
     @Test

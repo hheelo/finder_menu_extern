@@ -48,9 +48,18 @@ final class FinderSync: FIFinderSync {
         )
         guard !nodes.isEmpty else { return nil }
 
+        // 一次菜单构建只探测一次类型；即使菜单有多个分组，也不重复触碰
+        // pasteboard 服务。真正内容仍只在用户点击创建动作后读取。
+        let hasClipboardText = NSPasteboard.general.canReadObject(
+            forClasses: [NSString.self]
+        )
         let menu = Self.makeMenu(title: "RightClick")
         for node in nodes {
-            menu.addItem(item(for: node, placement: placement))
+            menu.addItem(item(
+                for: node,
+                placement: placement,
+                hasClipboardText: hasClipboardText
+            ))
         }
 
         // 空白处/边栏右键完全依赖 targetedURL：它一旦为 nil，选区上下文就全空，
@@ -80,7 +89,8 @@ final class FinderSync: FIFinderSync {
     /// 把 Core 描述的菜单结构渲染成 AppKit 菜单项。
     private func item(
         for node: RightClickMenuNode,
-        placement: MenuPlacement
+        placement: MenuPlacement,
+        hasClipboardText: Bool
     ) -> NSMenuItem {
         switch node {
         case .separator:
@@ -89,7 +99,8 @@ final class FinderSync: FIFinderSync {
             return actionItem(
                 action,
                 placement: placement,
-                isEnabled: isEnabled
+                isEnabled: isEnabled,
+                hasClipboardText: hasClipboardText
             )
         case let .configuredCLI(profile, isEnabled):
             let item = NSMenuItem(
@@ -133,7 +144,11 @@ final class FinderSync: FIFinderSync {
             let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
             let submenu = Self.makeMenu(title: title)
             for child in items {
-                submenu.addItem(item(for: child, placement: placement))
+                submenu.addItem(item(
+                    for: child,
+                    placement: placement,
+                    hasClipboardText: hasClipboardText
+                ))
             }
             root.submenu = submenu
             root.isEnabled = isEnabled
@@ -153,7 +168,8 @@ final class FinderSync: FIFinderSync {
     private func actionItem(
         _ action: RightClickAction,
         placement: MenuPlacement,
-        isEnabled: Bool = true
+        isEnabled: Bool = true,
+        hasClipboardText: Bool
     ) -> NSMenuItem {
         let item = NSMenuItem(
             title: action.title,
@@ -171,9 +187,10 @@ final class FinderSync: FIFinderSync {
         )
         // 宿主型动作全部依赖认证。令牌获取失败时菜单先置灰；下次构建菜单或
         // 执行动作会再次尝试，不会让一次初始化竞争锁死整个扩展进程。
-        let clipboardRequirementIsMet = action != .createFileFromClipboard
-            || NSPasteboard.general.string(forType: .string)?.isEmpty == false
-        item.isEnabled = isEnabled && clipboardRequirementIsMet && (
+        item.isEnabled = isEnabled && FinderActionPolicy.isSatisfied(
+            action,
+            hasClipboardText: hasClipboardText
+        ) && (
             !FinderActionPolicy.requiresAuthenticatedHost(action) ||
                 currentToken() != nil
         )

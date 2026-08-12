@@ -233,10 +233,9 @@ public enum RightClickMenu {
             Int.max
         case let .action(action, _):
             ranks[action.configurationID] ?? Int.max
-        case let .configuredCLI(profile, _):
-            ranks[profile.configurationID] ?? Int.max
-        case let .customTemplate(template, _):
-            ranks[template.configurationID] ?? Int.max
+        case .configuredCLI, .customTemplate:
+            // 动态项由 menuSlot 决定顺序，不参与只面向内置动作的 actionOrder。
+            Int.max
         case let .submenu(_, _, items):
             items.map { minimumRank(in: $0, ranks: ranks) }.min() ?? Int.max
         }

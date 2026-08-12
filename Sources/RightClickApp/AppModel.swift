@@ -8,9 +8,10 @@ final class AppModel: ObservableObject {
     @Published var terminalProfile: TerminalProfile {
         didSet {
             settings.terminalProfile = terminalProfile
-            menuConfigurationStore.update {
+            menuConfigurationStore.updateImmediately {
                 $0.terminalProfileID = terminalProfile.rawValue
             }
+            Task { await refreshDiagnostics() }
         }
     }
     @Published var terminalWindowBehavior: TerminalWindowBehavior {
@@ -78,8 +79,15 @@ final class AppModel: ObservableObject {
         )
         menuConfigurationStore = configurationStore
         menuConfiguration = configurationStore.configuration
-        diagnostics = diagnosticsStore.cached(extensionEnabled: false) ?? []
-        diagnosticsAreAuthoritative = diagnosticsStore.hasFreshCache
+        diagnostics = diagnosticsStore.cached(
+            extensionEnabled: false,
+            terminalProfile: terminalProfile,
+            menuConfiguration: menuConfiguration
+        ) ?? []
+        diagnosticsAreAuthoritative = diagnosticsStore.hasFreshCache(
+            terminalProfile: terminalProfile,
+            menuConfiguration: menuConfiguration
+        )
 
         configurationStore.onChange = { [weak self] configuration in
             self?.menuConfiguration = configuration
@@ -90,6 +98,7 @@ final class AppModel: ObservableObject {
         configurationStore.onFailure = { [weak self] message in
             self?.recordFailure(message)
         }
+        configurationStore.deliverDeferredInitializationFailure()
 
         if performInitialRefresh {
             refreshCustomTemplates()
@@ -142,15 +151,28 @@ final class AppModel: ObservableObject {
     func refreshDiagnostics(force: Bool = false) async {
         guard !isRefreshingDiagnostics else { return }
         isRefreshingDiagnostics = true
-        defer { isRefreshingDiagnostics = false }
+        let requestedTerminalProfile = terminalProfile
+        let requestedMenuConfiguration = menuConfiguration
         if let collected = await diagnosticsStore.collect(
             extensionEnabled: extensionEnabled,
-            force: force
+            force: force,
+            terminalProfile: requestedTerminalProfile,
+            menuConfiguration: requestedMenuConfiguration
         ) {
+            isRefreshingDiagnostics = false
+            // 用户可能在登录 shell 探测期间改了终端或编辑器开关。旧收集结果
+            // 不能覆盖新上下文；立即按最新配置再收一次。
+            guard requestedTerminalProfile == terminalProfile,
+                  requestedMenuConfiguration == menuConfiguration else {
+                await refreshDiagnostics(force: true)
+                return
+            }
             // 旧系统的 pluginkit 检测可能在 collect 的 await 期间返回。以完成时
             // 的最新状态改写这一行，避免一直显示初始化时的 false。
             diagnostics = normalizeExtensionStatus(in: collected)
             diagnosticsAreAuthoritative = true
+        } else {
+            isRefreshingDiagnostics = false
         }
     }
 
@@ -195,7 +217,7 @@ final class AppModel: ObservableObject {
     var clipboardSeparator: ClipboardSeparator {
         get { menuConfiguration.clipboardSeparator }
         set {
-            menuConfigurationStore.update {
+            menuConfigurationStore.updateImmediately {
                 $0.copySeparator = newValue.rawValue
             }
         }
@@ -206,12 +228,15 @@ final class AppModel: ObservableObject {
     }
 
     func setMenuAction(_ action: RightClickAction, isEnabled: Bool) {
-        menuConfigurationStore.update { updated in
+        menuConfigurationStore.updateImmediately { updated in
             if isEnabled {
                 updated.disabledActions.remove(action.configurationID)
             } else {
                 updated.disabledActions.insert(action.configurationID)
             }
+        }
+        if ExternalApplication.forOpenAction(action) != nil {
+            Task { await refreshDiagnostics() }
         }
     }
 
@@ -221,7 +246,7 @@ final class AppModel: ObservableObject {
         let destination = source + offset
         guard actions.indices.contains(destination) else { return }
         actions.swapAt(source, destination)
-        menuConfigurationStore.update {
+        menuConfigurationStore.updateImmediately {
             $0.actionOrder = actions.map(\.configurationID)
         }
     }
@@ -237,7 +262,7 @@ final class AppModel: ObservableObject {
             ))
             return
         }
-        menuConfigurationStore.update {
+        menuConfigurationStore.updateImmediately {
             $0.cliProfiles.append(CLIProfile(
                 id: UUID().uuidString.lowercased(),
                 title: L10n.text(
@@ -251,9 +276,8 @@ final class AppModel: ObservableObject {
     }
 
     func removeCLIProfile(id: String) {
-        menuConfigurationStore.update {
+        menuConfigurationStore.updateImmediately {
             $0.cliProfiles.removeAll { $0.id == id }
-            $0.actionOrder.removeAll { $0 == "cli:\(id)" }
         }
     }
 
@@ -278,6 +302,14 @@ final class AppModel: ObservableObject {
 
     func refreshCustomTemplates() {
         menuConfigurationStore.refreshCustomTemplates()
+    }
+
+    func persistMenuConfigurationImmediately() {
+        menuConfigurationStore.persistImmediately()
+    }
+
+    func flushPendingMenuConfiguration() {
+        menuConfigurationStore.flushPendingPersist()
     }
 
     func restartFinder() {

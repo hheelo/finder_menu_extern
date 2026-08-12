@@ -16,6 +16,9 @@ struct SettingsView: View {
                     ),
                     isOn: $model.menuConfiguration.collapseIntoSubmenu
                 )
+                .onChange(of: model.menuConfiguration.collapseIntoSubmenu) {
+                    model.persistMenuConfigurationImmediately()
+                }
                 ForEach(
                     Array(model.configuredMenuActions.enumerated()),
                     id: \.element.configurationID
@@ -99,6 +102,9 @@ struct SettingsView: View {
                 ForEach($model.menuConfiguration.cliProfiles) { $profile in
                     DisclosureGroup {
                         Toggle(L10n.text("settings.show_in_finder", fallback: "显示在 Finder 菜单"), isOn: $profile.isEnabled)
+                            .onChange(of: profile.isEnabled) {
+                                model.persistMenuConfigurationImmediately()
+                            }
                         TextField(L10n.text("settings.display_name", fallback: "显示名称"), text: $profile.title)
                         TextField(L10n.text("settings.cli_executable", fallback: "命令名或绝对路径"), text: $profile.executable)
                         ForEach(profile.arguments.indices, id: \.self) { index in
@@ -113,6 +119,7 @@ struct SettingsView: View {
                                 )
                                 Button(role: .destructive) {
                                     profile.arguments.remove(at: index)
+                                    model.persistMenuConfigurationImmediately()
                                 } label: {
                                     Image(systemName: "minus.circle")
                                 }
@@ -122,6 +129,7 @@ struct SettingsView: View {
                         HStack {
                             Button(L10n.text("button.add_argument", fallback: "添加参数")) {
                                 profile.arguments.append("")
+                                model.persistMenuConfigurationImmediately()
                             }
                         }
                     } label: {
@@ -249,6 +257,9 @@ struct SettingsView: View {
                 }
                 .help(L10n.text("button.back", fallback: "返回"))
             }
+        }
+        .onDisappear {
+            model.flushPendingMenuConfiguration()
         }
     }
 

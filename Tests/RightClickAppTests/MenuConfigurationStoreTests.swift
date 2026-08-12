@@ -23,7 +23,9 @@ struct MenuConfigurationStoreTests {
             configurationURL: configurationURL,
             customTemplatesDirectory: source,
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in .default },
+            load: { _ in MenuConfiguration(
+                terminalProfileID: TerminalProfile.terminal.rawValue
+            ) },
             save: { configuration, _ in saves.append(configuration) }
         )
 
@@ -43,24 +45,102 @@ struct MenuConfigurationStoreTests {
     }
 
     @Test
-    func configurationEditsAreForwardedAndPersisted() {
+    func immediateConfigurationEditsAreForwardedAndPersisted() {
         var saveCount = 0
         var forwarded: MenuConfiguration?
         let store = MenuConfigurationStore(
             configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
             customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in .default },
+            load: { _ in MenuConfiguration(
+                terminalProfileID: TerminalProfile.terminal.rawValue
+            ) },
             save: { _, _ in saveCount += 1 },
             synchronizeTemplates: { existing, _, _ in existing }
         )
         store.onChange = { forwarded = $0 }
 
-        store.update { $0.collapseIntoSubmenu = true }
+        store.updateImmediately { $0.collapseIntoSubmenu = true }
 
         #expect(store.configuration.collapseIntoSubmenu)
         #expect(forwarded?.collapseIntoSubmenu == true)
         #expect(saveCount == 1)
+    }
+
+    @Test
+    func rapidTextEditsAreDebouncedIntoOneSave() async {
+        var saves: [MenuConfiguration] = []
+        let store = makeStore(
+            persistenceDelay: .milliseconds(20),
+            save: { configuration, _ in saves.append(configuration) }
+        )
+
+        for index in 0..<10 {
+            var updated = store.configuration
+            updated.cliProfiles = [CLIProfile(
+                id: "custom",
+                title: "Command \(index)",
+                executable: "command",
+                menuSlot: 1
+            )]
+            store.replace(with: updated)
+        }
+        try? await Task.sleep(for: .milliseconds(80))
+
+        #expect(saves.count == 1)
+        #expect(saves.first?.cliProfiles.first?.title == "Command 9")
+    }
+
+    @Test
+    func flushPersistsTheLastPendingEditOnlyOnce() async {
+        var saves: [MenuConfiguration] = []
+        let store = makeStore(
+            persistenceDelay: .milliseconds(20),
+            save: { configuration, _ in saves.append(configuration) }
+        )
+        var updated = store.configuration
+        updated.copySeparator = ClipboardSeparator.comma.rawValue
+        store.replace(with: updated)
+
+        store.flushPendingPersist()
+        try? await Task.sleep(for: .milliseconds(80))
+
+        #expect(saves.count == 1)
+        #expect(saves.first?.clipboardSeparator == .comma)
+    }
+
+    @Test
+    func initializationPersistsTheInjectedTerminalProfile() {
+        var saves: [MenuConfiguration] = []
+
+        _ = MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.ghostty.rawValue,
+            load: { _ in .default },
+            save: { configuration, _ in saves.append(configuration) },
+            synchronizeTemplates: { existing, _, _ in existing }
+        )
+
+        #expect(saves.count == 1)
+        #expect(saves.first?.terminalProfileID == TerminalProfile.ghostty.rawValue)
+    }
+
+    private func makeStore(
+        persistenceDelay: Duration,
+        save: @escaping MenuConfigurationStore.Saver
+    ) -> MenuConfigurationStore {
+        MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.terminal.rawValue,
+            load: { _ in MenuConfiguration(
+                terminalProfileID: TerminalProfile.terminal.rawValue
+            ) },
+            save: save,
+            persistenceDelay: persistenceDelay,
+            synchronizeTemplates: { existing, _, _ in existing }
+        )
     }
 
     private func makeDirectory() throws -> URL {
