@@ -68,7 +68,7 @@ struct MenuConfigurationStoreTests {
     }
 
     @Test
-    func rapidTextEditsAreDebouncedIntoOneSave() async {
+    func rapidTextEditsRemainPendingAsOneDebouncedSave() {
         var saves: [MenuConfiguration] = []
         let store = makeStore(
             persistenceDelay: .milliseconds(20),
@@ -85,8 +85,9 @@ struct MenuConfigurationStoreTests {
             )]
             store.replace(with: updated)
         }
-        try? await Task.sleep(for: .milliseconds(80))
 
+        #expect(saves.isEmpty)
+        store.flushPendingPersist()
         #expect(saves.count == 1)
         #expect(saves.first?.cliProfiles.first?.title == "Command 9")
     }
