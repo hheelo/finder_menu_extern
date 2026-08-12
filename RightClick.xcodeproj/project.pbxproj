@@ -32,6 +32,7 @@
 		27ABF8115AA82CA847C8FECA /* DeepLinkCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A521CE536B110E777962EC2 /* DeepLinkCoordinator.swift */; };
 		2C792D922DA3DA016B08BB3E /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D584FD06A4707D9D607F236 /* AppSettings.swift */; };
 		2D67D26F508B923F45CFB1F7 /* ExternalApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F84291164FBB1AFAD31C20 /* ExternalApplication.swift */; };
+		2F7E1796E8C585F6EA9F1AE3 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9BDC0DDFB44EE923B46206 /* MenuBarController.swift */; };
 		3032C0F8E46F1A0EF3104BF6 /* MenuItemPayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCFCFEAF3B705159595D3AF4 /* MenuItemPayloadTests.swift */; };
 		32008DA4806F7250CFC2D46E /* MenuConfigurationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9F2D31F6A89D44CB13AD38 /* MenuConfigurationStoreTests.swift */; };
 		347C1094700707CF55BB91DC /* ExecutablePathParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABAAB2233E121EB1DBE50FD0 /* ExecutablePathParserTests.swift */; };
@@ -248,6 +249,7 @@
 		636A04A2E7190FA424AF2E04 /* RightClickAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RightClickAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		66DD77E8ED9FD935977EF665 /* TerminalInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInvocationTests.swift; sourceTree = "<group>"; };
 		698AFAA5FA64F71AA5349E36 /* UserNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotifier.swift; sourceTree = "<group>"; };
+		6B9BDC0DDFB44EE923B46206 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		6BF2BD378512DC135ADC3016 /* ExecutablePathParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePathParser.swift; sourceTree = "<group>"; };
 		7231F8FE6DC322D92676D11D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7299E52324848B5CC0E1CD18 /* ActionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionExecutor.swift; sourceTree = "<group>"; };
@@ -405,6 +407,7 @@
 				2AB8EBD0D2081EB7B7B09A3B /* DeepLinkRequest.swift */,
 				3B07C78FB63B792F77E26AD8 /* DiagnosticsStore.swift */,
 				218C7594918DA8D3D2AFD1D2 /* FinderSessionManager.swift */,
+				6B9BDC0DDFB44EE923B46206 /* MenuBarController.swift */,
 				35615BB162D8EA95F24922DC /* MenuConfigurationStore.swift */,
 				07F51D60D17CBFC1395C84EB /* NonceCache.swift */,
 				A0BC918B1EB142D3FA66DC8C /* RightClickApp.swift */,
@@ -819,6 +822,7 @@
 				16253340E99F5D1CACC7939C /* DeepLinkRequest.swift in Sources */,
 				8E25C241BD399B4A04DAA428 /* DiagnosticsStore.swift in Sources */,
 				086FF6B08B62ADC4ADB0BB03 /* FinderSessionManager.swift in Sources */,
+				2F7E1796E8C585F6EA9F1AE3 /* MenuBarController.swift in Sources */,
 				084DB5074682B539BB6C5C91 /* MenuConfigurationStore.swift in Sources */,
 				EE0382C53543AD3CF50D80BA /* NonceCache.swift in Sources */,
 				545803F894D40A1C38EA4ED8 /* RightClickApp.swift in Sources */,
@@ -966,7 +970,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 901;
+				CURRENT_PROJECT_VERSION = 902;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -987,7 +991,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.9.1;
+				MARKETING_VERSION = 0.9.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1146,7 +1150,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 901;
+				CURRENT_PROJECT_VERSION = 902;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1161,7 +1165,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.9.1;
+				MARKETING_VERSION = 0.9.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -32,6 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var isUserLaunch = true
     private var hasFinishedLaunching = false
     private var receivedDeepLinkDuringLaunch = false
+    private lazy var menuBarController = MenuBarController(
+        model: sharedAppModel,
+        updater: sharedUpdaterController
+    )
 
     func application(_ application: NSApplication, open urls: [URL]) {
         if !hasFinishedLaunching {
@@ -49,6 +53,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        sharedAppModel.onMenuBarIconEnabledChange = {
+            [weak self] isEnabled in
+            self?.menuBarController.setEnabled(isEnabled)
+        }
+        menuBarController.setEnabled(sharedAppModel.menuBarIconEnabled)
+
         let isDefaultLaunch = notification.userInfo?[
             NSApplication.launchIsDefaultUserInfoKey
         ] as? Bool ?? true
@@ -130,6 +140,8 @@ enum WindowPresenter {
     /// 启动期收起窗口时用：本进程是否曾显式请出过窗口。
     private(set) static var isPresentationRequested = false
     private static weak var mainWindow: NSWindow?
+    private static var openMainWindowAction: (() -> Void)?
+    private static var openSettingsAction: (() -> Void)?
 
     static var hasMainWindow: Bool {
         mainWindow != nil
@@ -157,6 +169,38 @@ enum WindowPresenter {
             return
         }
         present(mainWindow)
+    }
+
+    static func showOrCreateMainWindow() {
+        if let mainWindow {
+            present(mainWindow)
+            return
+        }
+        guard let openMainWindowAction else {
+            appLogger.error("无法新建主窗口：窗口动作尚未注册")
+            return
+        }
+        notePresentationRequested()
+        openMainWindowAction()
+    }
+
+    static func showSettings() {
+        guard let openSettingsAction else {
+            appLogger.error("无法打开设置：设置动作尚未注册")
+            return
+        }
+        notePresentationRequested()
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        openSettingsAction()
+    }
+
+    static func registerSceneActions(
+        openMainWindow: @escaping () -> Void,
+        openSettings: @escaping () -> Void
+    ) {
+        openMainWindowAction = openMainWindow
+        openSettingsAction = openSettings
     }
 
     private static func present(_ window: NSWindow) {
@@ -197,44 +241,29 @@ private struct MainWindowReader: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
-private struct MenuBarContent: View {
-    @EnvironmentObject private var model: AppModel
+private struct SceneActionsReader: View {
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Button(L10n.text("menu.show_rightclick", fallback: "显示 RightClick")) {
-            showMainWindow()
-        }
-        SettingsLink {
-            Text(L10n.text("button.settings", fallback: "设置…"))
-        }
-        Divider()
-        Button(L10n.text(
-            "button.copy_diagnostics",
-            fallback: "复制诊断信息"
-        )) {
-            model.copyDiagnostics()
-        }
-        Button(L10n.text("button.restart_finder", fallback: "重启 Finder")) {
-            model.restartFinder()
-        }
-        Divider()
-        Button(L10n.text("button.quit", fallback: "退出 RightClick")) {
-            NSApp.terminate(nil)
-        }
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onAppear {
+                WindowPresenter.registerSceneActions(
+                    openMainWindow: { openWindow(id: AppWindow.mainID) },
+                    openSettings: { openSettings() }
+                )
+            }
+            .accessibilityHidden(true)
     }
+}
 
-    private func showMainWindow() {
-        if WindowPresenter.hasMainWindow {
-            WindowPresenter.bringMainWindowToFront()
-        } else {
-            WindowPresenter.notePresentationRequested()
-            openWindow(id: AppWindow.mainID)
+private struct MainWindowBackground: View {
+    var body: some View {
+        ZStack {
+            MainWindowReader()
+            SceneActionsReader()
         }
-        model.refreshExtensionStatus()
-        model.refreshCustomTemplates()
-        Task { await model.refreshDiagnostics() }
-        sharedUpdaterController.checkInBackground()
     }
 }
 
@@ -250,7 +279,7 @@ struct RightClickApp: App {
             ContentView(updater: updater)
                 .environmentObject(model)
                 .frame(minWidth: 640, minHeight: 440)
-                .background(MainWindowReader())
+                .background(MainWindowBackground())
                 .task {
                     // 只在用户自己打开 App 时刷新与查更新；深链唤起时不做，
                     // 避免右键路径启动登录 shell 或冒出更新界面。
@@ -292,14 +321,5 @@ struct RightClickApp: App {
                 .frame(width: 560, height: 520)
         }
 
-        MenuBarExtra(
-            "RightClick",
-            systemImage: "cursorarrow.click.2",
-            isInserted: $model.menuBarIconEnabled
-        ) {
-            MenuBarContent()
-                .environmentObject(model)
-        }
-        .menuBarExtraStyle(.menu)
     }
 }

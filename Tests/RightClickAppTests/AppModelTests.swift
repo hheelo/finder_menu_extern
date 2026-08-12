@@ -39,6 +39,22 @@ struct AppModelTests {
     }
 
     @Test
+    func menuBarSettingNotifiesTheOneWayControllerHook() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        var receivedValues: [Bool] = []
+        fixture.model.onMenuBarIconEnabledChange = {
+            receivedValues.append($0)
+        }
+
+        fixture.model.menuBarIconEnabled = true
+        fixture.model.menuBarIconEnabled = false
+
+        #expect(receivedValues == [true, false])
+        #expect(fixture.defaults.bool(forKey: "menuBarIconEnabled") == false)
+    }
+
+    @Test
     func trustedCLIDeepLinkExecutesWithoutConfirmation() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }

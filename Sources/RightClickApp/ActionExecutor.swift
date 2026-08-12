@@ -133,10 +133,15 @@ enum ProcessRunner {
                 }
                 if process.isRunning {
                     _ = Darwin.kill(process.processIdentifier, SIGKILL)
+                    while process.isRunning {
+                        try? await Task.sleep(for: .milliseconds(10))
+                    }
                 }
             }
 
-            process.waitUntilExit()
+            // 上面的正常轮询与强杀收尾都只会在 `isRunning == false` 后到这里。
+            // 此时再调用 `waitUntilExit()` 不仅多余，macOS 26 的 Foundation 还会
+            // 偶发丢失已经发生的退出通知，导致无子进程可等却永久阻塞。
             // 最后一次轮询到进程退出之间仍可能写出内容，退出后再复查一次。
             if totalOutputSize() > maximumOutputBytes {
                 exceededOutputLimit = true

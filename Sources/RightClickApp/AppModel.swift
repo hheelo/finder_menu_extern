@@ -18,7 +18,10 @@ final class AppModel: ObservableObject {
         didSet { settings.terminalWindowBehavior = terminalWindowBehavior }
     }
     @Published var menuBarIconEnabled: Bool {
-        didSet { settings.menuBarIconEnabled = menuBarIconEnabled }
+        didSet {
+            settings.menuBarIconEnabled = menuBarIconEnabled
+            onMenuBarIconEnabledChange?(menuBarIconEnabled)
+        }
     }
     @Published var menuConfiguration: MenuConfiguration {
         didSet { menuConfigurationStore.replace(with: menuConfiguration) }
@@ -40,6 +43,7 @@ final class AppModel: ObservableObject {
     private let notifier: any UserNotifying
     private let menuConfigurationStore: MenuConfigurationStore
     private var diagnosticsAreAuthoritative = false
+    var onMenuBarIconEnabledChange: ((Bool) -> Void)?
 
     init(
         settings: AppSettings = .shared,

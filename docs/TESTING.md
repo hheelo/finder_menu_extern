@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.9.1 ./scripts/build-release.sh
+VERSION=0.9.2 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -103,7 +103,8 @@ VERSION=0.9.1 ./scripts/build-release.sh
   VoiceOver 应读出版本号和构建号，而不是逐字念数字
 - 菜单栏图标默认不出现；在设置中启用后确认可显示主窗口、打开设置、复制诊断、
   重启 Finder 与退出。关闭主窗口后入口仍可用，关闭设置开关后图标立即消失，
-  重启 App 后保持上次选择
+  重启 App 后保持上次选择。分别在开关关闭和开启时冷启动 App，空闲至少 60 秒，
+  确认窗口始终可响应、CPU 回落到空闲且内存不持续增长
 - 在 macOS 15/26 把 50 MB 文本放入剪贴板后反复打开 Finder 右键菜单，确认无
   隐私提示、无可感知延迟，并用 pasteboard 子系统日志复核；只有真正点击创建时
   才读取内容

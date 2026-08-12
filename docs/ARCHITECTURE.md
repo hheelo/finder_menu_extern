@@ -127,7 +127,10 @@
 
 - Finder Sync 只在 `directoryURLs` 覆盖的目录显示项目菜单
 - 宿主仍是没有 Dock 图标的 `LSUIElement`；菜单栏入口默认关闭，启用状态保存在
-  UserDefaults，入口只转发现有的窗口、诊断、Finder 重启与退出动作
+  UserDefaults，由 AppKit `NSStatusItem` 单向管理，入口只转发现有的窗口、诊断、
+  Finder 重启与退出动作。不要把设置直接绑定到 SwiftUI `MenuBarExtra` 的
+  `isInserted`：macOS 26.6 会形成 Scene / `@Published` 写回反馈环，导致启动后
+  AttributeGraph 持续重算、CPU 和内存无上限增长
 - 当前默认监控 `/`，面向直接分发；之后应允许用户缩小范围
 - Finder 扩展必须在系统设置中由用户显式启用
 - Finder Sync 没有公开 API 触发内联重命名；新建后只能选中项目，不模拟键盘事件
