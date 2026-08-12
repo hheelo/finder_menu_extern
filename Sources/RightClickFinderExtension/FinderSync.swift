@@ -313,15 +313,12 @@ final class FinderSync: FIFinderSync {
     }
 
     private func performConfiguredCLI(_ payload: ConfiguredCLIMenuItemPayload) {
-        guard let profile = currentMenuConfiguration()
-            .cliProfile(forSlot: payload.menuSlot) else {
-            logger.error(
-                "动态 CLI 配置已不存在，slot=\(payload.menuSlot, privacy: .public)"
-            )
-            return
-        }
         let context = context(for: payload.placement)
         reporting("动态 CLI 启动失败") {
+            guard let profile = currentMenuConfiguration()
+                .cliProfile(forSlot: payload.menuSlot) else {
+                throw FinderActionError.configurationUnavailable
+            }
             guard let token = currentToken() else {
                 throw FinderActionError.authenticationUnavailable
             }
@@ -342,15 +339,12 @@ final class FinderSync: FIFinderSync {
     }
 
     private func performCustomTemplate(_ payload: CustomTemplateMenuItemPayload) {
-        guard let template = currentMenuConfiguration()
-            .customTemplate(forSlot: payload.menuSlot) else {
-            logger.error(
-                "自定义模板配置已不存在，slot=\(payload.menuSlot, privacy: .public)"
-            )
-            return
-        }
         let context = context(for: payload.placement)
         reporting("自定义模板创建失败") {
+            guard let template = currentMenuConfiguration()
+                .customTemplate(forSlot: payload.menuSlot) else {
+                throw FinderActionError.configurationUnavailable
+            }
             guard let directory = context.creationDirectory,
                   let configurationURL = MenuConfigurationFile.extensionURL() else {
                 throw FinderActionError.invalidTarget

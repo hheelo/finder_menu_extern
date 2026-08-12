@@ -97,19 +97,10 @@ final class FinderSessionManager {
         }
     }
 
-    /// 同时包含短版本号和构建号：只看 CFBundleVersion 的话，一旦某次发布
-    /// 忘记递增构建号，升级后就不会重新加载 Finder，用户仍看到旧菜单。
+    /// 同时包含短版本号和构建号：只看其中一个都可能漏掉本地构建或发布升级，
+    /// 让 Finder 继续加载旧扩展。拼装由 `AppVersion` 与界面、诊断共用。
     private static var bundleVersion: String? {
-        let info = Bundle.main
-        guard let build = info.object(
-            forInfoDictionaryKey: "CFBundleVersion"
-        ) as? String else {
-            return nil
-        }
-        let short = info.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? "0"
-        return "\(short) (\(build))"
+        AppVersion.displayString
     }
 }
 

@@ -17,6 +17,13 @@ struct ContentView: View {
                         .font(.largeTitle.bold())
                     Text(L10n.text("home.subtitle", fallback: "给 Finder 右键菜单加上开发者常用操作"))
                         .foregroundStyle(.secondary)
+                    if let version = AppVersion.current {
+                        Text(version.displayString)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                            .textSelection(.enabled)
+                            .accessibilityLabel(version.accessibilityLabel)
+                    }
                 }
             }
 

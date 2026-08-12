@@ -231,6 +231,27 @@ struct AppModelTests {
     }
 
     @Test
+    func repeatedVisibleFailureKeepsOnlyTheLatestHistoryEntry() async throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let first = ErrorInvocation(
+            message: "持续失败。",
+            authenticationToken: fixture.token
+        )
+        let second = ErrorInvocation(
+            message: "持续失败。",
+            authenticationToken: fixture.token
+        )
+
+        fixture.model.handle(url: try #require(first.deepLink))
+        fixture.model.handle(url: try #require(second.deepLink))
+        await waitForMainQueue()
+
+        #expect(fixture.model.errorHistory.map(\.message) == ["持续失败。"])
+        #expect(fixture.notifier.messages == ["持续失败。", "持续失败。"])
+    }
+
+    @Test
     func trustedExecutionFailureIsNotified() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }

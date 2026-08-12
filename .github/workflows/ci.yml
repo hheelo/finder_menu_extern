@@ -25,6 +25,9 @@ jobs:
       - name: Verify generated project is up to date
         run: ./scripts/verify-generated-project.sh
 
+      - name: Verify localization catalog
+        run: ./scripts/verify-localization.sh
+
       - name: Build and test
         run: |
           xcodebuild \

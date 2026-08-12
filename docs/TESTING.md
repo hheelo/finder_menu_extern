@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.8.2 ./scripts/build-release.sh
+VERSION=0.8.3 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -48,6 +48,8 @@ VERSION=0.8.2 ./scripts/build-release.sh
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
 - 分别将登录 Shell 设为 zsh/bash、fish 和 Nushell，刷新诊断，确认
   面板显示真实 Shell 路径且能找到该 Shell 环境中的 CLI
+- `chsh` 后不注销，确认诊断面板显示的登录 Shell 与 WezTerm/kitty 实际执行
+  CLI 所用的 Shell 一致；让 `SHELL` 指向不存在路径时应回退到用户记录中的 Shell
 - 把 `codex` 临时移出登录 Shell 的 PATH 并强制刷新诊断，再从 Finder
   运行 Codex CLI，确认收到可读提示且不打开终端；清空诊断缓存后则应放行
 - 选中 129 个以上的项目并点「用 VS Code 打开」，确认收到「一次最多
@@ -84,7 +86,14 @@ VERSION=0.8.2 ./scripts/build-release.sh
 - 添加带参数的自定义 CLI，分别测试 PATH 命令名与含空格的绝对路径；确认 URL 中
   只有配置 ID、没有命令或参数，并测试含空格、单引号的参数按单个参数传递
 - 向 `~/Library/Application Support/RightClick/Templates/` 放入普通文件、子目录和
-  符号链接，刷新后确认只出现普通文件；创建结果保留内容且不覆盖同名文件
+  符号链接，不进设置页，只关窗口后再次双击 App，确认只出现普通文件；删除模板
+  后用同样方式确认菜单项与扩展容器镜像都消失，创建结果仍保留内容且不覆盖同名文件
+- 保持 Finder 右键菜单打开，在设置里删除对应的自定义 CLI；对模板则先删除源文件
+  并重新呈现宿主完成同步。回到旧菜单点击，确认收到“配置已被修改”通知而非无反应
+- 主窗口版本号应可选中复制，并与“复制诊断信息”首行及 Finder“显示简介”一致；
+  VoiceOver 应读出版本号和构建号，而不是逐字念数字
+- 在 macOS 15/26 把文本放入剪贴板后反复打开 Finder 右键菜单，肉眼确认无隐私提示，
+  并用 pasteboard 子系统日志复核；这是 B7 改动前的发布门禁
 - 测试新建文件夹与从文本剪贴板新建文件；空剪贴板不得写入空文件
 - 卸载 VS Code 后触发“用 VS Code 打开”，确认收到本地通知、错误进入最近 10 条
   历史，并且 RightClick 不抢焦点；拒绝通知权限时仍应保留错误历史

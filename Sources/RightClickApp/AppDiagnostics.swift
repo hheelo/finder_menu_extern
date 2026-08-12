@@ -11,7 +11,7 @@ struct DiagnosticItem: Codable, Identifiable, Sendable {
 @MainActor
 enum AppDiagnostics {
     static func collect(extensionEnabled: Bool) async -> [DiagnosticItem] {
-        let loginShellURL = resolvedLoginShellURL()
+        let loginShellURL = UserLoginShell.resolve()
         async let codexPath = executablePath(
             for: .codex,
             loginShellURL: loginShellURL
@@ -63,12 +63,8 @@ enum AppDiagnostics {
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior
     ) -> String {
-        let version = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? L10n.text("diagnostic.unknown", fallback: "未知")
-        let build = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleVersion"
-        ) as? String ?? L10n.text("diagnostic.unknown", fallback: "未知")
+        let unknown = L10n.text("diagnostic.unknown", fallback: "未知")
+        let version = AppVersion.displayString ?? "\(unknown) (\(unknown))"
         let missing = L10n.text("diagnostic.missing", fallback: "缺失")
         let rows = items.map {
             "[\($0.passed ? "OK" : missing)] \($0.title): \($0.detail)"
@@ -86,16 +82,39 @@ enum AppDiagnostics {
             "diagnostic.cli_launch",
             fallback: "CLI 启动"
         )
+        let cliExecutionShell = L10n.text(
+            "diagnostic.cli_execution_shell",
+            fallback: "CLI 执行 Shell"
+        )
+        let resolvedTerminal = terminalProfile.resolved {
+            applicationURL(for: $0) != nil
+        }
+        let executionShellDetail: String
+        switch resolvedTerminal.launchStrategy {
+        case .appleScript:
+            executionShellDetail = L10n.text(
+                "diagnostic.terminal_configured_shell",
+                fallback: "终端自身配置"
+            )
+        case .executable:
+            executionShellDetail = UserLoginShell.resolve().path
+        case .openDirectoryOnly:
+            executionShellDetail = L10n.text(
+                "diagnostic.cli_not_supported",
+                fallback: "该终端不支持运行 CLI"
+            )
+        }
         let authenticatedOnly = L10n.text(
             "diagnostic.authenticated_only",
             fallback: "仅接受本机 Finder 扩展认证请求"
         )
 
         return """
-        RightClick \(version) (\(build))
+        RightClick \(version)
         macOS \(ProcessInfo.processInfo.operatingSystemVersionString)
         \(defaultTerminal): \(terminalProfile.title)
         \(terminalBehavior): \(terminalWindowBehavior.title)
+        \(cliExecutionShell): \(executionShellDetail)
         \(cliLaunch): \(authenticatedOnly)
 
         \(rows)
@@ -209,17 +228,4 @@ enum AppDiagnostics {
         return result.standardOutput
     }
 
-    /// `SHELL` 可能被继承环境污染，只接受真实存在的绝对可执行路径。
-    /// 取不到时回退 macOS 默认的 zsh。
-    private static func resolvedLoginShellURL(
-        environment: [String: String] = ProcessInfo.processInfo.environment,
-        fileManager: FileManager = .default
-    ) -> URL {
-        let fallback = URL(fileURLWithPath: "/bin/zsh")
-        guard let path = environment["SHELL"], path.hasPrefix("/"),
-              fileManager.isExecutableFile(atPath: path) else {
-            return fallback
-        }
-        return URL(fileURLWithPath: path)
-    }
 }

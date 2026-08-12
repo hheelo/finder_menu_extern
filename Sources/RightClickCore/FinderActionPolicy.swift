@@ -5,6 +5,7 @@ public enum FinderActionError: LocalizedError, Equatable {
     case invalidWorkingDirectory
     case tooManyOpenTargets(count: Int, maximum: Int)
     case authenticationUnavailable
+    case configurationUnavailable
     case hostApplicationUnavailable
 
     public var errorDescription: String? {
@@ -27,6 +28,11 @@ public enum FinderActionError: LocalizedError, Equatable {
             L10n.text(
                 "error.authentication_unavailable",
                 fallback: "无法建立 Finder 扩展与 RightClick 的安全连接。"
+            )
+        case .configurationUnavailable:
+            L10n.text(
+                "error.configuration_unavailable",
+                fallback: "该菜单项的配置已被修改，请重新打开右键菜单。"
             )
         case .hostApplicationUnavailable:
             L10n.text(

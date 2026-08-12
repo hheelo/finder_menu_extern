@@ -18,6 +18,24 @@ struct ErrorInvocationTests {
     }
 
     @Test
+    func configurationUnavailableMessageFitsAndRoundTrips() throws {
+        let token = ExtensionRequestTokenStore.makeToken()
+        let message = try #require(
+            FinderActionError.configurationUnavailable.errorDescription
+        )
+        #expect(message.count <= ErrorInvocation.maximumMessageLength)
+
+        let invocation = ErrorInvocation(
+            message: message,
+            authenticationToken: token
+        )
+        #expect(
+            ErrorInvocation(deepLink: try #require(invocation.deepLink))
+                == invocation
+        )
+    }
+
+    @Test
     func rejectsEmptyLongAndForeignRequests() {
         let token = ExtensionRequestTokenStore.makeToken()
         #expect(ErrorInvocation(message: "").deepLink == nil)

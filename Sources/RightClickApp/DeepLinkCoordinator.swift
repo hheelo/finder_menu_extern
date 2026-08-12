@@ -58,9 +58,6 @@ final class DeepLinkCoordinator {
             return
         }
 
-        // 能到达分派层的请求都已通过 HMAC、时间窗口和 nonce 重放校验。
-        let isAuthenticated = true
-
         switch request.payload {
         case let .cli(invocation):
             appLogger.notice("收到深链 类型=cli")
@@ -74,7 +71,6 @@ final class DeepLinkCoordinator {
                         invocation.command.rawValue,
                         invocation.command.title
                     ),
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
                 return
@@ -83,7 +79,6 @@ final class DeepLinkCoordinator {
                 invocation,
                 terminalProfile: terminalProfile,
                 terminalWindowBehavior: terminalWindowBehavior,
-                isAuthenticated: isAuthenticated,
                 emit: emit
             )
         case let .configuredCLI(invocation):
@@ -98,7 +93,6 @@ final class DeepLinkCoordinator {
                         "error.cli_configuration_missing",
                         fallback: "CLI 配置不存在或已停用。"
                     ),
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
                 return
@@ -108,7 +102,6 @@ final class DeepLinkCoordinator {
                 directory: invocation.workingDirectory,
                 terminalProfile: terminalProfile,
                 terminalWindowBehavior: terminalWindowBehavior,
-                isAuthenticated: isAuthenticated,
                 emit: emit
             )
         case let .terminal(invocation):
@@ -117,7 +110,6 @@ final class DeepLinkCoordinator {
                 invocation.workingDirectory,
                 terminalProfile: terminalProfile,
                 terminalWindowBehavior: terminalWindowBehavior,
-                isAuthenticated: isAuthenticated,
                 emit: emit
             )
         case let .open(invocation):
@@ -126,7 +118,6 @@ final class DeepLinkCoordinator {
             )
             open(
                 invocation,
-                isAuthenticated: isAuthenticated,
                 emit: emit
             )
         case let .error(invocation):
@@ -138,12 +129,12 @@ final class DeepLinkCoordinator {
     private func reject(_ reason: String) {
         // 未通过认证的输入可能来自任意网页。拒绝时若通知或写入用户可见历史，
         // 攻击者就能刷通知、伪造安全提示；这里只记日志且不包含原始 URL。
+        // 通过认证的执行失败统一由 `reportFailure` 进入用户可见通道。
         appLogger.error("收到无法解析的深链：\(reason, privacy: .public)")
     }
 
     private func open(
         _ invocation: OpenInvocation,
-        isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         let workspace = NSWorkspace.shared
@@ -170,7 +161,6 @@ final class DeepLinkCoordinator {
                         "error.default_app_open",
                         fallback: "系统默认应用无法打开所选项目。"
                     ),
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
             }
@@ -188,7 +178,6 @@ final class DeepLinkCoordinator {
                     fallback: "未找到 %@，请先安装应用。",
                     invocation.application.title
                 ),
-                isAuthenticated: isAuthenticated,
                 emit: emit
             )
             return
@@ -220,7 +209,6 @@ final class DeepLinkCoordinator {
             } catch {
                 reportFailure(
                     error.localizedDescription,
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
             }
@@ -231,7 +219,6 @@ final class DeepLinkCoordinator {
         _ invocation: CLIInvocation,
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior,
-        isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         emit(.status(L10n.format(
@@ -262,7 +249,6 @@ final class DeepLinkCoordinator {
                 )
                 reportFailure(
                     error.localizedDescription,
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
             }
@@ -273,7 +259,6 @@ final class DeepLinkCoordinator {
         _ directory: URL,
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior,
-        isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         let resolved = terminalResolver.resolvedProfile(for: terminalProfile)
@@ -297,7 +282,6 @@ final class DeepLinkCoordinator {
             } catch {
                 reportFailure(
                     error.localizedDescription,
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
             }
@@ -309,7 +293,6 @@ final class DeepLinkCoordinator {
         directory: URL,
         terminalProfile: TerminalProfile,
         terminalWindowBehavior: TerminalWindowBehavior,
-        isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         emit(.status(L10n.format(
@@ -335,22 +318,19 @@ final class DeepLinkCoordinator {
             } catch {
                 reportFailure(
                     error.localizedDescription,
-                    isAuthenticated: isAuthenticated,
                     emit: emit
                 )
             }
         }
     }
 
+    /// 到达这里的 payload 都已通过 `DeepLinkRequest` 的签名、时间窗和 nonce
+    /// 校验；未通过的在 `reject` 处只记安全日志，不通知也不写错误历史。因此
+    /// 本层失败都来自可信请求，一律进入用户可见失败通道。
     private func reportFailure(
         _ message: String,
-        isAuthenticated: Bool,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
-        if isAuthenticated {
-            emit(.trustedFailure(message))
-        } else {
-            appLogger.error("旧版未认证请求执行失败")
-        }
+        emit(.trustedFailure(message))
     }
 }

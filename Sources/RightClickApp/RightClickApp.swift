@@ -112,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshForUserPresentation() {
         guard !AppEnvironment.isRunningTests else { return }
         sharedAppModel.refreshExtensionStatus()
+        sharedAppModel.refreshCustomTemplates()
         Task { await sharedAppModel.refreshDiagnostics() }
         sharedUpdaterController.checkInBackground()
     }
@@ -216,6 +217,7 @@ struct RightClickApp: App {
                         return
                     }
                     model.refreshExtensionStatus()
+                    model.refreshCustomTemplates()
                     await model.refreshDiagnostics()
                     updater.checkInBackground()
                 }
@@ -227,6 +229,7 @@ struct RightClickApp: App {
                     )
                     if newPhase == .active, isUserVisible {
                         model.refreshExtensionStatus()
+                        model.refreshCustomTemplates()
                         Task { await model.refreshDiagnostics() }
                         updater.checkInBackground()
                     }

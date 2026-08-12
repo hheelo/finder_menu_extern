@@ -341,7 +341,7 @@ struct ActionExecutor: CLIExecuting {
         case .openDirectoryOnly:
             throw ActionExecutorError.commandUnsupported(terminalProfile.title)
         case .executable:
-            let shellURL = Self.loginShellURL()
+            let shellURL = UserLoginShell.resolve()
             let shellArguments = LoginShellArguments.arguments(
                 shellName: shellURL.lastPathComponent,
                 script: shellCommand,
@@ -544,12 +544,4 @@ struct ActionExecutor: CLIExecuting {
         )
     }
 
-    private static func loginShellURL() -> URL {
-        guard let user = getpwuid(getuid()),
-              let shell = user.pointee.pw_shell,
-              shell.pointee != 0 else {
-            return URL(fileURLWithPath: "/bin/zsh")
-        }
-        return URL(fileURLWithPath: String(cString: shell))
-    }
 }

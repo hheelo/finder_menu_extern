@@ -45,6 +45,11 @@ struct FinderActionPolicyTests {
                 FinderActionError.invalidTarget
             )
         )
+        #expect(
+            FinderActionPolicy.shouldReportToHost(
+                FinderActionError.configurationUnavailable
+            )
+        )
         #expect(FinderActionPolicy.shouldReportToHost(TestFailure()))
     }
 }

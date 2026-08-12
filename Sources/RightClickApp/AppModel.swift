@@ -8,16 +8,16 @@ final class AppModel: ObservableObject {
     @Published var terminalProfile: TerminalProfile {
         didSet {
             settings.terminalProfile = terminalProfile
-            var updated = menuConfiguration
-            updated.terminalProfileID = terminalProfile.rawValue
-            menuConfiguration = updated
+            menuConfigurationStore.update {
+                $0.terminalProfileID = terminalProfile.rawValue
+            }
         }
     }
     @Published var terminalWindowBehavior: TerminalWindowBehavior {
         didSet { settings.terminalWindowBehavior = terminalWindowBehavior }
     }
     @Published var menuConfiguration: MenuConfiguration {
-        didSet { persistMenuConfiguration() }
+        didSet { menuConfigurationStore.replace(with: menuConfiguration) }
     }
     @Published var lastStatus = L10n.text(
         "status.waiting",
@@ -34,8 +34,7 @@ final class AppModel: ObservableObject {
     private let diagnosticsStore: DiagnosticsStore
     private let finderSessionManager: FinderSessionManager
     private let notifier: any UserNotifying
-    private let menuConfigurationURL: URL
-    private let customTemplatesDirectory: URL
+    private let menuConfigurationStore: MenuConfigurationStore
     private var diagnosticsAreAuthoritative = false
 
     init(
@@ -70,17 +69,27 @@ final class AppModel: ObservableObject {
         diagnosticsStore = DiagnosticsStore(settings: settings)
         finderSessionManager = FinderSessionManager(settings: settings)
         self.notifier = notifier
-        self.menuConfigurationURL = menuConfigurationURL
-        self.customTemplatesDirectory = customTemplatesDirectory
         terminalProfile = settings.terminalProfile
         terminalWindowBehavior = settings.terminalWindowBehavior
-        var initialMenuConfiguration = MenuConfigurationFile.load(
-            from: menuConfigurationURL
+        let configurationStore = MenuConfigurationStore(
+            configurationURL: menuConfigurationURL,
+            customTemplatesDirectory: customTemplatesDirectory,
+            terminalProfileID: settings.terminalProfile.rawValue
         )
-        initialMenuConfiguration.terminalProfileID = settings.terminalProfile.rawValue
-        menuConfiguration = initialMenuConfiguration
+        menuConfigurationStore = configurationStore
+        menuConfiguration = configurationStore.configuration
         diagnostics = diagnosticsStore.cached(extensionEnabled: false) ?? []
         diagnosticsAreAuthoritative = diagnosticsStore.hasFreshCache
+
+        configurationStore.onChange = { [weak self] configuration in
+            self?.menuConfiguration = configuration
+        }
+        configurationStore.onStatus = { [weak self] status in
+            self?.lastStatus = status
+        }
+        configurationStore.onFailure = { [weak self] message in
+            self?.recordFailure(message)
+        }
 
         if performInitialRefresh {
             refreshCustomTemplates()
@@ -182,13 +191,13 @@ final class AppModel: ObservableObject {
     }
 
     /// 复制发生在扩展进程里，所以这个设置的真相是菜单配置文件而不是
-    /// UserDefaults——写回 `menuConfiguration` 即经既有 didSet 下发到扩展容器。
+    /// UserDefaults——写回配置 Store 即下发到扩展容器。
     var clipboardSeparator: ClipboardSeparator {
         get { menuConfiguration.clipboardSeparator }
         set {
-            var updated = menuConfiguration
-            updated.copySeparator = newValue.rawValue
-            menuConfiguration = updated
+            menuConfigurationStore.update {
+                $0.copySeparator = newValue.rawValue
+            }
         }
     }
 
@@ -197,13 +206,13 @@ final class AppModel: ObservableObject {
     }
 
     func setMenuAction(_ action: RightClickAction, isEnabled: Bool) {
-        var updated = menuConfiguration
-        if isEnabled {
-            updated.disabledActions.remove(action.configurationID)
-        } else {
-            updated.disabledActions.insert(action.configurationID)
+        menuConfigurationStore.update { updated in
+            if isEnabled {
+                updated.disabledActions.remove(action.configurationID)
+            } else {
+                updated.disabledActions.insert(action.configurationID)
+            }
         }
-        menuConfiguration = updated
     }
 
     func moveMenuAction(_ action: RightClickAction, by offset: Int) {
@@ -212,9 +221,9 @@ final class AppModel: ObservableObject {
         let destination = source + offset
         guard actions.indices.contains(destination) else { return }
         actions.swapAt(source, destination)
-        var updated = menuConfiguration
-        updated.actionOrder = actions.map(\.configurationID)
-        menuConfiguration = updated
+        menuConfigurationStore.update {
+            $0.actionOrder = actions.map(\.configurationID)
+        }
     }
 
     func addCLIProfile() {
@@ -228,9 +237,8 @@ final class AppModel: ObservableObject {
             ))
             return
         }
-        var updated = menuConfiguration
-        updated.cliProfiles.append(
-            CLIProfile(
+        menuConfigurationStore.update {
+            $0.cliProfiles.append(CLIProfile(
                 id: UUID().uuidString.lowercased(),
                 title: L10n.text(
                     "settings.default_cli_title",
@@ -238,26 +246,27 @@ final class AppModel: ObservableObject {
                 ),
                 executable: "command",
                 menuSlot: slot
-            )
-        )
-        menuConfiguration = updated
+            ))
+        }
     }
 
     func removeCLIProfile(id: String) {
-        var updated = menuConfiguration
-        updated.cliProfiles.removeAll { $0.id == id }
-        updated.actionOrder.removeAll { $0 == "cli:\(id)" }
-        menuConfiguration = updated
+        menuConfigurationStore.update {
+            $0.cliProfiles.removeAll { $0.id == id }
+            $0.actionOrder.removeAll { $0 == "cli:\(id)" }
+        }
     }
 
     func openCustomTemplatesDirectory() {
         do {
             try FileManager.default.createDirectory(
-                at: customTemplatesDirectory,
+                at: menuConfigurationStore.customTemplatesDirectory,
                 withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700]
             )
-            NSWorkspace.shared.open(customTemplatesDirectory)
+            NSWorkspace.shared.open(
+                menuConfigurationStore.customTemplatesDirectory
+            )
         } catch {
             recordFailure(L10n.format(
                 "error.open_templates",
@@ -268,48 +277,7 @@ final class AppModel: ObservableObject {
     }
 
     func refreshCustomTemplates() {
-        do {
-            let templates = try TemplateMirror().synchronize(
-                existing: menuConfiguration.customTemplates,
-                sourceDirectory: customTemplatesDirectory,
-                mirrorDirectory: MenuConfigurationFile.mirroredTemplatesDirectory(
-                    configurationURL: menuConfigurationURL
-                )
-            )
-            var updated = menuConfiguration
-            updated.customTemplates = templates
-            menuConfiguration = updated
-            lastStatus = L10n.format(
-                "status.synced_templates",
-                fallback: "已同步 %lld 个自定义模板",
-                Int64(templates.count)
-            )
-        } catch {
-            recordFailure(L10n.format(
-                "error.sync_templates",
-                fallback: "无法同步自定义模板：%@",
-                error.localizedDescription
-            ))
-        }
-    }
-
-    private func persistMenuConfiguration() {
-        do {
-            try MenuConfigurationFile.saveForHost(
-                menuConfiguration,
-                to: menuConfigurationURL
-            )
-            lastStatus = L10n.text(
-                "status.menu_saved",
-                fallback: "Finder 菜单设置已保存"
-            )
-        } catch {
-            recordFailure(L10n.format(
-                "error.save_menu",
-                fallback: "无法保存 Finder 菜单设置：%@",
-                error.localizedDescription
-            ))
-        }
+        menuConfigurationStore.refreshCustomTemplates()
     }
 
     func restartFinder() {
@@ -351,6 +319,9 @@ final class AppModel: ObservableObject {
 
     private func recordFailure(_ message: String) {
         let record = AppErrorRecord(message: message)
+        // 界面每次呈现都会重试模板同步。同一条持续性错误只保留最新时间戳，
+        // 避免它挤掉最近十条历史里真正不同的失败。
+        errorHistory.removeAll { $0.message == message }
         errorHistory.insert(record, at: 0)
         if errorHistory.count > 10 {
             errorHistory.removeLast(errorHistory.count - 10)
