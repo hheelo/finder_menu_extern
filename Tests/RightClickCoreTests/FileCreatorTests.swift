@@ -23,6 +23,66 @@ struct FileCreatorTests {
     }
 
     @Test
+    func appliesTemplateFilenameAndEncodingOverrides() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let creator = FileCreator()
+        let bomFile = try creator.create(
+            .json,
+            override: TemplateOverride(
+                filename: "package.json",
+                encoding: TemplateEncoding.utf8BOM.rawValue
+            ),
+            in: root
+        )
+        let utf16File = try creator.create(
+            .python,
+            override: TemplateOverride(
+                filename: "main.py",
+                encoding: TemplateEncoding.utf16.rawValue
+            ),
+            in: root
+        )
+
+        #expect(bomFile.lastPathComponent == "package.json")
+        #expect(try Data(contentsOf: bomFile).starts(with: [0xEF, 0xBB, 0xBF]))
+        #expect(utf16File.lastPathComponent == "main.py")
+        #expect(
+            try String(contentsOf: utf16File, encoding: .unicode)
+                == FileTemplate.python.initialContents
+        )
+    }
+
+    @Test
+    func invalidTemplateFilenameFallsBackToBuiltInDefault() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let created = try FileCreator().create(
+            .markdown,
+            override: TemplateOverride(
+                filename: "../escape.md",
+                encoding: "future-encoding"
+            ),
+            in: root
+        )
+
+        #expect(created.lastPathComponent == "Untitled.md")
+        #expect(try Data(contentsOf: created).isEmpty)
+    }
+
+    @Test
     func rejectsAFileAsDestination() throws {
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

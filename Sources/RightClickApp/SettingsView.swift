@@ -98,6 +98,22 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section(L10n.text("settings.application", fallback: "应用")) {
+                Toggle(
+                    L10n.text(
+                        "settings.menu_bar_icon",
+                        fallback: "在菜单栏显示 RightClick"
+                    ),
+                    isOn: $model.menuBarIconEnabled
+                )
+                Text(L10n.text(
+                    "settings.menu_bar_icon_help",
+                    fallback: "关闭主窗口后，可从菜单栏快速打开设置、复制诊断信息或重启 Finder。"
+                ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section(L10n.text("settings.cli_title", fallback: "自定义 AI CLI")) {
                 ForEach($model.menuConfiguration.cliProfiles) { $profile in
                     DisclosureGroup {
@@ -188,6 +204,60 @@ struct SettingsView: View {
                 Text(L10n.text(
                     "settings.templates_help",
                     fallback: "把文件放入 ~/Library/Application Support/RightClick/Templates/，刷新后会按原文件名出现在 Finder 的“新建文件”菜单中。"
+                ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(L10n.text(
+                "settings.builtin_templates",
+                fallback: "内置文件模板"
+            )) {
+                ForEach(FileTemplate.allCases, id: \.rawValue) { template in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(template.title)
+                                .frame(width: 110, alignment: .leading)
+                            TextField(
+                                template.preferredFilename,
+                                text: Binding(
+                                    get: { model.templateFilename(for: template) },
+                                    set: {
+                                        model.setTemplateFilename($0, for: template)
+                                    }
+                                )
+                            )
+                            Picker(
+                                "",
+                                selection: Binding(
+                                    get: { model.templateEncoding(for: template) },
+                                    set: {
+                                        model.setTemplateEncoding($0, for: template)
+                                    }
+                                )
+                            ) {
+                                ForEach(TemplateEncoding.allCases, id: \.self) {
+                                    Text($0.title).tag($0)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(width: 150)
+                        }
+                        let filename = model.templateFilename(for: template)
+                        if !filename.isEmpty,
+                           !FileCreator.isSafeFilename(filename) {
+                            Text(L10n.text(
+                                "settings.invalid_template_filename",
+                                fallback: "文件名无效，将使用内置默认值。"
+                            ))
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                Text(L10n.text(
+                    "settings.builtin_templates_help",
+                    fallback: "文件名留空时使用内置默认值；非法文件名和未知编码会被安全忽略。"
                 ))
                     .font(.caption)
                     .foregroundStyle(.secondary)

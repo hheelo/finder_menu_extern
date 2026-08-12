@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Testing
 @testable import RightClickCore
@@ -127,5 +128,43 @@ struct DeepLinkSignatureTests {
                 now: now
             )
         )
+    }
+
+    @Test
+    func signatureAuthenticatesTheProtocolVersion() throws {
+        let token = ExtensionRequestTokenStore.makeToken()
+        var components = URLComponents()
+        components.scheme = AppConstants.deepLinkScheme
+        components.host = "run"
+        components.queryItems = [
+            URLQueryItem(name: "tool", value: "codex"),
+            URLQueryItem(name: "cwd", value: "/tmp")
+        ]
+        let url = try #require(
+            DeepLinkSignature.signedURL(
+                components: components,
+                token: token,
+                now: now,
+                nonce: nonce
+            )
+        )
+        let signedComponents = try #require(
+            URLComponents(url: url, resolvingAgainstBaseURL: false)
+        )
+        let signature = try #require(
+            signedComponents.queryItems?.first { $0.name == "sig" }?.value
+        )
+        let keyData = try #require(Data(base64Encoded: token))
+        let semanticFields = ["v2", "run", "tool", "codex", "cwd", "/tmp"]
+            + [String(Int64(now.timeIntervalSince1970)), nonce]
+        let canonical = semanticFields.map {
+            "\($0.utf8.count):\($0)"
+        }.joined()
+        let expected = Data(HMAC<SHA256>.authenticationCode(
+            for: Data(canonical.utf8),
+            using: SymmetricKey(data: keyData)
+        )).base64EncodedString()
+
+        #expect(signature == expected)
     }
 }

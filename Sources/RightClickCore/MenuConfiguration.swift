@@ -1,5 +1,61 @@
 import Foundation
 
+public enum TemplateEncoding: String, CaseIterable, Codable, Sendable {
+    case utf8 = "utf-8"
+    case utf8BOM = "utf-8-bom"
+    case utf16 = "utf-16"
+
+    public var title: String {
+        switch self {
+        case .utf8:
+            L10n.text("template.encoding.utf8", fallback: "UTF-8")
+        case .utf8BOM:
+            L10n.text("template.encoding.utf8_bom", fallback: "UTF-8（带 BOM）")
+        case .utf16:
+            L10n.text("template.encoding.utf16", fallback: "UTF-16")
+        }
+    }
+
+    public func encode(_ value: String) -> Data {
+        switch self {
+        case .utf8:
+            Data(value.utf8)
+        case .utf8BOM:
+            Data([0xEF, 0xBB, 0xBF]) + Data(value.utf8)
+        case .utf16:
+            value.data(using: .utf16) ?? Data([0xFF, 0xFE])
+        }
+    }
+}
+
+public struct TemplateOverride: Codable, Equatable, Sendable {
+    public var filename: String?
+    /// 保留字符串而不是直接存枚举，让未来版本新增编码时旧扩展可以安全回退。
+    public var encoding: String?
+
+    public init(filename: String? = nil, encoding: String? = nil) {
+        self.filename = filename
+        self.encoding = encoding
+    }
+
+    public var resolvedEncoding: TemplateEncoding {
+        encoding.flatMap(TemplateEncoding.init(rawValue:)) ?? .utf8
+    }
+
+    var sanitized: TemplateOverride? {
+        let safeFilename = filename.flatMap {
+            FileCreator.isSafeFilename($0) ? $0 : nil
+        }
+        let safeEncoding = encoding.flatMap(TemplateEncoding.init(rawValue:))?
+            .rawValue
+        guard safeFilename != nil || safeEncoding != nil else { return nil }
+        return TemplateOverride(
+            filename: safeFilename,
+            encoding: safeEncoding
+        )
+    }
+}
+
 /// 宿主与 Finder 扩展之间的菜单配置契约。
 ///
 /// - 配置缺失、损坏或版本未知时必须回退 ``default``，不能让 Finder 菜单消失。
@@ -25,6 +81,8 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
     public var copySeparator: String?
     public var cliProfiles: [CLIProfile]
     public var customTemplates: [CustomFileTemplate]
+    /// key 为 `FileTemplate.rawValue`；非法 key 或覆盖值在加载时被忽略。
+    public var templateOverrides: [String: TemplateOverride]
 
     public init(
         version: Int = currentVersion,
@@ -34,7 +92,8 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         terminalProfileID: String? = nil,
         copySeparator: String? = nil,
         cliProfiles: [CLIProfile] = [],
-        customTemplates: [CustomFileTemplate] = []
+        customTemplates: [CustomFileTemplate] = [],
+        templateOverrides: [String: TemplateOverride] = [:]
     ) {
         self.version = version
         self.disabledActions = disabledActions
@@ -44,6 +103,7 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         self.copySeparator = copySeparator
         self.cliProfiles = cliProfiles
         self.customTemplates = customTemplates
+        self.templateOverrides = templateOverrides
     }
 
     /// 解析后的分隔方式。未设置或无法识别时回退换行。
@@ -56,6 +116,7 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case version, disabledActions, actionOrder, collapseIntoSubmenu
         case terminalProfileID, copySeparator, cliProfiles, customTemplates
+        case templateOverrides
     }
 
     public init(from decoder: Decoder) throws {
@@ -89,6 +150,10 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
             [CustomFileTemplate].self,
             forKey: .customTemplates
         ) ?? []
+        templateOverrides = try values.decodeIfPresent(
+            [String: TemplateOverride].self,
+            forKey: .templateOverrides
+        ) ?? [:]
     }
 
     /// 忽略无效或重复动态项，基础菜单配置仍然可用。
@@ -106,6 +171,12 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
             template.isValid && ids.insert(template.id).inserted
                 && slots.insert(template.menuSlot).inserted
         }
+        copy.templateOverrides = templateOverrides.reduce(into: [:]) {
+            result, element in
+            guard FileTemplate(rawValue: element.key) != nil,
+                  let sanitized = element.value.sanitized else { return }
+            result[element.key] = sanitized
+        }
         return copy
     }
 
@@ -121,6 +192,10 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
 
     public func customTemplate(forSlot slot: Int) -> CustomFileTemplate? {
         customTemplates.first { $0.menuSlot == slot && $0.isValid }
+    }
+
+    public func templateOverride(for template: FileTemplate) -> TemplateOverride? {
+        templateOverrides[template.rawValue]?.sanitized
     }
 }
 

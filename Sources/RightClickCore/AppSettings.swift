@@ -8,6 +8,7 @@ public final class AppSettings: @unchecked Sendable {
         static let terminalWindowBehavior = "terminalWindowBehavior"
         static let finderSessionBuild = "finderSessionBuild"
         static let cachedDiagnostics = "cachedDiagnostics"
+        static let menuBarIconEnabled = "menuBarIconEnabled"
     }
 
     private let defaults: UserDefaults
@@ -44,5 +45,10 @@ public final class AppSettings: @unchecked Sendable {
     public var cachedDiagnostics: Data? {
         get { defaults.data(forKey: Key.cachedDiagnostics) }
         set { defaults.set(newValue, forKey: Key.cachedDiagnostics) }
+    }
+
+    public var menuBarIconEnabled: Bool {
+        get { defaults.bool(forKey: Key.menuBarIconEnabled) }
+        set { defaults.set(newValue, forKey: Key.menuBarIconEnabled) }
     }
 }

@@ -8,7 +8,7 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 - 用 Visual Studio Code、ChatGPT、Cursor、Zed、Sublime Text、Xcode、JetBrains 或系统默认应用打开
 - 支持 Terminal、iTerm2、Warp、Ghostty、WezTerm、Kitty；可选新标签页或新窗口
 - 运行 Codex CLI / Claude Code，或用 PATH 命令名、绝对路径和逐项参数配置自己的 CLI
-- 新建内置模板文件、自定义模板文件、文件夹，或从文本剪贴板新建文件
+- 新建内置模板文件、自定义模板文件、文件夹，或从文本剪贴板新建文件；内置模板可覆盖文件名与编码
 - 可启用、禁用和排序菜单项，也可全部收进一个 RightClick 子菜单
 - 宿主界面、Finder 菜单、错误通知与系统权限说明支持简体中文和英文
 - 支持文件、文件夹、窗口空白处、桌面和 Finder 侧边栏
@@ -88,7 +88,7 @@ Finder，避免覆盖升级后继续使用旧扩展会话。
 - Finder 的打开与 CLI 操作都由 RightClick 在后台处理，不显示宿主窗口
 - 新版深链使用 HMAC-SHA256 签名，随机密钥不进入 URL；时间戳与 nonce 限制重放
 - 路径通过 `osascript` 参数传递，不会插入 AppleScript 源码
-- 设置页可管理菜单、终端、自定义 CLI 与模板，并检测 Finder 扩展、编辑器与 CLI
+- 设置页可管理菜单、终端、自定义 CLI 与模板，可选启用菜单栏入口，并检测 Finder 扩展、编辑器与 CLI
 - Terminal 的“新标签页”使用系统快捷键，首次使用需在“隐私与安全性 → 辅助功能”中允许 RightClick；也可改用新窗口
 - 主窗口可复制诊断信息，便于提交 Issue
 
@@ -115,7 +115,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.9.0 ./scripts/build-release.sh
+VERSION=0.9.1 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。

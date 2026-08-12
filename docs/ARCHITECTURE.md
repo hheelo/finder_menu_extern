@@ -79,7 +79,8 @@
 - 使用统一的 `DeepLinkComponents` 严格检查 scheme、host、凭据、fragment、查询项
   白名单与字段数量，避免四种 invocation 的规则漂移
 - 工作目录必须是已存在的绝对目录；run、open、terminal、error 都校验 HMAC
-  签名及其全部语义参数，时间戳只接受当前时间前后 30 秒
+  签名及其全部语义参数，协议版本 `v2` 也进入待签名串；时间戳只接受当前时间
+  前后 30 秒
 - 宿主用进程内 nonce 缓存拒绝同一签名重放。宿主重启会清空缓存，因此在原签名
   30 秒有效期内跨进程重放仍是已知边界；彻底消除需要持久化 nonce
 - v0.7.0 起只接受 v2 HMAC 签名；旧版 `token=` 与无签名 terminal/open 请求均拒绝，
@@ -90,6 +91,8 @@
   写入权限为 `0600` 的临时文件，避免管道缓冲区或子进程持有写端造成互锁
 - 文件创建使用 `.withoutOverwriting`，自动生成 `Untitled 2.ext`；
   检查名称到落盘之间若发生并发冲突，最多重新选名 8 次，始终不覆盖已有文件
+- 内置模板的文件名与编码覆盖保存在同一份菜单配置中；文件名必须通过安全校验，
+  编码只接受 UTF-8、UTF-8 with BOM 与 UTF-16，非法值逐项回退内置默认值
 - 菜单配置由宿主写入 Finder 扩展容器，目录权限 `0700`、文件权限 `0600`；
   扩展每次构建菜单重新读取，损坏或未知版本一律回退完整默认菜单
 - 自定义模板只从普通文件镜像，不跟随符号链接、不遍历子目录，单文件最大 10 MB；
@@ -116,12 +119,15 @@
   在 `v*` Tag 测试通过后创建 Release
 - Release 验证宿主/扩展版本、Bundle ID、签名、Universal 2 和 DMG 内容
 - `derive-build-number.sh` 是 semver → CFBundleVersion 的唯一实现，本地安装、发布
-  构建和 Release 工作流共同调用
+  构建和 Release 工作流共同调用；本地安装通过 `read-marketing-version.sh` 读取
+  `project.yml`，兼容带引号与不带引号的版本标量
 - 旧 App 压缩到 Application Support，避免同 Bundle ID 扩展并存
 
 ## 已知系统约束
 
 - Finder Sync 只在 `directoryURLs` 覆盖的目录显示项目菜单
+- 宿主仍是没有 Dock 图标的 `LSUIElement`；菜单栏入口默认关闭，启用状态保存在
+  UserDefaults，入口只转发现有的窗口、诊断、Finder 重启与退出动作
 - 当前默认监控 `/`，面向直接分发；之后应允许用户缩小范围
 - Finder 扩展必须在系统设置中由用户显式启用
 - Finder Sync 没有公开 API 触发内联重命名；新建后只能选中项目，不模拟键盘事件

@@ -289,7 +289,12 @@ final class FinderSync: FIFinderSync {
             guard let directory = context.creationDirectory else {
                 throw FinderActionError.invalidTarget
             }
-            let createdURL = try fileCreator.create(template, in: directory)
+            let configuration = currentMenuConfiguration()
+            let createdURL = try fileCreator.create(
+                template,
+                override: configuration.templateOverride(for: template),
+                in: directory
+            )
             NSWorkspace.shared.activateFileViewerSelecting([createdURL])
         case .createFolder:
             guard let directory = context.creationDirectory else {

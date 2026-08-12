@@ -153,7 +153,7 @@ public enum DeepLinkSignature {
         timestamp: Int64,
         nonce: String
     ) -> Data {
-        let fields = ["v(version)", host]
+        let fields = ["v\(version)", host]
             + parameters.flatMap { [$0.name, $0.value ?? ""] }
             + [String(timestamp), nonce]
         let canonical = fields.map { value in

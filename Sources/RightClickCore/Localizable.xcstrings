@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "menu.show_rightclick" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show RightClick" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示 RightClick" } } } },
+    "settings.application" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Application" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "应用" } } } },
+    "settings.builtin_templates" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in File Templates" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "内置文件模板" } } } },
+    "settings.builtin_templates_help" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave a filename blank to use the built-in default. Invalid filenames and unknown encodings are safely ignored." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文件名留空时使用内置默认值；非法文件名和未知编码会被安全忽略。" } } } },
+    "settings.invalid_template_filename" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Invalid filename; the built-in default will be used." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文件名无效，将使用内置默认值。" } } } },
+    "settings.menu_bar_icon" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show RightClick in the menu bar" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在菜单栏显示 RightClick" } } } },
+    "settings.menu_bar_icon_help" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "After closing the main window, use the menu bar to quickly open Settings, copy diagnostics, or restart Finder." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭主窗口后，可从菜单栏快速打开设置、复制诊断信息或重启 Finder。" } } } },
+    "template.encoding.utf16" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "UTF-16" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "UTF-16" } } } },
+    "template.encoding.utf8" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "UTF-8" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "UTF-8" } } } },
+    "template.encoding.utf8_bom" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "UTF-8 with BOM" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "UTF-8（带 BOM）" } } } },
     "action.copy_file_url" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy File URL" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制 file URL" } } } },
     "action.copy_filename" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Filename" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制文件名" } } } },
     "action.copy_parent_path" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Parent Folder Path" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制父目录路径" } } } },

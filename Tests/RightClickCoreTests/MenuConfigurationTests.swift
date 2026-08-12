@@ -139,6 +139,36 @@ struct MenuConfigurationTests {
         )
     }
 
+    @Test
+    func sanitizesTemplateOverridesIndependently() {
+        let configuration = MenuConfiguration(templateOverrides: [
+            FileTemplate.json.rawValue: TemplateOverride(
+                filename: "package.json",
+                encoding: "future-encoding"
+            ),
+            FileTemplate.shell.rawValue: TemplateOverride(
+                filename: "../escape.sh",
+                encoding: TemplateEncoding.utf8BOM.rawValue
+            ),
+            "future-template": TemplateOverride(
+                filename: "future.txt",
+                encoding: TemplateEncoding.utf16.rawValue
+            )
+        ]).sanitized
+
+        #expect(
+            configuration.templateOverride(for: .json)
+                == TemplateOverride(filename: "package.json")
+        )
+        #expect(
+            configuration.templateOverride(for: .shell)
+                == TemplateOverride(
+                    encoding: TemplateEncoding.utf8BOM.rawValue
+                )
+        )
+        #expect(configuration.templateOverrides["future-template"] == nil)
+    }
+
     private func temporaryURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

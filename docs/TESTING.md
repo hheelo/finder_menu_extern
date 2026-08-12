@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.9.0 ./scripts/build-release.sh
+VERSION=0.9.1 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -43,6 +43,9 @@ VERSION=0.9.0 ./scripts/build-release.sh
 - 在设置里把「多选复制时分隔符」依次切成换行 / 空格 / 逗号，每次改完立即右键
   多选复制，确认下一次右键就生效且没有重启 Finder
 - 逐一创建七种文件，确认同名文件不会覆盖
+- 分别把内置 JSON 模板改名为 `package.json`、设为 UTF-8 with BOM，把 Python
+  模板设为 UTF-16；确认文件名、BOM 与内容正确。输入 `../escape` 时应显示警告，
+  Finder 创建结果必须回退内置文件名且不能写出目标目录
 - 快速连续创建同一种文件，确认并发占用名称时会重选名且不会覆盖
 - 测试 VS Code / ChatGPT 存在与缺失两种状态，确认菜单与诊断显示 ChatGPT
 - 测试 Codex CLI / Claude Code 存在与缺失两种状态
@@ -80,6 +83,8 @@ VERSION=0.9.0 ./scripts/build-release.sh
   同一 URL 连续提交两次，第二次必须因 nonce 重放被拒绝
 - 安装 v0.6.x 后升级到 v0.7.0，确认 App 自动刷新 Finder 会话；旧版 `token=` 与
   无签名 terminal/open 链接必须被拒绝，重启 Finder 后所有新动作恢复正常
+- 从 v0.9.0 升级到 v0.9.1 时保持旧 Finder 会话，确认旧扩展生成的签名被拒绝；
+  App 自动刷新 Finder 后，新请求恢复正常且签名已绑定协议版本
 - 在设置里禁用、排序菜单项并切换 RightClick 子菜单，确认下一次右键立即生效
 - 在设置页连续输入一个长命令名并同时反复右键，确认动态 CLI 不会随半成品配置
   闪烁；输入到一半直接按 ⌘Q，重开 App 后确认最后输入仍然保留
@@ -96,6 +101,9 @@ VERSION=0.9.0 ./scripts/build-release.sh
   并重新呈现宿主完成同步。回到旧菜单点击，确认收到“配置已被修改”通知而非无反应
 - 主窗口版本号应可选中复制，并与“复制诊断信息”首行及 Finder“显示简介”一致；
   VoiceOver 应读出版本号和构建号，而不是逐字念数字
+- 菜单栏图标默认不出现；在设置中启用后确认可显示主窗口、打开设置、复制诊断、
+  重启 Finder 与退出。关闭主窗口后入口仍可用，关闭设置开关后图标立即消失，
+  重启 App 后保持上次选择
 - 在 macOS 15/26 把 50 MB 文本放入剪贴板后反复打开 Finder 右键菜单，确认无
   隐私提示、无可感知延迟，并用 pasteboard 子系统日志复核；只有真正点击创建时
   才读取内容

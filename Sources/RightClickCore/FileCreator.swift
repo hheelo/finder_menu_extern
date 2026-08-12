@@ -30,10 +30,17 @@ public struct FileCreator {
     }
 
     @discardableResult
-    public func create(_ template: FileTemplate, in directory: URL) throws -> URL {
-        try create(
-            contents: Data(template.initialContents.utf8),
-            preferredFilename: template.preferredFilename,
+    public func create(
+        _ template: FileTemplate,
+        override: TemplateOverride? = nil,
+        in directory: URL
+    ) throws -> URL {
+        let sanitizedOverride = override?.sanitized
+        return try create(
+            contents: (sanitizedOverride?.resolvedEncoding ?? .utf8)
+                .encode(template.initialContents),
+            preferredFilename: sanitizedOverride?.filename
+                ?? template.preferredFilename,
             in: directory
         )
     }

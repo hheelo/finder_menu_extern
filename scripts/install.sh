@@ -13,13 +13,7 @@ built_app="${derived_data}/Build/Products/Release/RightClick.app"
 built_extension="${built_app}/Contents/PlugIns/RightClickFinderExtension.appex"
 backup_dir="${HOME}/Library/Application Support/RightClick/Backups"
 launch_services="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-marketing_version="$(sed -n \
-    's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*//p' \
-    "${project_dir}/project.yml" | head -n 1)"
-if [[ -z "${marketing_version}" ]]; then
-    echo "无法从 project.yml 读取 MARKETING_VERSION" >&2
-    exit 1
-fi
+marketing_version="$("${script_dir}/read-marketing-version.sh")"
 build_number="$(
     "${script_dir}/derive-build-number.sh" "${marketing_version}"
 )"

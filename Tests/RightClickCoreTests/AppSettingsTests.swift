@@ -12,11 +12,14 @@ struct AppSettingsTests {
 
         #expect(settings.terminalProfile == .automatic)
         #expect(settings.terminalWindowBehavior == .newTab)
+        #expect(!settings.menuBarIconEnabled)
 
         settings.terminalProfile = .terminal
         #expect(settings.terminalProfile == .terminal)
         settings.terminalWindowBehavior = .newWindow
         #expect(settings.terminalWindowBehavior == .newWindow)
+        settings.menuBarIconEnabled = true
+        #expect(settings.menuBarIconEnabled)
     }
 
     @Test

@@ -1,4 +1,5 @@
 import AppKit
+import RightClickCore
 import SwiftUI
 
 enum AppWindow {
@@ -196,6 +197,47 @@ private struct MainWindowReader: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
+private struct MenuBarContent: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button(L10n.text("menu.show_rightclick", fallback: "显示 RightClick")) {
+            showMainWindow()
+        }
+        SettingsLink {
+            Text(L10n.text("button.settings", fallback: "设置…"))
+        }
+        Divider()
+        Button(L10n.text(
+            "button.copy_diagnostics",
+            fallback: "复制诊断信息"
+        )) {
+            model.copyDiagnostics()
+        }
+        Button(L10n.text("button.restart_finder", fallback: "重启 Finder")) {
+            model.restartFinder()
+        }
+        Divider()
+        Button(L10n.text("button.quit", fallback: "退出 RightClick")) {
+            NSApp.terminate(nil)
+        }
+    }
+
+    private func showMainWindow() {
+        if WindowPresenter.hasMainWindow {
+            WindowPresenter.bringMainWindowToFront()
+        } else {
+            WindowPresenter.notePresentationRequested()
+            openWindow(id: AppWindow.mainID)
+        }
+        model.refreshExtensionStatus()
+        model.refreshCustomTemplates()
+        Task { await model.refreshDiagnostics() }
+        sharedUpdaterController.checkInBackground()
+    }
+}
+
 @main
 struct RightClickApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
@@ -249,5 +291,15 @@ struct RightClickApp: App {
                 .environmentObject(model)
                 .frame(width: 560, height: 520)
         }
+
+        MenuBarExtra(
+            "RightClick",
+            systemImage: "cursorarrow.click.2",
+            isInserted: $model.menuBarIconEnabled
+        ) {
+            MenuBarContent()
+                .environmentObject(model)
+        }
+        .menuBarExtraStyle(.menu)
     }
 }

@@ -17,6 +17,9 @@ final class AppModel: ObservableObject {
     @Published var terminalWindowBehavior: TerminalWindowBehavior {
         didSet { settings.terminalWindowBehavior = terminalWindowBehavior }
     }
+    @Published var menuBarIconEnabled: Bool {
+        didSet { settings.menuBarIconEnabled = menuBarIconEnabled }
+    }
     @Published var menuConfiguration: MenuConfiguration {
         didSet { menuConfigurationStore.replace(with: menuConfiguration) }
     }
@@ -72,6 +75,7 @@ final class AppModel: ObservableObject {
         self.notifier = notifier
         terminalProfile = settings.terminalProfile
         terminalWindowBehavior = settings.terminalWindowBehavior
+        menuBarIconEnabled = settings.menuBarIconEnabled
         let configurationStore = MenuConfigurationStore(
             configurationURL: menuConfigurationURL,
             customTemplatesDirectory: customTemplatesDirectory,
@@ -278,6 +282,49 @@ final class AppModel: ObservableObject {
     func removeCLIProfile(id: String) {
         menuConfigurationStore.updateImmediately {
             $0.cliProfiles.removeAll { $0.id == id }
+        }
+    }
+
+    func templateFilename(for template: FileTemplate) -> String {
+        menuConfiguration.templateOverrides[template.rawValue]?.filename ?? ""
+    }
+
+    func setTemplateFilename(_ filename: String, for template: FileTemplate) {
+        var updated = menuConfiguration
+        var templateOverride = updated.templateOverrides[template.rawValue]
+            ?? TemplateOverride()
+        templateOverride.filename = filename.isEmpty ? nil : filename
+        if templateOverride.filename == nil,
+           templateOverride.encoding == nil {
+            updated.templateOverrides.removeValue(forKey: template.rawValue)
+        } else {
+            updated.templateOverrides[template.rawValue] = templateOverride
+        }
+        menuConfiguration = updated
+    }
+
+    func templateEncoding(for template: FileTemplate) -> TemplateEncoding {
+        menuConfiguration.templateOverrides[template.rawValue]?
+            .resolvedEncoding ?? .utf8
+    }
+
+    func setTemplateEncoding(
+        _ encoding: TemplateEncoding,
+        for template: FileTemplate
+    ) {
+        menuConfigurationStore.updateImmediately { updated in
+            var templateOverride = updated.templateOverrides[template.rawValue]
+                ?? TemplateOverride()
+            // UTF-8 是内置默认，不保存冗余覆盖。
+            templateOverride.encoding = encoding == .utf8
+                ? nil
+                : encoding.rawValue
+            if templateOverride.filename == nil,
+               templateOverride.encoding == nil {
+                updated.templateOverrides.removeValue(forKey: template.rawValue)
+            } else {
+                updated.templateOverrides[template.rawValue] = templateOverride
+            }
         }
     }
 

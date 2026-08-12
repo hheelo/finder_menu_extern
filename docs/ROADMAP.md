@@ -51,7 +51,7 @@
 
 - [x] 菜单项启用、排序和收进 RightClick 子菜单
 - [x] 自定义文件模板目录与扩展容器镜像
-- [ ] 为内置模板配置默认文件名与编码
+- [x] 为内置模板配置默认文件名与编码
 - [x] 可配置 CLI 命令与参数
 - [x] 增加 Warp、Ghostty、WezTerm、Kitty
 - [x] 增加 Cursor、Zed、Sublime Text、Xcode、JetBrains 与系统默认应用
@@ -62,6 +62,7 @@
 ## M3.5：体验打磨
 
 - [x] Finder 菜单动作增加 SF Symbols 图标
+- [x] 可选的菜单栏快捷入口
 
 ## M4：稳定分发
 
