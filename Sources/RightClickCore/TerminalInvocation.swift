@@ -59,20 +59,10 @@ public struct TerminalInvocation: Equatable, Sendable {
             ]
         ),
               DeepLinkSignature.authentication(in: deepLink) != nil,
-              let path = components.single("cwd"),
-              path.hasPrefix("/") else {
-            return nil
-        }
-
-        let directory = URL(
-            fileURLWithPath: path,
-            isDirectory: true
-        ).standardizedFileURL
-        var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(
-            atPath: directory.path,
-            isDirectory: &isDirectory
-        ), isDirectory.boolValue else {
+              let directory = components.existingAbsoluteDirectory(
+                  "cwd",
+                  fileManager: fileManager
+              ) else {
             return nil
         }
 

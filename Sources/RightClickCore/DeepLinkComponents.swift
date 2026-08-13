@@ -50,4 +50,26 @@ struct DeepLinkComponents {
     func all(_ name: String) -> [String] {
         queryItems.filter { $0.name == name }.compactMap(\.value)
     }
+
+    /// 三种终端类请求共用同一条路径边界：字段只能出现一次，必须是现有的
+    /// 绝对目录，并在进入业务层前统一标准化。
+    func existingAbsoluteDirectory(
+        _ name: String,
+        fileManager: FileManager
+    ) -> URL? {
+        guard let path = single(name), path.hasPrefix("/") else { return nil }
+
+        let directory = URL(
+            fileURLWithPath: path,
+            isDirectory: true
+        ).standardizedFileURL
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(
+            atPath: directory.path,
+            isDirectory: &isDirectory
+        ), isDirectory.boolValue else {
+            return nil
+        }
+        return directory
+    }
 }

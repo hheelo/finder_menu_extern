@@ -57,20 +57,10 @@ public struct CLIInvocation: Equatable, Sendable {
               DeepLinkSignature.authentication(in: deepLink) != nil,
               let tool = components.single("tool"),
               let command = CLICommand(rawValue: tool),
-              let path = components.single("cwd"),
-              path.hasPrefix("/") else {
-            return nil
-        }
-
-        let directory = URL(
-            fileURLWithPath: path,
-            isDirectory: true
-        ).standardizedFileURL
-        var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(
-            atPath: directory.path,
-            isDirectory: &isDirectory
-        ), isDirectory.boolValue else {
+              let directory = components.existingAbsoluteDirectory(
+                  "cwd",
+                  fileManager: fileManager
+              ) else {
             return nil
         }
 

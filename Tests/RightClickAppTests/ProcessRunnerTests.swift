@@ -54,4 +54,25 @@ struct ProcessRunnerTests {
             Issue.record("返回了错误的异常类型：\(error)")
         }
     }
+
+    @Test
+    func cancellationTerminatesTheProcess() async {
+        let task = Task {
+            try await ProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/bin/sleep"),
+                arguments: ["2"]
+            )
+        }
+        try? await Task.sleep(for: .milliseconds(50))
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("取消后进程仍然执行到了成功退出")
+        } catch is CancellationError {
+            // 预期：取消必须传递到独立的进程执行任务。
+        } catch {
+            Issue.record("返回了错误的异常类型：\(error)")
+        }
+    }
 }

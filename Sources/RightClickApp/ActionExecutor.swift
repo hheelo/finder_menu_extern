@@ -42,7 +42,7 @@ enum ProcessRunner {
         timeout: TimeInterval? = nil,
         maximumOutputBytes: Int = 1_048_576
     ) async throws -> ProcessRunnerResult {
-        try await Task.detached(priority: .utility) {
+        let task = Task.detached(priority: .utility) {
             let fileManager = FileManager.default
             let temporaryDirectory = fileManager.temporaryDirectory
                 .appendingPathComponent(
@@ -86,14 +86,15 @@ enum ProcessRunner {
             try process.run()
 
             // 轮询和退出后的复查读的是同一件事，抽出来避免两处各写一遍。
+            func fileSize(at url: URL) -> Int {
+                let attributes = try? fileManager.attributesOfItem(
+                    atPath: url.path
+                )
+                return (attributes?[.size] as? NSNumber)?.intValue ?? 0
+            }
+
             func totalOutputSize() -> Int {
-                [outputURL, errorURL].reduce(0) { total, url in
-                    let attributes = try? fileManager.attributesOfItem(
-                        atPath: url.path
-                    )
-                    let size = (attributes?[.size] as? NSNumber)?.intValue ?? 0
-                    return total + size
-                }
+                fileSize(at: outputURL) + fileSize(at: errorURL)
             }
 
             let deadline = timeout.map { Date().addingTimeInterval($0) }
@@ -176,7 +177,14 @@ enum ProcessRunner {
                     as: UTF8.self
                 )
             )
-        }.value
+        }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            // detached task 不会继承调用方稍后发生的取消；显式转发后，内部轮询
+            // 才能终止子进程并清理私有临时目录。
+            task.cancel()
+        }
     }
 }
 
