@@ -9,6 +9,7 @@ public final class AppSettings: @unchecked Sendable {
         static let finderSessionBuild = "finderSessionBuild"
         static let cachedDiagnostics = "cachedDiagnostics"
         static let menuBarIconEnabled = "menuBarIconEnabled"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
     }
 
     private let defaults: UserDefaults
@@ -50,5 +51,21 @@ public final class AppSettings: @unchecked Sendable {
     public var menuBarIconEnabled: Bool {
         get { defaults.bool(forKey: Key.menuBarIconEnabled) }
         set { defaults.set(newValue, forKey: Key.menuBarIconEnabled) }
+    }
+
+    public var hasCompletedOnboarding: Bool {
+        get {
+            if defaults.object(forKey: Key.hasCompletedOnboarding) != nil {
+                return defaults.bool(forKey: Key.hasCompletedOnboarding)
+            }
+            // v1.0.0 前没有 onboarding 标记。已有任一持久状态说明这是升级用户，
+            // 不应在更新后突然弹出“首次启动”向导；完全空白的 defaults 才是新用户。
+            return defaults.object(forKey: Key.terminalProfile) != nil
+                || defaults.object(forKey: Key.terminalWindowBehavior) != nil
+                || defaults.object(forKey: Key.finderSessionBuild) != nil
+                || defaults.object(forKey: Key.cachedDiagnostics) != nil
+                || defaults.object(forKey: Key.menuBarIconEnabled) != nil
+        }
+        set { defaults.set(newValue, forKey: Key.hasCompletedOnboarding) }
     }
 }

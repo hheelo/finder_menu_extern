@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=0.9.3 ./scripts/build-release.sh
+VERSION=1.0.0 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -68,6 +68,8 @@ VERSION=0.9.3 ./scripts/build-release.sh
   Terminal”而不沿用 24 小时缓存；卸载 Cursor 后应出现缺失项，重装后应消失
 - 触发 CLI 动作，确认终端在正确目录启动，RightClick 不切到前台、不增加窗口，
   界面也不会短暂闪现
+- 在全新用户账户尚未完成首次向导时，先从 Finder 触发一次宿主型动作，确认向导和
+  主窗口都不会因深链冷启动而闪现；随后双击 App，向导才应正常出现
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
 - 关闭 RightClick 的最后一个窗口但不退出进程，再双击 App，确认会新建并显示窗口
 - 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建
@@ -86,6 +88,9 @@ VERSION=0.9.3 ./scripts/build-release.sh
 - 从 v0.9.0 升级到 v0.9.1 时保持旧 Finder 会话，确认旧扩展生成的签名被拒绝；
   App 自动刷新 Finder 后，新请求恢复正常且签名已绑定协议版本
 - 在设置里禁用、排序菜单项并切换 RightClick 子菜单，确认下一次右键立即生效
+- 把 Finder 监控目录限制为 `~/Projects`，重启 Finder 后确认该目录及其子目录有
+  RightClick 菜单、`~/Downloads` 没有；添加一个不存在的路径时其他有效目录仍工作，
+  移除最后一项并重启后恢复全盘菜单
 - 在设置页连续输入一个长命令名并同时反复右键，确认动态 CLI 不会随半成品配置
   闪烁；输入到一半直接按 ⌘Q，重开 App 后确认最后输入仍然保留
 - 确认所有内置、自定义 CLI 和自定义模板菜单项都带有可读的
@@ -105,6 +110,9 @@ VERSION=0.9.3 ./scripts/build-release.sh
   重启 Finder 与退出。关闭主窗口后入口仍可用，关闭设置开关后图标立即消失，
   重启 App 后保持上次选择。分别在开关关闭和开启时冷启动 App，空闲至少 60 秒，
   确认窗口始终可响应、CPU 回落到空闲且内存不持续增长
+- 在全新用户账户首次启动时确认三步向导出现：启用扩展后状态无需手动刷新即变绿，
+  选择终端时诊断结果同步显示，完成后不再出现；确认向导没有提前请求通知或自动化
+  权限。升级已有设置的旧版本时向导不应突然出现
 - 在 macOS 15/26 把 50 MB 文本放入剪贴板后反复打开 Finder 右键菜单，确认无
   隐私提示、无可感知延迟，并用 pasteboard 子系统日志复核；只有真正点击创建时
   才读取内容

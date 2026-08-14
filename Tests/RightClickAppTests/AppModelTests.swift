@@ -17,6 +17,33 @@ struct AppModelTests {
         )
     }
 
+    @Test
+    func deepLinkImmediatelyClassifiesColdLaunchAsHeadless() {
+        var state = AppLaunchState()
+        #expect(state.isUserLaunch)
+
+        let wasLaunchDeepLink = state.receiveDeepLink()
+        #expect(wasLaunchDeepLink)
+        #expect(!state.isUserLaunch)
+
+        state.finish(isDefaultLaunch: true)
+        #expect(!state.isUserLaunch)
+        #expect(state.hasFinishedLaunching)
+        // 启动完成后的普通 URL 不应把既有用户会话重新分类或隐藏窗口。
+        let wasPostLaunchDeepLink = state.receiveDeepLink()
+        #expect(!wasPostLaunchDeepLink)
+    }
+
+    @Test
+    func normalColdLaunchRemainsUserVisibleAfterClassification() {
+        var state = AppLaunchState()
+
+        state.finish(isDefaultLaunch: true)
+
+        #expect(state.isUserLaunch)
+        #expect(state.hasFinishedLaunching)
+    }
+
     @Test(arguments: [true, false], [true, false])
     func reopenPolicy(
         hasVisibleWindows: Bool,
@@ -52,6 +79,37 @@ struct AppModelTests {
 
         #expect(receivedValues == [true, false])
         #expect(fixture.defaults.bool(forKey: "menuBarIconEnabled") == false)
+    }
+
+    @Test
+    func completingOnboardingPersistsAndDismissesIt() async throws {
+        let suiteName = "RightClickAppTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let settings = AppSettings(defaults: defaults)
+        let model = AppModel(
+            settings: settings,
+            notifier: RecordingNotifier(),
+            applicationURL: { _ in nil },
+            menuConfigurationURL: directory.appendingPathComponent("menu.json"),
+            performInitialRefresh: false
+        )
+
+        #expect(!model.hasCompletedOnboarding)
+        #expect(!model.shouldPresentOnboarding)
+        // 构造模型等同深链冷启动：未经过用户可见呈现入口时绝不能弹向导。
+        await model.refreshForUserPresentation()
+        #expect(model.shouldPresentOnboarding)
+        model.completeOnboarding()
+
+        #expect(model.hasCompletedOnboarding)
+        #expect(!model.shouldPresentOnboarding)
+        #expect(settings.hasCompletedOnboarding)
+
+        await model.refreshForUserPresentation()
+        #expect(!model.shouldPresentOnboarding)
     }
 
     @Test

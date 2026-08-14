@@ -10,10 +10,12 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 - 运行 Codex CLI / Claude Code，或用 PATH 命令名、绝对路径和逐项参数配置自己的 CLI
 - 新建内置模板文件、自定义模板文件、文件夹，或从文本剪贴板新建文件；内置模板可覆盖文件名与编码
 - 可启用、禁用和排序菜单项，也可全部收进一个 RightClick 子菜单
+- 可把 Finder 菜单限制在用户选择的目录及其子目录
 - 宿主界面、Finder 菜单、错误通知与系统权限说明支持简体中文和英文
 - 支持文件、文件夹、窗口空白处、桌面和 Finder 侧边栏
 - Finder 动作全程不显示宿主窗口；AI CLI 请求经本机扩展认证后直接打开终端
 - 宿主以附属应用运行，Dock 里不占图标；双击 App 即可打开设置与诊断
+- 首次启动用三步向导完成扩展启用、默认终端选择与 Finder 试用引导
 - 原生 macOS App 图标与本地环境诊断
 
 ## 工程结构
@@ -115,7 +117,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=0.9.3 ./scripts/build-release.sh
+VERSION=1.0.0 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。

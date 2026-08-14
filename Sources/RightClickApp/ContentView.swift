@@ -162,6 +162,17 @@ struct ContentView: View {
             }
         }
         .padding(28)
+        .sheet(isPresented: Binding(
+            get: { model.shouldPresentOnboarding },
+            set: { _ in }
+        )) {
+            OnboardingView {
+                DispatchQueue.main.async {
+                    WindowPresenter.showSettings()
+                }
+            }
+            .environmentObject(model)
+        }
     }
 }
 

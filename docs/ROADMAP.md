@@ -28,7 +28,7 @@
 - [x] 升级时注销旧扩展，并将旧 App 压缩到非应用目录
 - [x] PR / Main CI 与 Release 测试门禁
 - [x] 自动验证签名、Bundle ID、版本、Universal 2 和 DMG 内容
-- [ ] 提供 Homebrew Cask
+- [ ] 提供 Homebrew Cask（官方 tap 要求 Developer ID 签名与公证，受 M4 条件阻塞）
 - [ ] 在 Intel Mac 上完成安装验证
 
 ## M2.5：安装与稳定性
@@ -56,7 +56,7 @@
 - [x] 增加 Warp、Ghostty、WezTerm、Kitty
 - [x] 增加 Cursor、Zed、Sublime Text、Xcode、JetBrains 与系统默认应用
 - [x] 新建文件夹、从文本剪贴板新建文件
-- [ ] 用户选择监控目录并持久化设置
+- [x] 用户选择监控目录并持久化设置（修改后按 Finder Sync 启动期约束重启 Finder）
 - [ ] 简体中文 / 英文本地化（代码与自动验证完成；待 Finder 进程内双语实测）
 
 ## M3.5：体验打磨
@@ -68,6 +68,6 @@
 
 - [x] Sparkle 应用内更新（EdDSA 签名，无需 Developer ID）
 - [ ] Developer ID 签名与公证
-- [ ] 完整的分步首次启动向导
+- [x] 完整的分步首次启动向导
 - [ ] 崩溃与请求日志（默认本地）
 - [ ] UI 自动化和签名后 smoke test

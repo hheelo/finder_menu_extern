@@ -66,6 +66,77 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section(L10n.text(
+                "settings.monitored_directories",
+                fallback: "Finder 监控目录"
+            )) {
+                if model.menuConfiguration.monitoredDirectories.isEmpty {
+                    Label(
+                        L10n.text(
+                            "settings.monitor_all_directories",
+                            fallback: "所有目录（/）"
+                        ),
+                        systemImage: "externaldrive.fill"
+                    )
+                } else {
+                    ForEach(
+                        model.menuConfiguration.monitoredDirectories,
+                        id: \.self
+                    ) { path in
+                        HStack {
+                            Image(systemName: "folder")
+                                .foregroundStyle(.secondary)
+                            Text(path)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
+                            Spacer()
+                            Button(role: .destructive) {
+                                model.removeMonitoredDirectory(path)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .help(L10n.text(
+                                "button.remove_monitored_directory",
+                                fallback: "移除监控目录"
+                            ))
+                        }
+                    }
+                }
+
+                HStack {
+                    Button(L10n.text(
+                        "button.add_monitored_directory",
+                        fallback: "添加目录"
+                    )) {
+                        model.addMonitoredDirectories()
+                    }
+                    if !model.menuConfiguration.monitoredDirectories.isEmpty {
+                        Button(L10n.text(
+                            "button.monitor_all_directories",
+                            fallback: "恢复监控所有目录"
+                        )) {
+                            model.monitorAllDirectories()
+                        }
+                    }
+                    Spacer()
+                    Button(L10n.text(
+                        "button.restart_finder_apply",
+                        fallback: "重启 Finder 以应用"
+                    )) {
+                        model.restartFinder()
+                    }
+                }
+
+                Text(L10n.text(
+                    "settings.monitored_directories_help",
+                    fallback: "RightClick 只在这些目录及其子目录中显示。修改后需要重启 Finder；移除最后一项会恢复监控所有目录。不可用的外置磁盘路径会在扩展启动时跳过。"
+                ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section(L10n.text("settings.terminal", fallback: "终端")) {
                 Picker(
                     L10n.text("settings.terminal_picker", fallback: "默认终端"),

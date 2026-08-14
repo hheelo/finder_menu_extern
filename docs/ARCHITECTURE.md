@@ -95,6 +95,10 @@
   编码只接受 UTF-8、UTF-8 with BOM 与 UTF-16，非法值逐项回退内置默认值
 - 菜单配置由宿主写入 Finder 扩展容器，目录权限 `0700`、文件权限 `0600`；
   扩展每次构建菜单重新读取，损坏或未知版本一律回退完整默认菜单
+- Finder 监控目录也保存在菜单配置中，但它是启动期例外：扩展只在 `init` 中解析
+  绝对路径、跳过不存在的目录并设置 `directoryURLs`。空配置或全部不可用时回退
+  `/`，防止菜单整体消失；修改监控范围后必须重启 Finder。Apple 文档要求扩展
+  启动时设置该集合，没有把运行时热更新定义为受支持契约
 - 自定义模板只从普通文件镜像，不跟随符号链接、不遍历子目录，单文件最大 10 MB；
   镜像与菜单配置只在宿主界面呈现或用户手动刷新时对齐，Finder 扩展只读取自己
   容器里的 `0600` 镜像，绝不尝试访问宿主的模板源目录。同步以文件大小与修改
@@ -131,7 +135,8 @@
   Finder 重启与退出动作。不要把设置直接绑定到 SwiftUI `MenuBarExtra` 的
   `isInserted`：macOS 26.6 会形成 Scene / `@Published` 写回反馈环，导致启动后
   AttributeGraph 持续重算、CPU 和内存无上限增长
-- 当前默认监控 `/`，面向直接分发；之后应允许用户缩小范围
+- 默认监控 `/`；用户可以在设置中缩小到一个或多个目录及其子目录。由于
+  `directoryURLs` 是 Finder Sync 启动期状态，设置页把重启 Finder 作为显式提交步骤
 - Finder 扩展必须在系统设置中由用户显式启用
 - Finder Sync 没有公开 API 触发内联重命名；新建后只能选中项目，不模拟键盘事件
 - 用户通过“显示包内容”显式进入 package 的子目录后，子目录仍按普通目录处理；
@@ -146,7 +151,8 @@
   级别不低于 `notice`（`info` 默认不落盘）
 - URL 事件先于 `applicationDidFinishLaunching` 到达。AppDelegate 与 SwiftUI
   场景共用按首次访问初始化的 `AppModel`，因此 URL 先到也可以直接处理；冷启动
-  收到 URL 时先隐藏整个应用，阻止默认窗口在启动过程中闪现
+  收到 URL 时由 `AppLaunchState` 立即把启动分类收紧为 headless 并隐藏整个应用，
+  不能等 finish 回调才改标记，否则 SwiftUI `.task` 可能在竞态窗口里请求 onboarding
 - `com.openai.codex` 实际是 ChatGPT.app 的 Bundle ID；深链标识仍保留 `codex`
   作为已发布的跨进程契约，用户可见名称显示 ChatGPT
 - iTerm2 的 AppleScript `create window ... command X` 不经过 shell，`X` 含
@@ -158,13 +164,16 @@
   集合明确拒绝所有外部事件
 - `applicationShouldHandleReopen` 在有窗口时自行恢复并返回 false；最后一个窗口
   已关闭时返回 true，让 AppKit/SwiftUI 新建窗口。不能因「本进程是无声启动」
-  就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App。启动刷新与
-  后台更新检查共用同一个「界面已呈现」判定，覆盖这条后续恢复路径
+  就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App。首次启动、窗口恢复、
+  菜单栏入口统一调用 `AppModel.refreshForUserPresentation()`；onboarding、模板同步
+  和诊断刷新不能绕开这条用户可见通道，后台更新检查沿用同一个呈现判定
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示。iTerm2 原生支持创建
   标签页；Terminal 的脚本字典不允许创建 tab，需通过 System Events 发送 ⌘T，
   因而“新标签页”还需要辅助功能权限。拒绝时会停止而不会写入当前标签页，用户可改用新窗口
 - Ad-hoc 签名版本首次下载运行时需要用户在“隐私与安全性”中允许
 - 无 Developer ID 的版本不能通过 Apple 公证
+- Homebrew 官方 cask 当前会审计 Apple 签名与公证，因此 F5 依赖 F6；在取得
+  Developer ID 之前不提交一个无法通过官方审计的 cask，也不通过脚本绕过 quarantine
 - 没有 Developer ID 就无法轮换 EdDSA 密钥（轮换需要证书建立信任链）。
   私钥丢失或泄露等于永久失去对存量用户的更新能力
 - Sparkle 下载的更新包不带 quarantine（已实测：curl 下载同一 DMG 只有

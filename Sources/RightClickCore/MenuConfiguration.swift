@@ -83,6 +83,9 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
     public var customTemplates: [CustomFileTemplate]
     /// key 为 `FileTemplate.rawValue`；非法 key 或覆盖值在加载时被忽略。
     public var templateOverrides: [String: TemplateOverride]
+    /// Finder Sync 启动时读取的监控目录。空数组表示监控 `/`，保持旧版本行为。
+    /// 修改后必须重启 Finder；Apple 要求扩展在启动时设置 `directoryURLs`。
+    public var monitoredDirectories: [String]
 
     public init(
         version: Int = currentVersion,
@@ -93,7 +96,8 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         copySeparator: String? = nil,
         cliProfiles: [CLIProfile] = [],
         customTemplates: [CustomFileTemplate] = [],
-        templateOverrides: [String: TemplateOverride] = [:]
+        templateOverrides: [String: TemplateOverride] = [:],
+        monitoredDirectories: [String] = []
     ) {
         self.version = version
         self.disabledActions = disabledActions
@@ -104,6 +108,7 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
         self.cliProfiles = cliProfiles
         self.customTemplates = customTemplates
         self.templateOverrides = templateOverrides
+        self.monitoredDirectories = monitoredDirectories
     }
 
     /// 解析后的分隔方式。未设置或无法识别时回退换行。
@@ -116,7 +121,7 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case version, disabledActions, actionOrder, collapseIntoSubmenu
         case terminalProfileID, copySeparator, cliProfiles, customTemplates
-        case templateOverrides
+        case templateOverrides, monitoredDirectories
     }
 
     public init(from decoder: Decoder) throws {
@@ -154,6 +159,10 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
             [String: TemplateOverride].self,
             forKey: .templateOverrides
         ) ?? [:]
+        monitoredDirectories = try values.decodeIfPresent(
+            [String].self,
+            forKey: .monitoredDirectories
+        ) ?? []
     }
 
     /// 忽略无效或重复动态项，基础菜单配置仍然可用。
@@ -177,6 +186,9 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
                   let sanitized = element.value.sanitized else { return }
             result[element.key] = sanitized
         }
+        copy.monitoredDirectories = MonitoredDirectoryPolicy.sanitizedPaths(
+            monitoredDirectories
+        )
         return copy
     }
 

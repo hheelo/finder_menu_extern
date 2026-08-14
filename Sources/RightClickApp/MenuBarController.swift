@@ -132,9 +132,7 @@ final class MenuBarController: NSObject {
     }
 
     private func refreshForUserPresentation() {
-        model.refreshExtensionStatus()
-        model.refreshCustomTemplates()
-        Task { await model.refreshDiagnostics() }
+        Task { await model.refreshForUserPresentation() }
         updater.checkInBackground()
     }
 }

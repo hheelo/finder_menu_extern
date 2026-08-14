@@ -13,6 +13,7 @@ struct AppSettingsTests {
         #expect(settings.terminalProfile == .automatic)
         #expect(settings.terminalWindowBehavior == .newTab)
         #expect(!settings.menuBarIconEnabled)
+        #expect(!settings.hasCompletedOnboarding)
 
         settings.terminalProfile = .terminal
         #expect(settings.terminalProfile == .terminal)
@@ -20,6 +21,20 @@ struct AppSettingsTests {
         #expect(settings.terminalWindowBehavior == .newWindow)
         settings.menuBarIconEnabled = true
         #expect(settings.menuBarIconEnabled)
+        settings.hasCompletedOnboarding = true
+        #expect(settings.hasCompletedOnboarding)
+    }
+
+    @Test
+    func legacySettingsSkipTheNewOnboardingOnce() throws {
+        let suiteName = "RightClickTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("terminal", forKey: "terminalProfile")
+
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.hasCompletedOnboarding)
     }
 
     @Test

@@ -8,7 +8,8 @@ struct MenuConfigurationTests {
         let configuration = MenuConfiguration(
             disabledActions: [RightClickAction.copyFilename.configurationID],
             actionOrder: [RightClickAction.openInTerminal.configurationID],
-            collapseIntoSubmenu: true
+            collapseIntoSubmenu: true,
+            monitoredDirectories: ["/Users/example/Projects"]
         )
         let encoded = try JSONEncoder().encode(configuration)
         let decoded = try JSONDecoder().decode(
@@ -167,6 +168,43 @@ struct MenuConfigurationTests {
                 )
         )
         #expect(configuration.templateOverrides["future-template"] == nil)
+    }
+
+    @Test
+    func monitoredDirectoriesSanitizeAbsolutePathsAndDuplicates() {
+        let paths = MonitoredDirectoryPolicy.sanitizedPaths([
+            "/Users/example/Projects/../Projects",
+            "relative/path",
+            "/Users/example/Projects",
+            "/Volumes/Work"
+        ])
+
+        #expect(paths == ["/Users/example/Projects", "/Volumes/Work"])
+    }
+
+    @Test
+    func monitoredDirectoriesFallBackAndSkipUnavailablePaths() {
+        #expect(
+            MonitoredDirectoryPolicy.resolvedURLs([], isDirectory: { _ in false })
+                == [MonitoredDirectoryPolicy.fallbackURL]
+        )
+
+        let resolved = MonitoredDirectoryPolicy.resolvedURLs(
+            ["relative", "/Volumes/Missing", "/Users/example/Projects"]
+        ) { $0 == "/Users/example/Projects" }
+        #expect(
+            resolved == [URL(
+                fileURLWithPath: "/Users/example/Projects",
+                isDirectory: true
+            )]
+        )
+
+        #expect(
+            MonitoredDirectoryPolicy.resolvedURLs(
+                ["/Volumes/Missing"],
+                isDirectory: { _ in false }
+            ) == [MonitoredDirectoryPolicy.fallbackURL]
+        )
     }
 
     private func temporaryURL() -> URL {

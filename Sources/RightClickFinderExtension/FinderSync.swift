@@ -22,10 +22,19 @@ final class FinderSync: FIFinderSync {
 
     override init() {
         super.init()
-        controller.directoryURLs = [
-            URL(fileURLWithPath: "/", isDirectory: true)
-        ]
-        logger.notice("Finder 扩展已初始化")
+        let paths = currentMenuConfiguration().monitoredDirectories
+        controller.directoryURLs = MonitoredDirectoryPolicy.resolvedURLs(
+            paths
+        ) { path in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(
+                atPath: path,
+                isDirectory: &isDirectory
+            ) && isDirectory.boolValue
+        }
+        logger.notice(
+            "Finder 扩展已初始化 监控目录=\(self.controller.directoryURLs.count, privacy: .public)"
+        )
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {

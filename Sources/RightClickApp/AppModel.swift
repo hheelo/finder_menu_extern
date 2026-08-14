@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
             onMenuBarIconEnabledChange?(menuBarIconEnabled)
         }
     }
+    @Published private(set) var hasCompletedOnboarding: Bool
+    @Published private(set) var shouldPresentOnboarding = false
     @Published var menuConfiguration: MenuConfiguration {
         didSet { menuConfigurationStore.replace(with: menuConfiguration) }
     }
@@ -80,6 +82,7 @@ final class AppModel: ObservableObject {
         terminalProfile = settings.terminalProfile
         terminalWindowBehavior = settings.terminalWindowBehavior
         menuBarIconEnabled = settings.menuBarIconEnabled
+        hasCompletedOnboarding = settings.hasCompletedOnboarding
         let configurationStore = MenuConfigurationStore(
             configurationURL: menuConfigurationURL,
             customTemplatesDirectory: customTemplatesDirectory,
@@ -109,9 +112,7 @@ final class AppModel: ObservableObject {
         configurationStore.deliverDeferredInitializationFailure()
 
         if performInitialRefresh {
-            refreshCustomTemplates()
-            refreshExtensionStatus()
-            Task { await refreshDiagnostics() }
+            Task { await refreshForUserPresentation() }
         }
     }
 
@@ -353,6 +354,59 @@ final class AppModel: ObservableObject {
 
     func refreshCustomTemplates() {
         menuConfigurationStore.refreshCustomTemplates()
+    }
+
+    /// 用户明确打开或恢复界面时的唯一刷新入口。
+    ///
+    /// Finder 深链也会冷启动宿主，但那条路径绝不能展示 onboarding、窗口或更新
+    /// 界面。所有用户呈现入口先由 `AppPresentation` 判定，再调用本方法，避免新增
+    /// 一项刷新职责时再次漏掉某个窗口恢复分支。
+    func refreshForUserPresentation() async {
+        if !hasCompletedOnboarding {
+            shouldPresentOnboarding = true
+        }
+        guard !AppEnvironment.isRunningTests else { return }
+        refreshExtensionStatus()
+        refreshCustomTemplates()
+        await refreshDiagnostics()
+    }
+
+    func addMonitoredDirectories() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.canCreateDirectories = true
+        panel.prompt = L10n.text(
+            "button.add_monitored_directory",
+            fallback: "添加目录"
+        )
+        guard panel.runModal() == .OK else { return }
+
+        let selectedPaths = panel.urls.map { $0.standardizedFileURL.path }
+        menuConfigurationStore.updateImmediately { updated in
+            updated.monitoredDirectories = MonitoredDirectoryPolicy
+                .sanitizedPaths(updated.monitoredDirectories + selectedPaths)
+        }
+    }
+
+    func removeMonitoredDirectory(_ path: String) {
+        menuConfigurationStore.updateImmediately {
+            $0.monitoredDirectories.removeAll { $0 == path }
+        }
+    }
+
+    func monitorAllDirectories() {
+        menuConfigurationStore.updateImmediately {
+            $0.monitoredDirectories = []
+        }
+    }
+
+    func completeOnboarding() {
+        guard !hasCompletedOnboarding else { return }
+        settings.hasCompletedOnboarding = true
+        hasCompletedOnboarding = true
+        shouldPresentOnboarding = false
     }
 
     func persistMenuConfigurationImmediately() {
