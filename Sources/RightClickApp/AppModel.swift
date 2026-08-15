@@ -1,6 +1,7 @@
 import AppKit
 import FinderSync
 import RightClickCore
+import UniformTypeIdentifiers
 import os
 
 @MainActor
@@ -44,6 +45,9 @@ final class AppModel: ObservableObject {
     private let finderSessionManager: FinderSessionManager
     private let notifier: any UserNotifying
     private let menuConfigurationStore: MenuConfigurationStore
+    private let actionLogStore: LocalActionLogStore
+    private let actionLogSessionTracker: LocalActionSessionTracker
+    private let extensionActionLogURL: URL?
     private var diagnosticsAreAuthoritative = false
     var onMenuBarIconEnabledChange: ((Bool) -> Void)?
 
@@ -65,14 +69,41 @@ final class AppModel: ObservableObject {
         },
         menuConfigurationURL: URL = MenuConfigurationFile.hostURL(),
         customTemplatesDirectory: URL = MenuConfigurationFile.hostTemplatesDirectory(),
+        actionLogStore: LocalActionLogStore? = nil,
+        extensionActionLogURL: URL? = nil,
         performInitialRefresh: Bool = true
     ) {
         self.settings = settings
+        let resolvedActionLogStore = actionLogStore ?? LocalActionLogStore(
+            fileURL: AppEnvironment.isRunningTests
+                ? nil
+                : LocalActionLogFile.hostURL()
+        )
+        self.actionLogStore = resolvedActionLogStore
+        actionLogSessionTracker = LocalActionSessionTracker(
+            store: resolvedActionLogStore,
+            markerURL: resolvedActionLogStore.fileURL.map {
+                LocalActionLogFile.sessionMarkerURL(for: $0)
+            }
+        )
+        self.extensionActionLogURL = extensionActionLogURL ?? (
+            AppEnvironment.isRunningTests
+                ? nil
+                : LocalActionLogFile.extensionHostURL()
+        )
         deepLinkCoordinator = DeepLinkCoordinator(
             extensionRequestToken: extensionRequestToken,
             executor: executor,
             menuConfiguration: {
                 MenuConfigurationFile.load(from: menuConfigurationURL)
+            },
+            recordAction: { action, result, category in
+                resolvedActionLogStore.append(LocalActionRecord(
+                    source: .host,
+                    action: action,
+                    result: result,
+                    errorCategory: category
+                ))
             },
             applicationURL: applicationURL
         )
@@ -198,6 +229,56 @@ final class AppModel: ObservableObject {
             fallback: "诊断信息已复制"
         )
         lastError = nil
+    }
+
+    func beginLocalActionLogSession() {
+        actionLogSessionTracker.begin()
+    }
+
+    func endLocalActionLogSession() {
+        actionLogSessionTracker.end()
+    }
+
+    func exportLocalActionLog() {
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "RightClick-Local-Action-Log.txt"
+        panel.title = L10n.text(
+            "settings.export_local_log",
+            fallback: "导出本地动作日志"
+        )
+        guard panel.runModal() == .OK, let destination = panel.url else {
+            return
+        }
+
+        let extensionRecords = extensionActionLogURL.map {
+            LocalActionLogStore.load(from: $0)
+        } ?? []
+        let report = LocalActionLogReport.make(
+            hostRecords: actionLogStore.records(),
+            extensionRecords: extensionRecords,
+            appVersion: AppVersion.displayString ?? "unknown"
+        )
+        do {
+            try Data(report.utf8).write(to: destination, options: .atomic)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: destination.path
+            )
+            lastStatus = L10n.text(
+                "status.exported_local_log",
+                fallback: "本地动作日志已导出"
+            )
+            lastError = nil
+        } catch {
+            recordFailure(L10n.format(
+                "error.export_local_log",
+                fallback: "无法导出本地动作日志：%@",
+                error.localizedDescription
+            ))
+        }
     }
 
     func clearErrors() {

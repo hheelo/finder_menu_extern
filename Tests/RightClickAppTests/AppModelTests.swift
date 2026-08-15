@@ -127,6 +127,9 @@ struct AppModelTests {
 
         #expect(fixture.executor.invocations == [invocation])
         #expect(fixture.model.lastError == nil)
+        #expect(fixture.actionLogStore.records().map(\.result) == [
+            .received, .succeeded
+        ])
     }
 
     @Test
@@ -294,6 +297,7 @@ struct AppModelTests {
         #expect(fixture.model.lastError == nil)
         #expect(fixture.model.errorHistory.isEmpty)
         #expect(fixture.notifier.messages.isEmpty)
+        #expect(fixture.actionLogStore.records().isEmpty)
     }
 
     @Test
@@ -364,6 +368,9 @@ struct AppModelTests {
 
         #expect(fixture.notifier.messages == ["终端拒绝了自动化请求。"])
         #expect(fixture.model.errorHistory.count == 1)
+        let logRecords = fixture.actionLogStore.records()
+        #expect(logRecords.map(\.result) == [.received, .failed])
+        #expect(logRecords.last?.errorCategory == .executionFailed)
     }
 
     @Test
@@ -411,6 +418,9 @@ struct AppModelTests {
         let token = ExtensionRequestTokenStore.makeToken()
         let settings = AppSettings(defaults: defaults)
         settings.terminalProfile = .terminal
+        let actionLogStore = LocalActionLogStore(
+            fileURL: directory.appendingPathComponent("action-log.json")
+        )
         let model = AppModel(
             settings: settings,
             executor: executor,
@@ -420,12 +430,14 @@ struct AppModelTests {
             menuConfigurationURL: directory.appendingPathComponent(
                 "menu.json"
             ),
+            actionLogStore: actionLogStore,
             performInitialRefresh: false
         )
         return Fixture(
             model: model,
             executor: executor,
             notifier: notifier,
+            actionLogStore: actionLogStore,
             token: token,
             defaults: defaults,
             suiteName: suiteName,
@@ -518,6 +530,7 @@ private struct Fixture {
     let model: AppModel
     let executor: RecordingExecutor
     let notifier: RecordingNotifier
+    let actionLogStore: LocalActionLogStore
     let token: String
     let defaults: UserDefaults
     let suiteName: String

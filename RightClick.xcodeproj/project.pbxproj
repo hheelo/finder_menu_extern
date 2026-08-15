@@ -78,6 +78,7 @@
 		9B55D904E8658B0F23991B03 /* TemplateMirrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0FB24F6CFDC0ACDF4E3D74 /* TemplateMirrorTests.swift */; };
 		9C1A3747FD6B74A2108D0331 /* OpenInvocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4809F6985A7D2364B09E19B2 /* OpenInvocation.swift */; };
 		9E532FC8F84BC0421631F804 /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
+		9F95B85B021E004C1129D34B /* LocalActionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A0E346EA6FB84ADDA7075C7 /* LocalActionLog.swift */; };
 		A0C86492645226D2CF94FCA0 /* CLIInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84148B02F7F318AD2AD90ADD /* CLIInvocationTests.swift */; };
 		A1624E19F21577404C9948D3 /* RightClickCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A3E42E8B16E52C4407DD965F /* RightClickCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -107,6 +108,7 @@
 		CCBFA31B9C6D3E62B1AE9104 /* RightClickAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7945574CA07D3EE47247E5D8 /* RightClickAction.swift */; };
 		CFABAE7E3A171CBB90ED8C4C /* ClipboardText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DA93DE1BA183F60B69D058 /* ClipboardText.swift */; };
 		D2CCBBC0256D2FD2A4CD5C1C /* LoginShellTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778720A164DEACE683B7D07D /* LoginShellTests.swift */; };
+		D35D322D12BAF68500B8B961 /* LocalActionLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB279DE753264A7A7E94CC11 /* LocalActionLogTests.swift */; };
 		D4F791DA2B52A0EF402DE29D /* TerminalResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5DED132C02302558804E661 /* TerminalResolver.swift */; };
 		DA7352E0529B37CA83328225 /* UserLoginShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E3FB0B981FEEBF08FE0E2E4 /* UserLoginShell.swift */; };
 		E21A2900F6B09CDAF4A34CF3 /* FileTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E443EF553D797AE2521933E9 /* FileTemplate.swift */; };
@@ -260,6 +262,7 @@
 		780AEDB3C8BDDBEC65D69AD4 /* RelativePathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativePathResolver.swift; sourceTree = "<group>"; };
 		78476825C4CFAA839E6429D5 /* MenuItemPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemPayload.swift; sourceTree = "<group>"; };
 		7945574CA07D3EE47247E5D8 /* RightClickAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightClickAction.swift; sourceTree = "<group>"; };
+		7A0E346EA6FB84ADDA7075C7 /* LocalActionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalActionLog.swift; sourceTree = "<group>"; };
 		7B2926AF30A9E73C2CE257B6 /* OpenInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenInvocationTests.swift; sourceTree = "<group>"; };
 		7CA711AD45A69885498B847B /* MonitoredDirectoryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitoredDirectoryPolicy.swift; sourceTree = "<group>"; };
 		84148B02F7F318AD2AD90ADD /* CLIInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInvocationTests.swift; sourceTree = "<group>"; };
@@ -281,6 +284,7 @@
 		A622FFA01AC38A389944D8D4 /* FileCreator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCreator.swift; sourceTree = "<group>"; };
 		A68AA4C0E0FA472C54F55ED1 /* SelectionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionContext.swift; sourceTree = "<group>"; };
 		A97B7F8F10FEDC8BEEA9763B /* TerminalInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalInvocation.swift; sourceTree = "<group>"; };
+		AB279DE753264A7A7E94CC11 /* LocalActionLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalActionLogTests.swift; sourceTree = "<group>"; };
 		ABAAB2233E121EB1DBE50FD0 /* ExecutablePathParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutablePathParserTests.swift; sourceTree = "<group>"; };
 		B165B70C5575CF81EE1AE7F7 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B338F1C601E212E5F0381226 /* ProcessRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessRunnerTests.swift; sourceTree = "<group>"; };
@@ -381,6 +385,7 @@
 				2D0D46A7C4A1A215960D4108 /* ExternalApplicationTests.swift */,
 				A49EDAF82E7ACA6FC6DD103B /* FileCreatorTests.swift */,
 				D1510F2C551250C05C4CE18F /* FinderActionPolicyTests.swift */,
+				AB279DE753264A7A7E94CC11 /* LocalActionLogTests.swift */,
 				F0855FB5F0B7565612C99592 /* LocalizationTests.swift */,
 				C0D7AA581A31DC387EBBFF5D /* LoginShellArgumentsTests.swift */,
 				778720A164DEACE683B7D07D /* LoginShellTests.swift */,
@@ -451,6 +456,7 @@
 				A622FFA01AC38A389944D8D4 /* FileCreator.swift */,
 				E443EF553D797AE2521933E9 /* FileTemplate.swift */,
 				C17563A88263BA4EB7059966 /* FinderActionPolicy.swift */,
+				7A0E346EA6FB84ADDA7075C7 /* LocalActionLog.swift */,
 				15181E3CD43DB1EB300453C0 /* Localizable.xcstrings */,
 				A3556E63A919E10921F6D753 /* Localization.swift */,
 				4B45B2F0C41B89F0B23D6B42 /* LoginShell.swift */,
@@ -724,6 +730,7 @@
 				F8F85CF7EB1C1AC922E8F2DF /* ExternalApplicationTests.swift in Sources */,
 				20DE0261F3883D77C3C41781 /* FileCreatorTests.swift in Sources */,
 				23FA9E4DA0795564EF357569 /* FinderActionPolicyTests.swift in Sources */,
+				D35D322D12BAF68500B8B961 /* LocalActionLogTests.swift in Sources */,
 				40C9BF06FA022CC7CE5EAF26 /* LocalizationTests.swift in Sources */,
 				8F9D9D7FCEAEC489CF6BBCF4 /* LoginShellArgumentsTests.swift in Sources */,
 				D2CCBBC0256D2FD2A4CD5C1C /* LoginShellTests.swift in Sources */,
@@ -796,6 +803,7 @@
 				B0004930BC61205AFE67F669 /* FileCreator.swift in Sources */,
 				E21A2900F6B09CDAF4A34CF3 /* FileTemplate.swift in Sources */,
 				5746F02B9668224CA3A76139 /* FinderActionPolicy.swift in Sources */,
+				9F95B85B021E004C1129D34B /* LocalActionLog.swift in Sources */,
 				576212701823475FCFE8E432 /* Localization.swift in Sources */,
 				895DCE99394C583D6AA01EE5 /* LoginShell.swift in Sources */,
 				3F5D6A87B3394566E2764373 /* LoginShellArguments.swift in Sources */,
@@ -978,7 +986,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10000;
+				CURRENT_PROJECT_VERSION = 10001;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -999,7 +1007,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1158,7 +1166,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10000;
+				CURRENT_PROJECT_VERSION = 10001;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1173,7 +1181,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

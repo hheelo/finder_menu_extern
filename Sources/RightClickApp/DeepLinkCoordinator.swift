@@ -15,6 +15,11 @@ final class DeepLinkCoordinator {
     private let applicationURL: @MainActor (ExternalApplication) -> URL?
     private let nonceCache: NonceCache
     private let menuConfiguration: @MainActor () -> MenuConfiguration
+    private let recordAction: @MainActor (
+        LocalActionName,
+        LocalActionResult,
+        LocalActionErrorCategory?
+    ) -> Void
 
     init(
         extensionRequestToken: @escaping @MainActor () -> String?,
@@ -24,6 +29,11 @@ final class DeepLinkCoordinator {
         menuConfiguration: @escaping @MainActor () -> MenuConfiguration = {
             .default
         },
+        recordAction: @escaping @MainActor (
+            LocalActionName,
+            LocalActionResult,
+            LocalActionErrorCategory?
+        ) -> Void = { _, _, _ in },
         applicationURL: @escaping @MainActor (ExternalApplication) -> URL?
     ) {
         self.extensionRequestToken = extensionRequestToken
@@ -31,6 +41,7 @@ final class DeepLinkCoordinator {
         self.terminalResolver = terminalResolver
         self.nonceCache = nonceCache
         self.menuConfiguration = menuConfiguration
+        self.recordAction = recordAction
         self.applicationURL = applicationURL
     }
 
@@ -58,12 +69,15 @@ final class DeepLinkCoordinator {
             return
         }
 
+        let actionName = request.payload.localActionName
+        recordAction(actionName, .received, nil)
         switch request.payload {
         case let .cli(invocation):
             appLogger.notice("收到深链 类型=cli")
             // 只有诊断明确跑过且确认缺失时才拦截。没有诊断项就放行，避免
             // 缓存缺失或一次检测失败把原本能用的功能挡住。
             if commandAvailability(invocation.command) == false {
+                recordAction(actionName, .failed, .commandUnavailable)
                 reportFailure(
                     L10n.format(
                         "error.command_missing",
@@ -88,6 +102,7 @@ final class DeepLinkCoordinator {
             guard let profile = menuConfiguration().cliProfiles.first(where: {
                 $0.id == invocation.profileID && $0.isEnabled && $0.isValid
             }) else {
+                recordAction(actionName, .failed, .configurationUnavailable)
                 reportFailure(
                     L10n.text(
                         "error.cli_configuration_missing",
@@ -122,6 +137,11 @@ final class DeepLinkCoordinator {
             )
         case let .error(invocation):
             appLogger.notice("收到深链 类型=error")
+            recordAction(
+                .extensionErrorReport,
+                .failed,
+                .extensionReported
+            )
             emit(.trustedFailure(invocation.message))
         }
     }
@@ -137,6 +157,7 @@ final class DeepLinkCoordinator {
         _ invocation: OpenInvocation,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
+        let actionName = LocalActionName(opening: invocation.application)
         let workspace = NSWorkspace.shared
         if invocation.application == .systemDefault {
             let defaultApp = L10n.text(
@@ -150,12 +171,14 @@ final class DeepLinkCoordinator {
             )))
             let results = invocation.targets.map { workspace.open($0) }
             if results.allSatisfy({ $0 }) {
+                recordAction(actionName, .succeeded, nil)
                 emit(.status(L10n.format(
                     "status.opened_with",
                     fallback: "已用 %@ 打开",
                     defaultApp
                 )))
             } else {
+                recordAction(actionName, .failed, .applicationLaunchFailed)
                 reportFailure(
                     L10n.text(
                         "error.default_app_open",
@@ -168,6 +191,7 @@ final class DeepLinkCoordinator {
         }
         guard let applicationURL = applicationURL(invocation.application) else {
             appLogger.error("目标 App 未安装")
+            recordAction(actionName, .failed, .applicationNotFound)
             emit(.status(L10n.text(
                 "status.waiting",
                 fallback: "等待 Finder 操作"
@@ -201,12 +225,14 @@ final class DeepLinkCoordinator {
                 appLogger.notice(
                     "打开成功 app=\(invocation.application.identifier, privacy: .public)"
                 )
+                recordAction(actionName, .succeeded, nil)
                 emit(.status(L10n.format(
                     "status.opened_with",
                     fallback: "已用 %@ 打开",
                     invocation.application.title
                 )))
             } catch {
+                recordAction(actionName, .failed, .applicationLaunchFailed)
                 reportFailure(
                     error.localizedDescription,
                     emit: emit
@@ -221,6 +247,7 @@ final class DeepLinkCoordinator {
         terminalWindowBehavior: TerminalWindowBehavior,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
+        let actionName = LocalActionName(invocation.command)
         emit(.status(L10n.format(
             "status.starting",
             fallback: "正在启动 %@…",
@@ -238,6 +265,7 @@ final class DeepLinkCoordinator {
                 appLogger.notice(
                     "CLI 启动成功 tool=\(invocation.command.rawValue, privacy: .public)"
                 )
+                recordAction(actionName, .succeeded, nil)
                 emit(.status(L10n.format(
                     "status.started",
                     fallback: "已启动 %@",
@@ -246,6 +274,11 @@ final class DeepLinkCoordinator {
             } catch {
                 appLogger.error(
                     "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
+                )
+                recordAction(
+                    actionName,
+                    .failed,
+                    actionErrorCategory(error)
                 )
                 reportFailure(
                     error.localizedDescription,
@@ -261,6 +294,7 @@ final class DeepLinkCoordinator {
         terminalWindowBehavior: TerminalWindowBehavior,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
+        let actionName = LocalActionName.openInTerminal
         let resolved = terminalResolver.resolvedProfile(for: terminalProfile)
         emit(.status(L10n.format(
             "status.opening_with",
@@ -274,12 +308,18 @@ final class DeepLinkCoordinator {
                     terminalProfile: resolved,
                     terminalWindowBehavior: terminalWindowBehavior
                 )
+                recordAction(actionName, .succeeded, nil)
                 emit(.status(L10n.format(
                     "status.opened_with",
                     fallback: "已用 %@ 打开",
                     resolved.title
                 )))
             } catch {
+                recordAction(
+                    actionName,
+                    .failed,
+                    actionErrorCategory(error)
+                )
                 reportFailure(
                     error.localizedDescription,
                     emit: emit
@@ -295,6 +335,7 @@ final class DeepLinkCoordinator {
         terminalWindowBehavior: TerminalWindowBehavior,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
+        let actionName = LocalActionName.configuredCLI
         emit(.status(L10n.format(
             "status.starting",
             fallback: "正在启动 %@…",
@@ -310,12 +351,18 @@ final class DeepLinkCoordinator {
                     ),
                     terminalWindowBehavior: terminalWindowBehavior
                 )
+                recordAction(actionName, .succeeded, nil)
                 emit(.status(L10n.format(
                     "status.started",
                     fallback: "已启动 %@",
                     profile.title
                 )))
             } catch {
+                recordAction(
+                    actionName,
+                    .failed,
+                    actionErrorCategory(error)
+                )
                 reportFailure(
                     error.localizedDescription,
                     emit: emit
@@ -332,5 +379,35 @@ final class DeepLinkCoordinator {
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
         emit(.trustedFailure(message))
+    }
+
+    private func actionErrorCategory(
+        _ error: Error
+    ) -> LocalActionErrorCategory {
+        if let executorError = error as? ActionExecutorError {
+            switch executorError {
+            case .applicationNotFound: return .applicationNotFound
+            case .commandUnsupported: return .unsupportedTerminal
+            case .processFailed: return .executionFailed
+            }
+        }
+        if error is CancellationError {
+            return .cancelled
+        }
+        return .executionFailed
+    }
+}
+
+private extension DeepLinkRequest.Payload {
+    var localActionName: LocalActionName {
+        switch self {
+        case let .cli(invocation): LocalActionName(invocation.command)
+        case .configuredCLI: .configuredCLI
+        case .terminal: .openInTerminal
+        case let .open(invocation): LocalActionName(
+            opening: invocation.application
+        )
+        case .error: .extensionErrorReport
+        }
     }
 }

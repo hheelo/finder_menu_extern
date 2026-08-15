@@ -372,7 +372,21 @@ struct SettingsView: View {
                     Button(L10n.text("button.copy_diagnostics", fallback: "复制诊断信息")) {
                         model.copyDiagnostics()
                     }
+
+                    Button(L10n.text(
+                        "button.export_local_log",
+                        fallback: "导出本地日志…"
+                    )) {
+                        model.exportLocalActionLog()
+                    }
                 }
+
+                Text(L10n.text(
+                    "settings.local_log_help",
+                    fallback: "导出时合并最近 200 条动作结果和异常终止标记；不记录文件路径、文件名、命令参数或深链内容。"
+                ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section {

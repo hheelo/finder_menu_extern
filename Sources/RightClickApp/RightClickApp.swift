@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        sharedAppModel.beginLocalActionLogSession()
         sharedAppModel.onMenuBarIconEnabledChange = {
             [weak self] isEnabled in
             self?.menuBarController.setEnabled(isEnabled)
@@ -74,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         sharedAppModel.flushPendingMenuConfiguration()
+        sharedAppModel.endLocalActionLogSession()
     }
 
     private func hideWindows() {

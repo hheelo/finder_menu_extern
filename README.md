@@ -93,6 +93,8 @@ Finder，避免覆盖升级后继续使用旧扩展会话。
 - 设置页可管理菜单、终端、自定义 CLI 与模板，可选启用菜单栏入口，并检测 Finder 扩展、编辑器与 CLI
 - Terminal 的“新标签页”使用系统快捷键，首次使用需在“隐私与安全性 → 辅助功能”中允许 RightClick；也可改用新窗口
 - 主窗口可复制诊断信息，便于提交 Issue
+- 设置页可导出最近 200 条本地动作日志和异常终止标记；日志不包含文件路径、
+  文件名、命令参数或深链内容
 
 ## 开发
 
@@ -117,7 +119,7 @@ xcodebuild -project RightClick.xcodeproj \
 本地生成并验证 Universal 2 DMG：
 
 ```sh
-VERSION=1.0.0 ./scripts/build-release.sh
+VERSION=1.0.1 ./scripts/build-release.sh
 ```
 
 产物位于 `.build/release/output`，包含 DMG 和 SHA-256 校验文件。

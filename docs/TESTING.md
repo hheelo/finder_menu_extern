@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=1.0.0 ./scripts/build-release.sh
+VERSION=1.0.1 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -129,6 +129,11 @@ VERSION=1.0.0 ./scripts/build-release.sh
   且右键菜单加载的是新扩展
 - 运行 `pluginkit -m -A -D -v -i com.hheelo.RightClick.FinderExtension`，
   确认只列出 Applications 中的一份扩展
+- 分别执行一次扩展内复制、一次宿主 CLI 和一次失败动作，再从设置页导出本地日志；
+  确认导出内容最多包含最近 200 条，能看到 extension/host 的动作名、结果和错误分类，且全文
+  不包含所选文件路径、文件名、CLI 命令参数或 `rightclick://` URL
+- 正常退出再启动一次，确认不会产生异常终止记录；随后用活动监视器强制结束宿主并
+  重开，确认只增加 `unexpected-termination` 标记，不声称已确认发生崩溃
 
 ## 本地化
 

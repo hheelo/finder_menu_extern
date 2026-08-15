@@ -17,6 +17,9 @@ private let logger = Logger(
 final class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
     private let fileCreator = FileCreator()
+    private let actionLogStore = LocalActionLogStore(
+        fileURL: LocalActionLogFile.extensionURL()
+    )
     private let tokenLock = NSLock()
     private var tokenAvailability = RetryableTokenAvailability()
 
@@ -223,6 +226,11 @@ final class FinderSync: FIFinderSync {
             logger.error(
                 "菜单项未携带可识别的动作，tag=\(sender.tag, privacy: .public)"
             )
+            recordAction(
+                .unknownMenuAction,
+                result: .failed,
+                errorCategory: .invalidRequest
+            )
             return
         }
         switch payload {
@@ -244,7 +252,15 @@ final class FinderSync: FIFinderSync {
             生效=\(context.effectiveURLs.count, privacy: .public) \
             工作目录=\(context.workingDirectory != nil, privacy: .public)
             """)
-        reporting("动作执行失败") { try execute(action, in: context) }
+        reporting(
+            LocalActionName(action),
+            successResult: FinderActionPolicy.requiresAuthenticatedHost(action)
+                ? .forwarded
+                : .succeeded,
+            label: "动作执行失败"
+        ) {
+            try execute(action, in: context)
+        }
     }
 
     /// 扩展里所有动作的统一失败出口。
@@ -252,10 +268,22 @@ final class FinderSync: FIFinderSync {
     /// 绝不在扩展里弹模态框：`NSAlert.runModal()` 会占住扩展的主线程，而
     /// `menu(for:)` 也在主线程上，一旦弹出右键菜单就再也不出现。错误只记日志，
     /// 需要提示用户时经认证的 error 深链交给宿主 App。
-    private func reporting(_ label: String, _ body: () throws -> Void) {
+    private func reporting(
+        _ action: LocalActionName,
+        successResult: LocalActionResult,
+        label: String,
+        _ body: () throws -> Void
+    ) {
+        recordAction(action, result: .started)
         do {
             try body()
+            recordAction(action, result: successResult)
         } catch {
+            recordAction(
+                action,
+                result: .failed,
+                errorCategory: LocalActionErrorCategory(error)
+            )
             logger.error(
                 "\(label, privacy: .public)：\(error.localizedDescription, privacy: .public)"
             )
@@ -335,7 +363,7 @@ final class FinderSync: FIFinderSync {
                 throw FinderActionError.invalidWorkingDirectory
             }
             // 用哪个终端由宿主决定：扩展读不到用户设置。
-            openHost(with: deepLink)
+            openHost(with: deepLink, action: .openInTerminal)
         case .runCodexCLI:
             try openHost(for: .codex, context: context)
         case .runClaudeCode:
@@ -345,7 +373,11 @@ final class FinderSync: FIFinderSync {
 
     private func performConfiguredCLI(_ payload: ConfiguredCLIMenuItemPayload) {
         let context = context(for: payload.placement)
-        reporting("动态 CLI 启动失败") {
+        reporting(
+            .configuredCLI,
+            successResult: .forwarded,
+            label: "动态 CLI 启动失败"
+        ) {
             guard let profile = currentMenuConfiguration()
                 .cliProfile(forSlot: payload.menuSlot) else {
                 throw FinderActionError.configurationUnavailable
@@ -365,13 +397,17 @@ final class FinderSync: FIFinderSync {
                 执行动态CLI id=\(profile.id, privacy: .public) \
                 slot=\(profile.menuSlot, privacy: .public)
                 """)
-            openHost(with: deepLink)
+            openHost(with: deepLink, action: .configuredCLI)
         }
     }
 
     private func performCustomTemplate(_ payload: CustomTemplateMenuItemPayload) {
         let context = context(for: payload.placement)
-        reporting("自定义模板创建失败") {
+        reporting(
+            .customTemplate,
+            successResult: .succeeded,
+            label: "自定义模板创建失败"
+        ) {
             guard let template = currentMenuConfiguration()
                 .customTemplate(forSlot: payload.menuSlot) else {
                 throw FinderActionError.configurationUnavailable
@@ -429,7 +465,10 @@ final class FinderSync: FIFinderSync {
         ).deepLink else {
             throw FinderActionError.invalidTarget
         }
-        openHost(with: deepLink)
+        openHost(
+            with: deepLink,
+            action: LocalActionName(opening: application)
+        )
     }
 
     private func openHost(
@@ -447,7 +486,7 @@ final class FinderSync: FIFinderSync {
               ).deepLink else {
             throw FinderActionError.invalidWorkingDirectory
         }
-        openHost(with: deepLink)
+        openHost(with: deepLink, action: LocalActionName(command))
     }
 
     /// 只用 `open(_ url:)` 系列：指定 App 去启动在沙箱里会被拒绝，打开 URL 不会。
@@ -456,11 +495,15 @@ final class FinderSync: FIFinderSync {
     /// 系统会把它先前收起的窗口重新显示出来——用户每点一次功能就看到窗口闪一下。
     private func openHost(
         with deepLink: URL,
+        action: LocalActionName,
         kind: HostRequestKind = .action
     ) {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.addsToRecentItems = false
+        // completionHandler 是 @Sendable；只捕获自身已同步的日志 Store，不能把
+        // FinderSync（持有 AppKit 状态、非 Sendable）整个带进回调。
+        let actionLogStore = actionLogStore
 
         NSWorkspace.shared.open(
             deepLink,
@@ -478,6 +521,12 @@ final class FinderSync: FIFinderSync {
             _ = application
             if !NSWorkspace.shared.open(deepLink) {
                 let hostError = FinderActionError.hostApplicationUnavailable
+                actionLogStore.append(LocalActionRecord(
+                    source: .finderExtension,
+                    action: action,
+                    result: .failed,
+                    errorCategory: .hostApplicationUnavailable
+                ))
                 logger.error(
                     "\(hostError.localizedDescription, privacy: .public)"
                 )
@@ -519,7 +568,24 @@ final class FinderSync: FIFinderSync {
             logger.error("无法构造经过认证的错误报告")
             return
         }
-        openHost(with: deepLink, kind: .errorReport)
+        openHost(
+            with: deepLink,
+            action: .extensionErrorReport,
+            kind: .errorReport
+        )
+    }
+
+    private func recordAction(
+        _ action: LocalActionName,
+        result: LocalActionResult,
+        errorCategory: LocalActionErrorCategory? = nil
+    ) {
+        actionLogStore.append(LocalActionRecord(
+            source: .finderExtension,
+            action: action,
+            result: result,
+            errorCategory: errorCategory
+        ))
     }
 }
 
