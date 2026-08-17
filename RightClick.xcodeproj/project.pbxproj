@@ -16,6 +16,7 @@
 		084DB5074682B539BB6C5C91 /* MenuConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35615BB162D8EA95F24922DC /* MenuConfigurationStore.swift */; };
 		086FF6B08B62ADC4ADB0BB03 /* FinderSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 218C7594918DA8D3D2AFD1D2 /* FinderSessionManager.swift */; };
 		0BFBEA0D6CF75C680425091F /* NonceCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D4BA49D00A4F5E90A83635 /* NonceCacheTests.swift */; };
+		0C4ACFD5BAA191553984B65B /* FinderRestartConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6BE7920A03FC48BD2BC833 /* FinderRestartConfirmation.swift */; };
 		0CCEAF8B32654B9242B5B062 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E4749E7D55BE88F7397F35 /* AppModel.swift */; };
 		0FA5D1FD83C67C3A837261BF /* WindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51D3FAA439BA2CD3636E6F4 /* WindowPresenter.swift */; };
 		0FC7A1183C9CC86F3B56816C /* MenuIconTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C386C5F896D562E6C44BED5 /* MenuIconTests.swift */; };
@@ -270,6 +271,7 @@
 		3B3A440353A1852A97CE6930 /* AppVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionTests.swift; sourceTree = "<group>"; };
 		3C1619892FCF1A5FAEC0C177 /* SelectionContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionContextTests.swift; sourceTree = "<group>"; };
 		3D06734B8870342DFE1E32ED /* LocalActionLogReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalActionLogReport.swift; sourceTree = "<group>"; };
+		3F6BE7920A03FC48BD2BC833 /* FinderRestartConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderRestartConfirmation.swift; sourceTree = "<group>"; };
 		403F31C4AE3B7C19785FC7EB /* RightClickFinderExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RightClickFinderExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		42DBD87D7F4F1FE3843A8D6A /* AppLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLogger.swift; sourceTree = "<group>"; };
 		456CECCB7E8690209C278E69 /* ErrorInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorInvocationTests.swift; sourceTree = "<group>"; };
@@ -456,6 +458,7 @@
 				1A521CE536B110E777962EC2 /* DeepLinkCoordinator.swift */,
 				2AB8EBD0D2081EB7B7B09A3B /* DeepLinkRequest.swift */,
 				3B07C78FB63B792F77E26AD8 /* DiagnosticsStore.swift */,
+				3F6BE7920A03FC48BD2BC833 /* FinderRestartConfirmation.swift */,
 				218C7594918DA8D3D2AFD1D2 /* FinderSessionManager.swift */,
 				6B9BDC0DDFB44EE923B46206 /* MenuBarController.swift */,
 				35615BB162D8EA95F24922DC /* MenuConfigurationStore.swift */,
@@ -909,6 +912,7 @@
 				27ABF8115AA82CA847C8FECA /* DeepLinkCoordinator.swift in Sources */,
 				16253340E99F5D1CACC7939C /* DeepLinkRequest.swift in Sources */,
 				8E25C241BD399B4A04DAA428 /* DiagnosticsStore.swift in Sources */,
+				0C4ACFD5BAA191553984B65B /* FinderRestartConfirmation.swift in Sources */,
 				086FF6B08B62ADC4ADB0BB03 /* FinderSessionManager.swift in Sources */,
 				2F7E1796E8C585F6EA9F1AE3 /* MenuBarController.swift in Sources */,
 				084DB5074682B539BB6C5C91 /* MenuConfigurationStore.swift in Sources */,
@@ -1062,7 +1066,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10005;
+				CURRENT_PROJECT_VERSION = 10006;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1083,7 +1087,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.5;
+				MARKETING_VERSION = 1.0.6;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1242,7 +1246,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10005;
+				CURRENT_PROJECT_VERSION = 10006;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1257,7 +1261,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.5;
+				MARKETING_VERSION = 1.0.6;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

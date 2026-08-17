@@ -1,6 +1,7 @@
 import AppKit
 import FinderSync
 import RightClickCore
+import SwiftUI
 import UniformTypeIdentifiers
 import os
 
@@ -346,14 +347,20 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func moveMenuAction(_ action: RightClickAction, by offset: Int) {
+    func moveMenuActions(
+        fromOffsets source: IndexSet,
+        toOffset destination: Int
+    ) {
         var actions = configuredMenuActions
-        guard let source = actions.firstIndex(of: action) else { return }
-        let destination = source + offset
-        guard actions.indices.contains(destination) else { return }
-        actions.swapAt(source, destination)
+        actions.move(fromOffsets: source, toOffset: destination)
         menuConfigurationStore.updateImmediately {
             $0.actionOrder = actions.map(\.configurationID)
+        }
+    }
+
+    func restoreDefaultMenuActionOrder() {
+        menuConfigurationStore.updateImmediately {
+            $0.actionOrder = []
         }
     }
 
@@ -514,6 +521,16 @@ final class AppModel: ObservableObject {
         settings.hasCompletedOnboarding = true
         hasCompletedOnboarding = true
         shouldPresentOnboarding = false
+    }
+
+    func skipOnboarding() {
+        completeOnboarding()
+    }
+
+    func restartOnboarding() {
+        settings.hasCompletedOnboarding = false
+        hasCompletedOnboarding = false
+        shouldPresentOnboarding = true
     }
 
     func persistMenuConfigurationImmediately() {

@@ -38,6 +38,12 @@ struct OnboardingView: View {
             .frame(minHeight: 235)
 
             HStack {
+                Button(L10n.text(
+                    "button.onboarding_later",
+                    fallback: "稍后再说"
+                )) {
+                    model.skipOnboarding()
+                }
                 if step > 0 {
                     Button(L10n.text("button.back", fallback: "返回")) {
                         step -= 1

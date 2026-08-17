@@ -3,40 +3,96 @@ import RightClickCore
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.openWindow) private var openWindow
+    @State private var selectedTab: SettingsTab = .menu
+    @State private var confirmsFinderRestart = false
 
     var body: some View {
-        Form {
-            finderMenuSection
-            monitoredDirectoriesSection
-            terminalSection
-            applicationSection
-            cliSection
-            customTemplatesSection
-            builtinTemplatesSection
-            diagnosticsSection
-            errorHistorySection
-            securitySection
-        }
-        .formStyle(.grouped)
-        .padding()
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    returnToMainWindow()
-                } label: {
+        TabView(selection: $selectedTab) {
+            menuSettings
+                .tabItem {
                     Label(
-                        L10n.text("button.back", fallback: "返回"),
-                        systemImage: "chevron.left"
+                        L10n.text("settings.tab.menu", fallback: "菜单"),
+                        systemImage: "list.bullet.rectangle"
                     )
                 }
-                .help(L10n.text("button.back", fallback: "返回"))
-            }
+                .tag(SettingsTab.menu)
+
+            terminalSettings
+                .tabItem {
+                    Label(
+                        L10n.text("settings.tab.terminal", fallback: "终端"),
+                        systemImage: "terminal"
+                    )
+                }
+                .tag(SettingsTab.terminal)
+
+            templateSettings
+                .tabItem {
+                    Label(
+                        L10n.text("settings.tab.templates", fallback: "模板"),
+                        systemImage: "doc.badge.plus"
+                    )
+                }
+                .tag(SettingsTab.templates)
+
+            diagnosticSettings
+                .tabItem {
+                    Label(
+                        L10n.text(
+                            "settings.tab.diagnostics",
+                            fallback: "诊断"
+                        ),
+                        systemImage: "stethoscope"
+                    )
+                }
+                .tag(SettingsTab.diagnostics)
+        }
+        .frame(
+            minWidth: 640,
+            idealWidth: 720,
+            minHeight: 440,
+            idealHeight: 620
+        )
+        .finderRestartConfirmation(isPresented: $confirmsFinderRestart) {
+            model.restartFinder()
         }
         .onDisappear {
             model.flushPendingMenuConfiguration()
         }
+    }
+
+    private var menuSettings: some View {
+        List {
+            finderMenuSection
+            monitoredDirectoriesSection
+        }
+        .listStyle(.inset)
+    }
+
+    private var terminalSettings: some View {
+        Form {
+            terminalSection
+            cliSection
+            securitySection
+        }
+        .formStyle(.grouped)
+    }
+
+    private var templateSettings: some View {
+        Form {
+            customTemplatesSection
+            builtinTemplatesSection
+        }
+        .formStyle(.grouped)
+    }
+
+    private var diagnosticSettings: some View {
+        Form {
+            applicationSection
+            diagnosticsSection
+            errorHistorySection
+        }
+        .formStyle(.grouped)
     }
 
     @ViewBuilder
@@ -53,36 +109,31 @@ struct SettingsView: View {
             .onChange(of: model.menuConfiguration.collapseIntoSubmenu) {
                 model.persistMenuConfigurationImmediately()
             }
-            ForEach(
-                Array(actions.enumerated()),
-                id: \.element.configurationID
-            ) { index, action in
-                HStack {
-                    Toggle(
-                        action.title,
-                        isOn: Binding(
-                            get: { model.menuActionIsEnabled(action) },
-                            set: { model.setMenuAction(action, isEnabled: $0) }
-                        )
+            ForEach(actions, id: \.configurationID) { action in
+                Toggle(
+                    action.title,
+                    isOn: Binding(
+                        get: { model.menuActionIsEnabled(action) },
+                        set: { model.setMenuAction(action, isEnabled: $0) }
                     )
-                    Spacer()
-                    Button {
-                        model.moveMenuAction(action, by: -1)
-                    } label: {
-                        Image(systemName: "arrow.up")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(index == 0)
-                    .help(L10n.text("settings.move_up", fallback: "上移"))
-                    Button {
-                        model.moveMenuAction(action, by: 1)
-                    } label: {
-                        Image(systemName: "arrow.down")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(index == actions.count - 1)
-                    .help(L10n.text("settings.move_down", fallback: "下移"))
+                )
+            }
+            .onMove(perform: model.moveMenuActions)
+            HStack {
+                Text(L10n.text(
+                    "settings.drag_to_reorder",
+                    fallback: "拖动菜单项可调整顺序。"
+                ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(L10n.text(
+                    "button.restore_default_order",
+                    fallback: "恢复默认排序"
+                )) {
+                    model.restoreDefaultMenuActionOrder()
                 }
+                .disabled(model.menuConfiguration.actionOrder.isEmpty)
             }
             Picker(
                 L10n.text("settings.copy_separator", fallback: "多选复制时分隔符"),
@@ -163,7 +214,7 @@ struct SettingsView: View {
                     "button.restart_finder_apply",
                     fallback: "重启 Finder 以应用"
                 )) {
-                    model.restartFinder()
+                    confirmsFinderRestart = true
                 }
             }
 
@@ -226,6 +277,19 @@ struct SettingsView: View {
             Text(L10n.text(
                 "settings.menu_bar_icon_help",
                 fallback: "关闭主窗口后，可从菜单栏快速打开设置、复制诊断信息或重启 Finder。"
+            ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button(L10n.text(
+                "button.restart_onboarding",
+                fallback: "重新运行首次向导"
+            )) {
+                model.restartOnboarding()
+                WindowPresenter.showOrCreateMainWindow()
+            }
+            Text(L10n.text(
+                "settings.restart_onboarding_help",
+                fallback: "重新显示三步首次设置；现有菜单和终端配置不会被清除。"
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -499,15 +563,11 @@ struct SettingsView: View {
         }
     }
 
-    private func returnToMainWindow() {
-        let mainWindowExists = WindowPresenter.hasMainWindow
-        dismiss()
-        if mainWindowExists {
-            DispatchQueue.main.async {
-                WindowPresenter.bringMainWindowToFront()
-            }
-        } else {
-            openWindow(id: AppWindow.mainID)
-        }
-    }
+}
+
+private enum SettingsTab: Hashable {
+    case menu
+    case terminal
+    case templates
+    case diagnostics
 }

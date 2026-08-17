@@ -1,5 +1,6 @@
 import Foundation
 import RightClickCore
+import SwiftUI
 import Testing
 
 @MainActor
@@ -63,6 +64,17 @@ struct AppModelTests {
 
         await model.refreshForUserPresentation()
         #expect(!model.shouldPresentOnboarding)
+
+        model.restartOnboarding()
+        #expect(!model.hasCompletedOnboarding)
+        #expect(model.shouldPresentOnboarding)
+        #expect(!settings.hasCompletedOnboarding)
+
+        model.skipOnboarding()
+        model.completeOnboarding()
+        model.completeOnboarding()
+        #expect(model.hasCompletedOnboarding)
+        #expect(!model.shouldPresentOnboarding)
     }
 
     @Test
@@ -111,15 +123,21 @@ struct AppModelTests {
     }
 
     @Test
-    func movingAnActionDropsLegacyDynamicOrderIdentifiers() throws {
+    func movingActionsUsesIndexSetAndDropsLegacyDynamicIdentifiers() throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }
         fixture.model.menuConfiguration.actionOrder = [
             "cli:legacy",
             "template:legacy"
         ]
+        let original = fixture.model.configuredMenuActions
+        let source = try #require(original.firstIndex(of: .copyFilename))
+        let destination = source - 1
 
-        fixture.model.moveMenuAction(.copyFilename, by: -1)
+        fixture.model.moveMenuActions(
+            fromOffsets: IndexSet(integer: source),
+            toOffset: destination
+        )
 
         #expect(
             fixture.model.menuConfiguration.actionOrder.allSatisfy {
@@ -129,6 +147,52 @@ struct AppModelTests {
         #expect(
             fixture.model.menuConfiguration.actionOrder.count
                 == RightClickAction.allMenuActions.count
+        )
+        var expected = original
+        expected.move(
+            fromOffsets: IndexSet(integer: source),
+            toOffset: destination
+        )
+        #expect(fixture.model.configuredMenuActions == expected)
+    }
+
+    @Test
+    func movingAnActionDownMatchesTheFormerSingleStepBehavior() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let original = fixture.model.configuredMenuActions
+        let source = try #require(original.firstIndex(of: .copyFilename))
+        let next = source + 1
+        #expect(original.indices.contains(next))
+
+        fixture.model.moveMenuActions(
+            fromOffsets: IndexSet(integer: source),
+            toOffset: source + 2
+        )
+
+        var expected = original
+        expected.swapAt(source, next)
+        #expect(fixture.model.configuredMenuActions == expected)
+    }
+
+    @Test
+    func restoringDefaultMenuOrderUsesThePublishedNaturalOrder() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let source = try #require(
+            fixture.model.configuredMenuActions.firstIndex(of: .copyFilename)
+        )
+        fixture.model.moveMenuActions(
+            fromOffsets: IndexSet(integer: source),
+            toOffset: 0
+        )
+
+        fixture.model.restoreDefaultMenuActionOrder()
+
+        #expect(fixture.model.menuConfiguration.actionOrder.isEmpty)
+        #expect(
+            fixture.model.configuredMenuActions
+                == RightClickAction.allMenuActions
         )
     }
 

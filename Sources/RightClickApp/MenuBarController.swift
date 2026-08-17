@@ -124,7 +124,9 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func restartFinder() {
-        model.restartFinder()
+        FinderRestartConfirmer.present { [weak model] in
+            model?.restartFinder()
+        }
     }
 
     @objc private func quit() {

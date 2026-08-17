@@ -5,6 +5,7 @@ struct ContentView: View {
     let updater: UpdaterController
     @EnvironmentObject private var model: AppModel
     @State private var errorsExpanded = false
+    @State private var confirmsFinderRestart = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -74,7 +75,7 @@ struct ContentView: View {
                 .buttonStyle(.borderedProminent)
 
                 Button(L10n.text("button.restart_finder", fallback: "重启 Finder")) {
-                    model.restartFinder()
+                    confirmsFinderRestart = true
                 }
                 .buttonStyle(.bordered)
 
@@ -93,6 +94,28 @@ struct ContentView: View {
                     .foregroundStyle(
                         model.extensionEnabled ? .green : .secondary
                     )
+            }
+
+            HStack(spacing: 10) {
+                Label(
+                    diagnosticSummary,
+                    systemImage: diagnosticAttentionCount == 0
+                        ? "checkmark.circle.fill"
+                        : "exclamationmark.triangle.fill"
+                )
+                    .foregroundStyle(
+                        diagnosticAttentionCount == 0 ? .green : .orange
+                    )
+                if model.isRefreshingDiagnostics {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(L10n.text(
+                        "home.diagnostics_refreshing",
+                        fallback: "正在刷新诊断…"
+                    ))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Divider()
@@ -162,6 +185,9 @@ struct ContentView: View {
             }
         }
         .padding(28)
+        .finderRestartConfirmation(isPresented: $confirmsFinderRestart) {
+            model.restartFinder()
+        }
         .sheet(isPresented: Binding(
             get: { model.shouldPresentOnboarding },
             set: { _ in }
@@ -173,6 +199,19 @@ struct ContentView: View {
             }
             .environmentObject(model)
         }
+    }
+
+    private var diagnosticAttentionCount: Int {
+        model.diagnostics.count { !$0.passed }
+    }
+
+    private var diagnosticSummary: String {
+        L10n.format(
+            "home.diagnostics_summary",
+            fallback: "%1$lld 项通过 / %2$lld 项需要注意",
+            Int64(model.diagnostics.count - diagnosticAttentionCount),
+            Int64(diagnosticAttentionCount)
+        )
     }
 }
 

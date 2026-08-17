@@ -176,8 +176,8 @@ struct RightClickApp: App {
         Settings {
             SettingsView()
                 .environmentObject(model)
-                .frame(width: 560, height: 520)
         }
+        .windowResizability(.contentMinSize)
 
     }
 }
