@@ -4,6 +4,20 @@ import Testing
 
 @MainActor
 struct AppModelTests {
+    @Test
+    func unavailableExtensionDetectionDoesNotPretendItIsDisabled() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        fixture.model.applyExtensionStatus(false)
+        fixture.model.applyExtensionStatus(nil)
+
+        #expect(fixture.model.extensionDetectionUnavailable)
+        #expect(fixture.model.extensionDiagnosticDetail == L10n.text(
+            "diagnostic.unable_to_detect",
+            fallback: "无法检测"
+        ))
+    }
+
     @Test(arguments: [true, false], [true, false])
     func appPresentationVisibility(
         isUserLaunch: Bool,

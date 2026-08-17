@@ -27,8 +27,14 @@ final class AppModel: ObservableObject {
     @Published private(set) var hasCompletedOnboarding: Bool
     @Published private(set) var shouldPresentOnboarding = false
     @Published var menuConfiguration: MenuConfiguration {
-        didSet { menuConfigurationStore.replace(with: menuConfiguration) }
+        didSet {
+            menuConfigurationStore.replace(with: menuConfiguration)
+            configuredMenuActions = Self.orderedActions(
+                for: menuConfiguration
+            )
+        }
     }
+    @Published private(set) var configuredMenuActions: [RightClickAction] = []
     @Published var lastStatus = L10n.text(
         "status.waiting",
         fallback: "等待 Finder 操作"
@@ -36,6 +42,7 @@ final class AppModel: ObservableObject {
     @Published var lastError: String?
     @Published private(set) var errorHistory: [AppErrorRecord] = []
     @Published private(set) var extensionEnabled = false
+    @Published private(set) var extensionDetectionUnavailable = false
     @Published private(set) var diagnostics: [DiagnosticItem] = []
     @Published private(set) var isRefreshingDiagnostics = false
 
@@ -121,6 +128,7 @@ final class AppModel: ObservableObject {
         )
         menuConfigurationStore = configurationStore
         menuConfiguration = configurationStore.configuration
+        configuredMenuActions = Self.orderedActions(for: menuConfiguration)
         diagnostics = diagnosticsStore.cached(
             extensionEnabled: false,
             terminalProfile: terminalProfile,
@@ -160,7 +168,15 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func applyExtensionStatus(_ enabled: Bool) {
+    func applyExtensionStatus(_ enabled: Bool?) {
+        guard let enabled else {
+            extensionDetectionUnavailable = true
+            if !diagnostics.isEmpty {
+                diagnostics = normalizeExtensionStatus(in: diagnostics)
+            }
+            return
+        }
+        extensionDetectionUnavailable = false
         extensionEnabled = enabled
         if !diagnostics.isEmpty {
             diagnostics = normalizeExtensionStatus(in: diagnostics)
@@ -286,8 +302,10 @@ final class AppModel: ObservableObject {
         lastError = nil
     }
 
-    var configuredMenuActions: [RightClickAction] {
-        let rank = menuConfiguration.actionOrder.enumerated().reduce(
+    private static func orderedActions(
+        for configuration: MenuConfiguration
+    ) -> [RightClickAction] {
+        let rank = configuration.actionOrder.enumerated().reduce(
             into: [String: Int]()
         ) {
             $0[$1.element, default: $1.offset] = min(
@@ -537,12 +555,22 @@ final class AppModel: ObservableObject {
             return DiagnosticItem(
                 id: item.id,
                 title: item.title,
-                passed: extensionEnabled,
-                detail: extensionEnabled
-                    ? L10n.text("diagnostic.enabled", fallback: "已启用")
-                    : L10n.text("diagnostic.not_enabled", fallback: "未启用")
+                passed: !extensionDetectionUnavailable && extensionEnabled,
+                detail: extensionDiagnosticDetail
             )
         }
+    }
+
+    var extensionDiagnosticDetail: String {
+        if extensionDetectionUnavailable {
+            return L10n.text(
+                "diagnostic.unable_to_detect",
+                fallback: "无法检测"
+            )
+        }
+        return extensionEnabled
+            ? L10n.text("diagnostic.enabled", fallback: "已启用")
+            : L10n.text("diagnostic.not_enabled", fallback: "未启用")
     }
 
     private func recordFailure(_ message: String) {

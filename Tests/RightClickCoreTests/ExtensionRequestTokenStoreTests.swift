@@ -11,9 +11,6 @@ struct ExtensionRequestTokenStoreTests {
         #expect(ExtensionRequestTokenStore.isValidToken(first))
         #expect(ExtensionRequestTokenStore.isValidToken(second))
         #expect(first != second)
-        #expect(ExtensionRequestTokenStore.tokensMatch(first, first))
-        #expect(!ExtensionRequestTokenStore.tokensMatch(first, second))
-        #expect(!ExtensionRequestTokenStore.tokensMatch(first, nil))
     }
 
     @Test

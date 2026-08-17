@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        let actions = model.configuredMenuActions
         Form {
             Section(L10n.text("settings.finder_menu", fallback: "Finder 菜单")) {
                 Toggle(
@@ -20,7 +21,7 @@ struct SettingsView: View {
                     model.persistMenuConfigurationImmediately()
                 }
                 ForEach(
-                    Array(model.configuredMenuActions.enumerated()),
+                    Array(actions.enumerated()),
                     id: \.element.configurationID
                 ) { index, action in
                     HStack {
@@ -46,7 +47,7 @@ struct SettingsView: View {
                             Image(systemName: "arrow.down")
                         }
                         .buttonStyle(.borderless)
-                        .disabled(index == model.configuredMenuActions.count - 1)
+                        .disabled(index == actions.count - 1)
                         .help(L10n.text("settings.move_down", fallback: "下移"))
                     }
                 }

@@ -11,6 +11,7 @@ public struct ExternalApplication: Equatable, Sendable {
     public let title: String
     public let bundleIdentifiers: [String]
     public let names: [String]
+    private let memoizedCandidateURLs: [URL]
 
     public init(
         identifier: String,
@@ -22,6 +23,11 @@ public struct ExternalApplication: Equatable, Sendable {
         self.title = title
         self.bundleIdentifiers = bundleIdentifiers
         self.names = names
+        memoizedCandidateURLs = Self.searchRoots.flatMap { root in
+            names.map {
+                root.appendingPathComponent("\($0).app", isDirectory: true)
+            }
+        }
     }
 
     /// 按 Bundle ID 找不到时回退搜索的目录。
@@ -59,11 +65,7 @@ public struct ExternalApplication: Equatable, Sendable {
 
     /// 目录回退时按「搜索路径 × 名称」展开的候选路径，顺序即优先级。
     public var candidateURLs: [URL] {
-        Self.searchRoots.flatMap { root in
-            names.map {
-                root.appendingPathComponent("\($0).app", isDirectory: true)
-            }
-        }
+        memoizedCandidateURLs
     }
 }
 

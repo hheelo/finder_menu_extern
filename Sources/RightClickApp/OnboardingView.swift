@@ -4,6 +4,7 @@ import RightClickCore
 struct OnboardingView: View {
     @EnvironmentObject private var model: AppModel
     @State private var step = 0
+    @State private var pollingStopped = false
     let openSettings: () -> Void
 
     var body: some View {
@@ -77,11 +78,27 @@ struct OnboardingView: View {
         .frame(width: 540, height: 430)
         .interactiveDismissDisabled()
         .task {
-            // 系统设置在另一个进程中修改扩展开关。向导显示期间轻量轮询，
-            // 用户启用后无需切回或手动刷新即可继续。
-            while !Task.isCancelled && !model.extensionEnabled {
+            // 系统设置在另一个进程中修改扩展开关。旧系统每次检测都要启动
+            // pluginkit，因此逐步退避并在五分钟后交给用户手动刷新。
+            let clock = ContinuousClock()
+            let deadline = clock.now.advanced(
+                by: OnboardingPollingPolicy.maximumDuration
+            )
+            var attempt = 0
+            while !Task.isCancelled,
+                  !model.extensionEnabled,
+                  clock.now < deadline {
                 model.refreshExtensionStatus()
-                try? await Task.sleep(for: .seconds(1))
+                let interval = OnboardingPollingPolicy.nextPollInterval(
+                    attempt: attempt
+                )
+                attempt += 1
+                let remaining = clock.now.duration(to: deadline)
+                guard remaining > .zero else { break }
+                try? await Task.sleep(for: min(interval, remaining))
+            }
+            if !Task.isCancelled && !model.extensionEnabled {
+                pollingStopped = true
             }
         }
     }
@@ -127,6 +144,14 @@ struct OnboardingView: View {
                         : "clock"
                 )
                     .foregroundStyle(model.extensionEnabled ? .green : .secondary)
+                if pollingStopped && !model.extensionEnabled {
+                    Button(L10n.text(
+                        "onboarding.refresh_extension",
+                        fallback: "刷新扩展状态"
+                    )) {
+                        model.refreshExtensionStatus()
+                    }
+                }
             }
         case 1:
             VStack(alignment: .leading, spacing: 16) {

@@ -6,14 +6,23 @@ import RightClickCore
 /// 这是进程内缓存：宿主重启后会清空。持久化 30 秒的 nonce 需要
 /// 额外锁与清理协议，成本与剩余风险不成比例。
 final class NonceCache {
+    private static let cleanupThreshold = 128
     private var seen: [String: Date] = [:]
 
     func consume(_ nonce: String, now: Date) -> Bool {
-        seen = seen.filter { _, date in
-            let age = now.timeIntervalSince(date)
-            return age >= 0 && age <= DeepLinkSignature.validityWindow
+        if let previous = seen[nonce] {
+            let age = now.timeIntervalSince(previous)
+            if age >= 0 && age <= DeepLinkSignature.validityWindow {
+                return false
+            }
+            seen.removeValue(forKey: nonce)
         }
-        guard seen[nonce] == nil else { return false }
+        if seen.count >= Self.cleanupThreshold {
+            seen = seen.filter { _, date in
+                let age = now.timeIntervalSince(date)
+                return age >= 0 && age <= DeepLinkSignature.validityWindow
+            }
+        }
         seen[nonce] = now
         return true
     }

@@ -4,3 +4,5 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 plans/
+# 防止外部工具把 Windows 绝对路径误当成 macOS 根目录文件名。
+C:\\*

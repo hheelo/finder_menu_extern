@@ -60,8 +60,8 @@ public enum TerminalLaunchStrategy: Equatable, Sendable {
     case appleScript
     /// Warp / Ghostty：当前只使用官方稳定的按目录启动能力。
     case openDirectoryOnly
-    /// App bundle 内可执行文件支持 cwd 与待运行程序参数。
-    case executable(relativePath: String)
+    /// 原生终端启动参数支持 cwd 与待运行程序参数。
+    case executable
 }
 
 public extension TerminalProfile {
@@ -72,9 +72,9 @@ public extension TerminalProfile {
         case .warp, .ghostty:
             .openDirectoryOnly
         case .wezTerm:
-            .executable(relativePath: "Contents/MacOS/wezterm")
+            .executable
         case .kitty:
-            .executable(relativePath: "Contents/MacOS/kitty")
+            .executable
         }
     }
 

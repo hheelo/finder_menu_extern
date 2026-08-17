@@ -32,19 +32,16 @@ struct DeepLinkComponents {
     }
 
     func single(_ name: String) -> String? {
-        let matching = queryItems.filter { $0.name == name }
+        Self.single(name, in: queryItems)
+    }
+
+    static func single(
+        _ name: String,
+        in items: [URLQueryItem]
+    ) -> String? {
+        let matching = items.filter { $0.name == name }
         guard matching.count == 1 else { return nil }
         return matching[0].value
-    }
-
-    func optionalSingle(_ name: String) -> String? {
-        let matching = queryItems.filter { $0.name == name }
-        guard matching.count <= 1 else { return nil }
-        return matching.first?.value
-    }
-
-    func count(of name: String) -> Int {
-        queryItems.count { $0.name == name }
     }
 
     func all(_ name: String) -> [String] {

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum RightClickAction: Codable, Equatable, Sendable {
+public enum RightClickAction: Codable, Equatable, Hashable, Sendable {
     case copyPath
     case copyFilename
     case openInVSCode
@@ -154,16 +154,25 @@ public extension RightClickAction {
         return actions
     }()
 
+    private static let menuTagByAction = Dictionary(
+        uniqueKeysWithValues: allMenuActions.enumerated().map {
+            ($0.element, $0.offset + 1)
+        }
+    )
+
+    private static let actionByConfigurationID = Dictionary(
+        uniqueKeysWithValues: allMenuActions.map {
+            ($0.configurationID, $0)
+        }
+    )
+
     /// 菜单项要跨进程送到 Finder、再把点击送回扩展，途中只有 plist 安全的值
     /// 能存活；自定义对象放进 `representedObject` 到不了对面，回调里取到的是
     /// nil，动作会被静默丢弃。因此把动作编码进 `NSMenuItem.tag`。
     ///
     /// 从 1 开始编号：`tag` 默认为 0，留给「不携带动作」。
     var menuTag: Int {
-        guard let index = Self.allMenuActions.firstIndex(of: self) else {
-            return 0
-        }
-        return index + 1
+        Self.menuTagByAction[self] ?? 0
     }
 
     init?(menuTag: Int) {
@@ -173,9 +182,7 @@ public extension RightClickAction {
     }
 
     init?(configurationID: String) {
-        guard let action = Self.allMenuActions.first(
-            where: { $0.configurationID == configurationID }
-        ) else {
+        guard let action = Self.actionByConfigurationID[configurationID] else {
             return nil
         }
         self = action

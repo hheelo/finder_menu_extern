@@ -23,21 +23,6 @@ public enum ExtensionRequestTokenStore {
         return data.base64EncodedString() == token
     }
 
-    public static func tokensMatch(_ first: String?, _ second: String?) -> Bool {
-        guard let first, let second,
-              isValidToken(first), isValidToken(second),
-              let firstData = Data(base64Encoded: first),
-              let secondData = Data(base64Encoded: second) else {
-            return false
-        }
-
-        var difference: UInt8 = 0
-        for (firstByte, secondByte) in zip(firstData, secondData) {
-            difference |= firstByte ^ secondByte
-        }
-        return difference == 0
-    }
-
     public static func loadOrCreateForExtension(
         fileManager: FileManager = .default,
         applicationSupportDirectory: URL? = nil,

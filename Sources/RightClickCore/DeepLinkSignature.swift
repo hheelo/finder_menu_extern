@@ -82,14 +82,21 @@ public enum DeepLinkSignature {
         }
 
         guard authenticationItems.count == 4,
-              single("v", in: authenticationItems) == String(version),
-              let timestampText = single("ts", in: authenticationItems),
+              DeepLinkComponents.single("v", in: authenticationItems)
+                == String(version),
+              let timestampText = DeepLinkComponents.single(
+                "ts", in: authenticationItems
+              ),
               let timestamp = Int64(timestampText),
               String(timestamp) == timestampText,
               timestamp > 0,
-              let nonce = single("nonce", in: authenticationItems),
+              let nonce = DeepLinkComponents.single(
+                "nonce", in: authenticationItems
+              ),
               UUID(uuidString: nonce) != nil,
-              let signature = single("sig", in: authenticationItems),
+              let signature = DeepLinkComponents.single(
+                "sig", in: authenticationItems
+              ),
               let signatureData = Data(base64Encoded: signature),
               signatureData.count == SHA256.Digest.byteCount,
               signatureData.base64EncodedString() == signature else {
@@ -162,12 +169,4 @@ public enum DeepLinkSignature {
         return Data(canonical.utf8)
     }
 
-    private static func single(
-        _ name: String,
-        in items: [URLQueryItem]
-    ) -> String? {
-        let matching = items.filter { $0.name == name }
-        guard matching.count == 1 else { return nil }
-        return matching[0].value
-    }
 }

@@ -19,10 +19,4 @@ struct TerminalResolver {
             """)
         return resolved
     }
-
-    func resolvedApplication(
-        for configured: TerminalProfile
-    ) -> ExternalApplication {
-        resolvedProfile(for: configured).resolvedApplication
-    }
 }

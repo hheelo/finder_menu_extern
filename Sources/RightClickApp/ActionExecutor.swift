@@ -109,6 +109,7 @@ enum ProcessRunner {
             // 数量级。
             var pollInterval = Duration.milliseconds(10)
             let maximumPollInterval = Duration.milliseconds(100)
+            var tickCount = 0
             while process.isRunning {
                 // 取消和超时是两回事：混在一起时，未设超时的调用被取消会报出
                 // 「进程执行超过 0 秒」这种自相矛盾的提示。
@@ -120,7 +121,9 @@ enum ProcessRunner {
                     didTimeOut = true
                     break
                 }
-                if totalOutputSize() > maximumOutputBytes {
+                tickCount += 1
+                if tickCount.isMultiple(of: 10),
+                   totalOutputSize() > maximumOutputBytes {
                     exceededOutputLimit = true
                     break
                 }

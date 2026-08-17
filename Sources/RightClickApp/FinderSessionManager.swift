@@ -37,7 +37,7 @@ final class FinderSessionManager {
         self.settings = settings
     }
 
-    func extensionIsEnabled() async -> Bool {
+    func extensionIsEnabled() async -> Bool? {
         if #available(macOS 14.4, *) {
             return FIFinderSyncController.isExtensionEnabled
         }
@@ -105,12 +105,17 @@ final class FinderSessionManager {
 }
 
 /// macOS 14.0–14.3 的 Finder 扩展状态检测。
-private enum LegacyFinderExtensionStatus {
-    static func isEnabled() async -> Bool {
+enum LegacyFinderExtensionStatus {
+    static func isEnabled(
+        executableURL: URL = URL(fileURLWithPath: "/usr/bin/pluginkit"),
+        logFailure: @escaping @Sendable (String) -> Void = { message in
+            appLogger.error("\(message, privacy: .public)")
+        }
+    ) async -> Bool? {
         await Task.detached(priority: .utility) {
             let process = Process()
             let outputPipe = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
+            process.executableURL = executableURL
             process.arguments = [
                 "-m", "-A", "-D", "-i",
                 AppConstants.finderExtensionBundleIdentifier
@@ -122,13 +127,23 @@ private enum LegacyFinderExtensionStatus {
             do {
                 try process.run()
             } catch {
-                return false
+                logFailure(
+                    "无法启动 pluginkit 检测 Finder 扩展状态："
+                        + error.localizedDescription
+                )
+                return nil
             }
 
             // 查询结果很小；先读到 EOF 可避免未来 verbose 输出增大后堵住管道。
             let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return false }
+            guard process.terminationStatus == 0 else {
+                logFailure(
+                    "pluginkit 检测 Finder 扩展状态失败，退出码："
+                        + String(process.terminationStatus)
+                )
+                return nil
+            }
 
             return AppConstants.plugInKitOutputIndicatesEnabled(
                 String(decoding: data, as: UTF8.self)

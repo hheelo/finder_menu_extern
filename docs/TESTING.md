@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=1.0.2 ./scripts/build-release.sh
+VERSION=1.0.3 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -120,6 +120,10 @@ VERSION=1.0.2 ./scripts/build-release.sh
 - 在全新用户账户首次启动时确认三步向导出现：启用扩展后状态无需手动刷新即变绿，
   选择终端时诊断结果同步显示，完成后不再出现；确认向导没有提前请求通知或自动化
   权限。升级已有设置的旧版本时向导不应突然出现
+- 在 macOS 14.0–14.3 保持向导打开但不启用扩展，确认检测间隔从 1 秒退避到
+  2 秒、再到 5 秒，五分钟后停止自动检测并显示“刷新扩展状态”按钮
+- 在 macOS 14.0–14.3 让 `pluginkit` 无法启动，确认诊断显示“无法检测”而不是
+  “未启用”，且统一日志中记录检测失败
 - 在 macOS 15/26 把 50 MB 文本放入剪贴板后反复打开 Finder 右键菜单，确认无
   隐私提示、无可感知延迟，并用 pasteboard 子系统日志复核；只有真正点击创建时
   才读取内容

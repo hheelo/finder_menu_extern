@@ -1,6 +1,6 @@
 import Foundation
 
-public enum FileTemplate: String, CaseIterable, Codable, Sendable {
+public enum FileTemplate: String, CaseIterable, Codable, Hashable, Sendable {
     case text
     case markdown
     case python
