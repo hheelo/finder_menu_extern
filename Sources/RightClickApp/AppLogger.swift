@@ -1,6 +1,7 @@
 import os
+import RightClickCore
 
 let appLogger = Logger(
-    subsystem: "com.hheelo.RightClick",
+    subsystem: AppConstants.loggingSubsystem,
     category: "app"
 )

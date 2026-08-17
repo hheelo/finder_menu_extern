@@ -6,6 +6,8 @@ import os
 
 @MainActor
 final class AppModel: ObservableObject {
+    private static let maximumErrorHistoryCount = 10
+
     @Published var terminalProfile: TerminalProfile {
         didSet {
             settings.terminalProfile = terminalProfile
@@ -39,7 +41,6 @@ final class AppModel: ObservableObject {
         "status.waiting",
         fallback: "等待 Finder 操作"
     )
-    @Published var lastError: String?
     @Published private(set) var errorHistory: [AppErrorRecord] = []
     @Published private(set) var extensionEnabled = false
     @Published private(set) var extensionDetectionUnavailable = false
@@ -244,7 +245,6 @@ final class AppModel: ObservableObject {
             "status.copied_diagnostics",
             fallback: "诊断信息已复制"
         )
-        lastError = nil
     }
 
     func beginLocalActionLogSession() {
@@ -287,7 +287,6 @@ final class AppModel: ObservableObject {
                 "status.exported_local_log",
                 fallback: "本地动作日志已导出"
             )
-            lastError = nil
         } catch {
             recordFailure(L10n.format(
                 "error.export_local_log",
@@ -299,7 +298,6 @@ final class AppModel: ObservableObject {
 
     func clearErrors() {
         errorHistory.removeAll()
-        lastError = nil
     }
 
     private static func orderedActions(
@@ -579,10 +577,11 @@ final class AppModel: ObservableObject {
         // 避免它挤掉最近十条历史里真正不同的失败。
         errorHistory.removeAll { $0.message == message }
         errorHistory.insert(record, at: 0)
-        if errorHistory.count > 10 {
-            errorHistory.removeLast(errorHistory.count - 10)
+        if errorHistory.count > Self.maximumErrorHistoryCount {
+            errorHistory.removeLast(
+                errorHistory.count - Self.maximumErrorHistoryCount
+            )
         }
-        lastError = message
     }
 
     private func refreshFinderSessionIfNeeded() {
@@ -598,8 +597,6 @@ final class AppModel: ObservableObject {
             "status.restarting_finder",
             fallback: "正在重启 Finder"
         )
-        lastError = nil
-
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {

@@ -72,6 +72,18 @@ public enum FinderActionPolicy {
         }
     }
 
+    public static func successResult(
+        for action: RightClickAction
+    ) -> LocalActionResult {
+        requiresAuthenticatedHost(action) ? .forwarded : .succeeded
+    }
+
+    public static func errorCategory(
+        for error: Error
+    ) -> LocalActionErrorCategory {
+        LocalActionErrorCategory(error)
+    }
+
     public static func openTargetError(
         count: Int,
         maximum: Int = OpenInvocation.maximumTargets

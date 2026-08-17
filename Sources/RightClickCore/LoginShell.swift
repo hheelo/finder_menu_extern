@@ -18,6 +18,6 @@ public enum LoginShell {
             }
             return URL(fileURLWithPath: candidate)
         }
-        return URL(fileURLWithPath: "/bin/zsh")
+        return AppConstants.defaultShellURL
     }
 }

@@ -38,6 +38,37 @@ struct FinderActionPolicyTests {
     }
 
     @Test
+    func hostActionsAreForwardedAndLocalActionsSucceed() {
+        for action in RightClickAction.allMenuActions {
+            let expected: LocalActionResult = FinderActionPolicy
+                .requiresAuthenticatedHost(action) ? .forwarded : .succeeded
+            #expect(FinderActionPolicy.successResult(for: action) == expected)
+        }
+    }
+
+    @Test
+    func mapsFinderFailuresToStableLogCategories() {
+        let cases: [(FinderActionError, LocalActionErrorCategory)] = [
+            (.invalidTarget, .invalidTarget),
+            (.invalidWorkingDirectory, .invalidWorkingDirectory),
+            (
+                .tooManyOpenTargets(count: 129, maximum: 128),
+                .tooManyTargets
+            ),
+            (.authenticationUnavailable, .authenticationUnavailable),
+            (.configurationUnavailable, .configurationUnavailable),
+            (.hostApplicationUnavailable, .hostApplicationUnavailable)
+        ]
+
+        for (error, category) in cases {
+            #expect(FinderActionPolicy.errorCategory(for: error) == category)
+        }
+        #expect(
+            FinderActionPolicy.errorCategory(for: TestFailure()) == .unknown
+        )
+    }
+
+    @Test
     func rejectsTargetCountsAboveTheLimitWithoutTruncating() {
         #expect(FinderActionPolicy.openTargetError(count: 128) == nil)
         #expect(

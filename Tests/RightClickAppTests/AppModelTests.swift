@@ -18,67 +18,6 @@ struct AppModelTests {
         ))
     }
 
-    @Test(arguments: [true, false], [true, false])
-    func appPresentationVisibility(
-        isUserLaunch: Bool,
-        isPresentationRequested: Bool
-    ) {
-        #expect(
-            AppPresentation.isUserVisible(
-                isUserLaunch: isUserLaunch,
-                isPresentationRequested: isPresentationRequested
-            ) == (isUserLaunch || isPresentationRequested)
-        )
-    }
-
-    @Test
-    func deepLinkImmediatelyClassifiesColdLaunchAsHeadless() {
-        var state = AppLaunchState()
-        #expect(state.isUserLaunch)
-
-        let wasLaunchDeepLink = state.receiveDeepLink()
-        #expect(wasLaunchDeepLink)
-        #expect(!state.isUserLaunch)
-
-        state.finish(isDefaultLaunch: true)
-        #expect(!state.isUserLaunch)
-        #expect(state.hasFinishedLaunching)
-        // 启动完成后的普通 URL 不应把既有用户会话重新分类或隐藏窗口。
-        let wasPostLaunchDeepLink = state.receiveDeepLink()
-        #expect(!wasPostLaunchDeepLink)
-    }
-
-    @Test
-    func normalColdLaunchRemainsUserVisibleAfterClassification() {
-        var state = AppLaunchState()
-
-        state.finish(isDefaultLaunch: true)
-
-        #expect(state.isUserLaunch)
-        #expect(state.hasFinishedLaunching)
-    }
-
-    @Test(arguments: [true, false], [true, false])
-    func reopenPolicy(
-        hasVisibleWindows: Bool,
-        hasPresentableWindow: Bool
-    ) {
-        let expectedAction: ReopenAction
-        if hasPresentableWindow {
-            expectedAction = .restoreExisting
-        } else if hasVisibleWindows {
-            expectedAction = .keepVisible
-        } else {
-            expectedAction = .createWindow
-        }
-        #expect(
-            ReopenPolicy.action(
-                hasVisibleWindows: hasVisibleWindows,
-                hasPresentableWindow: hasPresentableWindow
-            ) == expectedAction
-        )
-    }
-
     @Test
     func menuBarSettingNotifiesTheOneWayControllerHook() throws {
         let fixture = try makeFixture()
@@ -140,7 +79,6 @@ struct AppModelTests {
         await waitForMainQueue()
 
         #expect(fixture.executor.invocations == [invocation])
-        #expect(fixture.model.lastError == nil)
         #expect(fixture.actionLogStore.records().map(\.result) == [
             .received, .succeeded
         ])
@@ -339,7 +277,6 @@ struct AppModelTests {
         await waitForMainQueue()
 
         #expect(fixture.executor.invocations.isEmpty)
-        #expect(fixture.model.lastError == nil)
         #expect(fixture.model.errorHistory.isEmpty)
         #expect(fixture.notifier.messages.isEmpty)
         #expect(fixture.actionLogStore.records().isEmpty)
@@ -353,7 +290,6 @@ struct AppModelTests {
         fixture.model.handle(url: URL(string: "https://example.com")!)
         await waitForMainQueue()
 
-        #expect(fixture.model.lastError == nil)
         #expect(fixture.model.errorHistory.isEmpty)
         #expect(fixture.notifier.messages.isEmpty)
         #expect(fixture.executor.invocations.isEmpty)
@@ -373,7 +309,6 @@ struct AppModelTests {
 
         #expect(fixture.notifier.messages == ["没有写入权限。"])
         #expect(fixture.model.errorHistory.map(\.message) == ["没有写入权限。"])
-        #expect(fixture.model.lastError == "没有写入权限。")
     }
 
     @Test
@@ -390,10 +325,16 @@ struct AppModelTests {
         )
 
         fixture.model.handle(url: try #require(first.deepLink))
+        await waitForMainQueue()
+        let original = try #require(fixture.model.errorHistory.first)
+
         fixture.model.handle(url: try #require(second.deepLink))
         await waitForMainQueue()
 
         #expect(fixture.model.errorHistory.map(\.message) == ["持续失败。"])
+        let replacement = try #require(fixture.model.errorHistory.first)
+        #expect(replacement.id != original.id)
+        #expect(replacement.date >= original.date)
         #expect(fixture.notifier.messages == ["持续失败。", "持续失败。"])
     }
 

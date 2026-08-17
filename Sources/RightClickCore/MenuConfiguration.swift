@@ -213,6 +213,7 @@ public struct MenuConfiguration: Codable, Equatable, Sendable {
 
 public struct CustomFileTemplate: Codable, Equatable, Identifiable, Sendable {
     public static let validMenuSlots = 1...300
+    private static let maximumTitleLength = 128
 
     public var id: String
     public var title: String
@@ -230,7 +231,7 @@ public struct CustomFileTemplate: Codable, Equatable, Identifiable, Sendable {
 
     public var isValid: Bool {
         CLIProfile.isValidID(id)
-            && (1...128).contains(title.count)
+            && (1...Self.maximumTitleLength).contains(title.count)
             && !title.contains("\n")
             && FileCreator.isSafeFilename(filename)
             && Self.validMenuSlots.contains(menuSlot)
@@ -239,6 +240,11 @@ public struct CustomFileTemplate: Codable, Equatable, Identifiable, Sendable {
 
 public struct CLIProfile: Codable, Equatable, Identifiable, Sendable {
     public static let validMenuSlots = 1...400
+    private static let maximumIDLength = 64
+    private static let maximumTitleLength = 64
+    private static let maximumExecutableLength = 1_024
+    private static let maximumArgumentCount = 64
+    private static let maximumArgumentLength = 512
 
     public var id: String
     public var title: String
@@ -269,7 +275,7 @@ public struct CLIProfile: Codable, Equatable, Identifiable, Sendable {
         let characters = CharacterSet(
             charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789-"
         )
-        return (1...64).contains(id.count)
+        return (1...Self.maximumIDLength).contains(id.count)
             && id.unicodeScalars.allSatisfy(characters.contains)
     }
 
@@ -277,7 +283,7 @@ public struct CLIProfile: Codable, Equatable, Identifiable, Sendable {
     /// 明确填写的绝对路径。两种形式在执行前都会被逐项 shell quote；不接受
     /// 相对路径，避免配置的含义随 Finder/宿主进程的启动目录变化。
     public static func isValidExecutable(_ executable: String) -> Bool {
-        guard (1...1024).contains(executable.count),
+        guard (1...Self.maximumExecutableLength).contains(executable.count),
               !executable.contains("\0"),
               !executable.contains("\n") else {
             return false
@@ -297,12 +303,13 @@ public struct CLIProfile: Codable, Equatable, Identifiable, Sendable {
 
     public var isValid: Bool {
         return Self.isValidID(id)
-            && (1...64).contains(title.count)
+            && (1...Self.maximumTitleLength).contains(title.count)
             && !title.contains("\n")
             && Self.isValidExecutable(executable)
-            && arguments.count <= 64
+            && arguments.count <= Self.maximumArgumentCount
             && arguments.allSatisfy {
-                $0.count <= 512 && !$0.contains("\0") && !$0.contains("\n")
+                $0.count <= Self.maximumArgumentLength
+                    && !$0.contains("\0") && !$0.contains("\n")
             }
             && Self.validMenuSlots.contains(menuSlot)
     }

@@ -23,6 +23,8 @@ public enum FileCreatorError: LocalizedError {
 }
 
 public struct FileCreator {
+    private static let maximumCreationAttempts = 8
+    private static let maximumFilenameLength = 255
     private let fileManager: FileManager
 
     public init(fileManager: FileManager = .default) {
@@ -64,7 +66,7 @@ public struct FileCreator {
         // 进程即可触发）。保留 .withoutOverwriting 这条数据安全保证，并在
         // 名称刚被占用时重新寻找；其他错误立即上抛。
         var lastConflict: Error?
-        for _ in 0..<8 {
+        for _ in 0..<Self.maximumCreationAttempts {
             let destination = availableURL(
                 named: preferredFilename,
                 in: directory
@@ -102,7 +104,7 @@ public struct FileCreator {
         }
 
         var lastConflict: Error?
-        for _ in 0..<8 {
+        for _ in 0..<Self.maximumCreationAttempts {
             let destination = availableURL(named: preferredName, in: directory)
             do {
                 try fileManager.createDirectory(
@@ -121,7 +123,7 @@ public struct FileCreator {
 
     public static func isSafeFilename(_ filename: String) -> Bool {
         !filename.isEmpty
-            && filename.count <= 255
+            && filename.count <= maximumFilenameLength
             && filename != "."
             && filename != ".."
             && !filename.contains("/")

@@ -10,7 +10,7 @@ import os
 /// 排查命令：
 /// `log show --last 10m --predicate 'subsystem == "com.hheelo.RightClick"'`
 private let logger = Logger(
-    subsystem: "com.hheelo.RightClick",
+    subsystem: AppConstants.loggingSubsystem,
     category: "extension"
 )
 
@@ -255,9 +255,7 @@ final class FinderSync: FIFinderSync {
             """)
         reporting(
             LocalActionName(action),
-            successResult: FinderActionPolicy.requiresAuthenticatedHost(action)
-                ? .forwarded
-                : .succeeded,
+            successResult: FinderActionPolicy.successResult(for: action),
             label: "动作执行失败"
         ) {
             try execute(action, in: context)
@@ -283,7 +281,7 @@ final class FinderSync: FIFinderSync {
             recordAction(
                 action,
                 result: .failed,
-                errorCategory: LocalActionErrorCategory(error)
+                errorCategory: FinderActionPolicy.errorCategory(for: error)
             )
             logger.error(
                 "\(label, privacy: .public)：\(error.localizedDescription, privacy: .public)"

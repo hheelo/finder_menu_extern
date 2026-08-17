@@ -11,9 +11,9 @@ settings:
     SWIFT_VERSION: "6.0"
     # 仅供 Xcode 内直接构建。install.sh、build-release.sh 和 Release CI 都调用
     # derive-build-number.sh 从 MARKETING_VERSION 推导并覆盖该值。
-    CURRENT_PROJECT_VERSION: 10004
+    CURRENT_PROJECT_VERSION: 10005
     # scripts/read-marketing-version.sh 读取这一项，并兼容有/无引号的标量。
-    MARKETING_VERSION: 1.0.4
+    MARKETING_VERSION: 1.0.5
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true
@@ -133,6 +133,7 @@ targets:
       # 这些测试覆盖纯逻辑，不需要启动 LSUIElement 宿主。直接编译被测文件可以
       # 避开已安装副本的 Bundle ID、Sparkle 和附属应用启动时序干扰。
       - Sources/RightClickApp/ActionExecutor.swift
+      - Sources/RightClickApp/ProcessRunner.swift
       - Sources/RightClickApp/AppDiagnostics.swift
       - Sources/RightClickApp/AppLogger.swift
       - Sources/RightClickApp/AppModel.swift

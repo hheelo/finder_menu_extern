@@ -61,7 +61,9 @@ final class FinderSessionManager {
 
     func restartFinder() async throws {
         let finder = NSWorkspace.shared.runningApplications.first(
-            where: { $0.bundleIdentifier == "com.apple.finder" }
+            where: {
+                $0.bundleIdentifier == AppConstants.finderBundleIdentifier
+            }
         )
         if let finder, !finder.terminate() {
             throw FinderSessionError.unableToTerminate
@@ -79,17 +81,12 @@ final class FinderSessionManager {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.addsToRecentItems = false
-        let finderURL = URL(
-            fileURLWithPath: "/System/Library/CoreServices/Finder.app",
-            isDirectory: true
-        )
-
         do {
             // 必须用 async API：completionHandler 版本的闭包会继承
             // @MainActor 隔离，而 LaunchServices 在自己的队列上回调，Swift 6
             // 的运行时隔离断言会直接让进程 SIGTRAP。
             _ = try await NSWorkspace.shared.openApplication(
-                at: finderURL,
+                at: AppConstants.finderApplicationURL,
                 configuration: configuration
             )
         } catch {
@@ -107,7 +104,7 @@ final class FinderSessionManager {
 /// macOS 14.0–14.3 的 Finder 扩展状态检测。
 enum LegacyFinderExtensionStatus {
     static func isEnabled(
-        executableURL: URL = URL(fileURLWithPath: "/usr/bin/pluginkit"),
+        executableURL: URL = AppConstants.plugInKitURL,
         logFailure: @escaping @Sendable (String) -> Void = { message in
             appLogger.error("\(message, privacy: .public)")
         }

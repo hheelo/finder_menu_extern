@@ -35,11 +35,8 @@ public struct ExternalApplication: Equatable, Sendable {
     /// 注意：`homeDirectoryForCurrentUser` 在沙箱化的 Finder 扩展里指向容器，
     /// 因此 `~/Applications` 这一项对扩展基本无效；Bundle ID 查询才是主路径，
     /// 目录搜索只是 LaunchServices 数据库缺条目时的兜底。
-    public static let searchRoots: [URL] = [
-        URL(fileURLWithPath: "/Applications", isDirectory: true),
-        URL(fileURLWithPath: "/Applications/Utilities", isDirectory: true),
-        URL(fileURLWithPath: "/System/Applications", isDirectory: true),
-        URL(fileURLWithPath: "/System/Applications/Utilities", isDirectory: true),
+    public static let searchRoots: [URL] =
+        AppConstants.systemApplicationSearchRoots + [
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Applications", isDirectory: true)
     ]
