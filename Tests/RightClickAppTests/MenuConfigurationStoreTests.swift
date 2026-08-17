@@ -5,7 +5,7 @@ import Testing
 @MainActor
 struct MenuConfigurationStoreTests {
     @Test
-    func templateChangesPersistOnceAndUnchangedRefreshDoesNotPersist() throws {
+    func templateChangesPersistOnceAndUnchangedRefreshDoesNotPersist() async throws {
         let root = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
         let source = root.appendingPathComponent("Source", isDirectory: true)
@@ -29,19 +29,49 @@ struct MenuConfigurationStoreTests {
             save: { configuration, _ in saves.append(configuration) }
         )
 
-        store.refreshCustomTemplates()
+        await store.refreshCustomTemplates()
         #expect(saves.count == 1)
         #expect(store.configuration.customTemplates.count == 1)
 
-        store.refreshCustomTemplates()
+        await store.refreshCustomTemplates()
         #expect(saves.count == 1)
 
         try FileManager.default.removeItem(
             at: source.appendingPathComponent("Note.md")
         )
-        store.refreshCustomTemplates()
+        await store.refreshCustomTemplates()
         #expect(saves.count == 2)
         #expect(store.configuration.customTemplates.isEmpty)
+    }
+
+    @Test
+    func templateSynchronizationDoesNotBlockTheMainActor() async {
+        let probe = TemplateSynchronizationProbe()
+        let store = MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.terminal.rawValue,
+            load: { _ in MenuConfiguration(
+                terminalProfileID: TerminalProfile.terminal.rawValue
+            ) },
+            save: { _, _ in },
+            synchronizeTemplates: { existing, _, _ in
+                probe.beginAndWait()
+                return existing
+            }
+        )
+
+        let refresh = Task {
+            await store.refreshCustomTemplates()
+            probe.complete()
+        }
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(probe.hasStarted)
+        #expect(!probe.hasCompleted)
+        probe.release()
+        await refresh.value
+        #expect(probe.hasCompleted)
     }
 
     @Test
@@ -153,4 +183,22 @@ struct MenuConfigurationStoreTests {
         )
         return directory
     }
+}
+
+private final class TemplateSynchronizationProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private let releaseSemaphore = DispatchSemaphore(value: 0)
+    private var started = false
+    private var completed = false
+
+    var hasStarted: Bool { lock.withLock { started } }
+    var hasCompleted: Bool { lock.withLock { completed } }
+
+    func beginAndWait() {
+        lock.withLock { started = true }
+        _ = releaseSemaphore.wait(timeout: .now() + 0.5)
+    }
+
+    func release() { releaseSemaphore.signal() }
+    func complete() { lock.withLock { completed = true } }
 }

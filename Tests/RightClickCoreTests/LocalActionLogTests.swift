@@ -7,7 +7,11 @@ struct LocalActionLogTests {
     func persistsOnlyTheNewestBoundedRecordsWithPrivatePermissions() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let url = directory.appendingPathComponent("action-log.json")
+        let logDirectory = directory.appendingPathComponent(
+            "Private",
+            isDirectory: true
+        )
+        let url = logDirectory.appendingPathComponent("action-log.json")
         let store = LocalActionLogStore(
             fileURL: url,
             maximumRecordCount: 3
@@ -22,6 +26,7 @@ struct LocalActionLogTests {
                 result: .succeeded
             ))
         }
+        store.flush()
 
         #expect(store.records().map(\.date) == [
             Date(timeIntervalSince1970: 2),
@@ -35,6 +40,82 @@ struct LocalActionLogTests {
             attributes[.posixPermissions] as? NSNumber
         )
         #expect(permissions.intValue & 0o777 == 0o600)
+        let directoryAttributes = try FileManager.default.attributesOfItem(
+            atPath: logDirectory.path
+        )
+        let directoryPermissions = try #require(
+            directoryAttributes[.posixPermissions] as? NSNumber
+        )
+        #expect(directoryPermissions.intValue & 0o777 == 0o700)
+    }
+
+    @Test
+    func fiveHundredAppendsPersistOnlyTheNewestTwoHundredInOrder() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("action-log.json")
+        let store = LocalActionLogStore(fileURL: url)
+
+        for index in 0..<500 {
+            store.append(LocalActionRecord(
+                date: Date(timeIntervalSince1970: TimeInterval(index)),
+                source: .finderExtension,
+                action: .copyPath,
+                result: .succeeded
+            ))
+        }
+        store.flush()
+
+        let persisted = LocalActionLogStore.load(from: url)
+        #expect(persisted.count == 200)
+        #expect(persisted.first?.date == Date(timeIntervalSince1970: 300))
+        #expect(persisted.last?.date == Date(timeIntervalSince1970: 499))
+    }
+
+    @Test
+    func appendsWithinTheDebounceWindowProduceOneWrite() async {
+        let recorder = PersistenceRecorder()
+        let store = LocalActionLogStore(
+            fileURL: URL(fileURLWithPath: "/unused/action-log.json"),
+            persistenceDelay: .milliseconds(30),
+            flushThreshold: 100,
+            write: { records, _, _ in try recorder.record(records) }
+        )
+
+        for index in 0..<5 {
+            store.append(LocalActionRecord(
+                date: Date(timeIntervalSince1970: TimeInterval(index)),
+                source: .host,
+                action: .copyPath,
+                result: .succeeded
+            ))
+        }
+        try? await Task.sleep(for: .milliseconds(100))
+
+        #expect(recorder.writeCount == 1)
+        #expect(recorder.lastRecordCount == 5)
+    }
+
+    @Test
+    func explicitFlushIsImmediateAndWriteFailureKeepsBufferedRecords() {
+        let recorder = PersistenceRecorder(shouldFail: true)
+        let store = LocalActionLogStore(
+            fileURL: URL(fileURLWithPath: "/unused/action-log.json"),
+            persistenceDelay: .seconds(60),
+            flushThreshold: 100,
+            write: { records, _, _ in try recorder.record(records) }
+        )
+        let record = LocalActionRecord(
+            source: .host,
+            action: .copyPath,
+            result: .succeeded
+        )
+
+        store.append(record)
+        store.flush()
+
+        #expect(recorder.writeCount == 1)
+        #expect(store.records() == [record])
     }
 
     @Test
@@ -127,5 +208,27 @@ struct LocalActionLogTests {
             withIntermediateDirectories: false
         )
         return directory
+    }
+}
+
+private final class PersistenceRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private let shouldFail: Bool
+    private var recordedWriteCount = 0
+    private var recordedLastRecordCount = 0
+
+    init(shouldFail: Bool = false) {
+        self.shouldFail = shouldFail
+    }
+
+    var writeCount: Int { lock.withLock { recordedWriteCount } }
+    var lastRecordCount: Int { lock.withLock { recordedLastRecordCount } }
+
+    func record(_ records: [LocalActionRecord]) throws {
+        lock.withLock {
+            recordedWriteCount += 1
+            recordedLastRecordCount = records.count
+        }
+        if shouldFail { throw CocoaError(.fileWriteUnknown) }
     }
 }

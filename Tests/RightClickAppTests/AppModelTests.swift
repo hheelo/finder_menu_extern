@@ -181,6 +181,37 @@ struct AppModelTests {
     }
 
     @Test
+    func removingCLIArgumentIsValidatedAndPersistsOnlyTheTarget() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let profile = CLIProfile(
+            id: "profile",
+            title: "Profile",
+            executable: "command",
+            arguments: ["first", "middle", "last"],
+            menuSlot: 1
+        )
+        fixture.model.menuConfiguration.cliProfiles = [profile]
+        fixture.model.persistMenuConfigurationImmediately()
+
+        fixture.model.removeCLIArgument(profileID: profile.id, at: 1)
+        #expect(
+            fixture.model.menuConfiguration.cliProfiles[0].arguments
+                == ["first", "last"]
+        )
+
+        let unchanged = fixture.model.menuConfiguration
+        fixture.model.removeCLIArgument(profileID: profile.id, at: 99)
+        fixture.model.removeCLIArgument(profileID: "missing", at: 0)
+        #expect(fixture.model.menuConfiguration == unchanged)
+        #expect(
+            MenuConfigurationFile.load(
+                from: fixture.directory.appendingPathComponent("menu.json")
+            ).cliProfiles[0].arguments == ["first", "last"]
+        )
+    }
+
+    @Test
     func multipleTrustedCLIRequestsExecuteWithoutAWindowQueue() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }

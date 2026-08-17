@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=1.0.1 ./scripts/build-release.sh
+VERSION=1.0.2 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -42,6 +42,13 @@ VERSION=1.0.1 ./scripts/build-release.sh
   路径，且结果里没有 `../`
 - 在设置里把「多选复制时分隔符」依次切成换行 / 空格 / 逗号，每次改完立即右键
   多选复制，确认下一次右键就生效且没有重启 Finder
+- 自定义 CLI 加 3 个参数，删除中间一个，确认不崩溃、剩余内容和 `menu.json`
+  都正确
+- 先让宿主与扩展动作日志各达到 200 条，再连续执行 20 次右键动作，确认菜单与
+  动作响应没有可感知的日志写入延迟
+- 在自定义模板目录放入 50 个文件，反复切换到 RightClick 或打开设置，确认窗口
+  呈现期间不因模板扫描而卡顿
+- 修改任一菜单设置后不重启 Finder，确认下一次右键立即使用新配置
 - 逐一创建七种文件，确认同名文件不会覆盖
 - 分别把内置 JSON 模板改名为 `package.json`、设为 UTF-8 with BOM，把 Python
   模板设为 UTF-16；确认文件名、BOM 与内容正确。输入 `../escape` 时应显示警告，

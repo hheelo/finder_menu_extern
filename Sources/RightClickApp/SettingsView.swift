@@ -194,7 +194,10 @@ struct SettingsView: View {
                             }
                         TextField(L10n.text("settings.display_name", fallback: "显示名称"), text: $profile.title)
                         TextField(L10n.text("settings.cli_executable", fallback: "命令名或绝对路径"), text: $profile.executable)
-                        ForEach(profile.arguments.indices, id: \.self) { index in
+                        ForEach(
+                            Array(profile.arguments.enumerated()),
+                            id: \.offset
+                        ) { index, _ in
                             HStack {
                                 TextField(
                                     L10n.format(
@@ -205,8 +208,10 @@ struct SettingsView: View {
                                     text: $profile.arguments[index]
                                 )
                                 Button(role: .destructive) {
-                                    profile.arguments.remove(at: index)
-                                    model.persistMenuConfigurationImmediately()
+                                    model.removeCLIArgument(
+                                        profileID: profile.id,
+                                        at: index
+                                    )
                                 } label: {
                                     Image(systemName: "minus.circle")
                                 }
@@ -262,7 +267,7 @@ struct SettingsView: View {
                         model.openCustomTemplatesDirectory()
                     }
                     Button(L10n.text("button.refresh", fallback: "刷新模板")) {
-                        model.refreshCustomTemplates()
+                        Task { await model.refreshCustomTemplates() }
                     }
                     Spacer()
                     Text(L10n.format(

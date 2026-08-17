@@ -36,6 +36,8 @@ enum ProcessRunnerError: LocalizedError {
 /// 可能被大量输出填满；如果先读到 EOF，超时后仍持有写端的子进程又可能让读取
 /// 永远不返回。普通文件没有这两种互锁，超时后也能立即清理。
 enum ProcessRunner {
+    private static let forceTerminationWait: TimeInterval = 2
+
     static func run(
         executableURL: URL,
         arguments: [String],
@@ -134,15 +136,19 @@ enum ProcessRunner {
                 }
                 if process.isRunning {
                     _ = Darwin.kill(process.processIdentifier, SIGKILL)
-                    while process.isRunning {
-                        try? await Task.sleep(for: .milliseconds(10))
-                    }
+                    _ = await waitUntilStopped(
+                        deadline: Date().addingTimeInterval(
+                            forceTerminationWait
+                        ),
+                        isRunning: { process.isRunning }
+                    )
                 }
             }
 
-            // 上面的正常轮询与强杀收尾都只会在 `isRunning == false` 后到这里。
-            // 此时再调用 `waitUntilExit()` 不仅多余，macOS 26 的 Foundation 还会
-            // 偶发丢失已经发生的退出通知，导致无子进程可等却永久阻塞。
+            // 正常退出时不再调用 `waitUntilExit()`：macOS 26 的 Foundation 会
+            // 偶发丢失已经发生的退出通知，导致无子进程可等却永久阻塞。强杀后
+            // 若状态仍未翻转也会在有界等待后到这里，但三个原因标志保证后面不会
+            // 读取尚不可用的 terminationStatus。
             // 最后一次轮询到进程退出之间仍可能写出内容，退出后再复查一次。
             if totalOutputSize() > maximumOutputBytes {
                 exceededOutputLimit = true
@@ -185,6 +191,18 @@ enum ProcessRunner {
             // 才能终止子进程并清理私有临时目录。
             task.cancel()
         }
+    }
+
+    /// `Process.isRunning` 极少数情况下不会在强杀后翻转。调用方只需要一个
+    /// 有界等待；超时后仍按原始的取消、超时或输出超限原因返回。
+    static func waitUntilStopped(
+        deadline: Date,
+        isRunning: () -> Bool
+    ) async -> Bool {
+        while isRunning() && Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return !isRunning()
     }
 }
 

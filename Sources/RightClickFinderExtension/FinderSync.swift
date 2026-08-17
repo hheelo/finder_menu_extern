@@ -20,6 +20,7 @@ final class FinderSync: FIFinderSync {
     private let actionLogStore = LocalActionLogStore(
         fileURL: LocalActionLogFile.extensionURL()
     )
+    private let menuConfigurationCache = MenuConfigurationCache()
     private let tokenLock = NSLock()
     private var tokenAvailability = RetryableTokenAvailability()
 
@@ -50,8 +51,8 @@ final class FinderSync: FIFinderSync {
         }
 
         let context = context(for: placement)
-        // 不缓存：设置保存后下一次右键立即生效。缺失、损坏或未知版本
-        // 由 Core 回退完整默认菜单。
+        // 原子替换 menu.json 会改变文件戳；缓存只省掉未变化配置的重复解码，
+        // 设置保存后下一次右键仍会立即生效。
         let configuration = currentMenuConfiguration()
         let nodes = RightClickMenu.nodes(
             placement: placement,
@@ -430,9 +431,9 @@ final class FinderSync: FIFinderSync {
     }
 
     private func currentMenuConfiguration() -> MenuConfiguration {
-        MenuConfigurationFile.extensionURL().map {
-            MenuConfigurationFile.load(from: $0)
-        } ?? .default
+        menuConfigurationCache.configuration(
+            at: MenuConfigurationFile.extensionURL()
+        )
     }
 
     private func copy(_ value: String) throws {

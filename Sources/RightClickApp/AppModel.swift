@@ -371,6 +371,16 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func removeCLIArgument(profileID: String, at index: Int) {
+        menuConfigurationStore.updateImmediately { updated in
+            guard let profileIndex = updated.cliProfiles.firstIndex(
+                where: { $0.id == profileID }
+            ), updated.cliProfiles[profileIndex].arguments.indices.contains(index)
+            else { return }
+            updated.cliProfiles[profileIndex].arguments.remove(at: index)
+        }
+    }
+
     func templateFilename(for template: FileTemplate) -> String {
         menuConfiguration.templateOverrides[template.rawValue]?.filename ?? ""
     }
@@ -433,8 +443,8 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func refreshCustomTemplates() {
-        menuConfigurationStore.refreshCustomTemplates()
+    func refreshCustomTemplates() async {
+        await menuConfigurationStore.refreshCustomTemplates()
     }
 
     /// 用户明确打开或恢复界面时的唯一刷新入口。
@@ -448,7 +458,7 @@ final class AppModel: ObservableObject {
         }
         guard !AppEnvironment.isRunningTests else { return }
         refreshExtensionStatus()
-        refreshCustomTemplates()
+        await refreshCustomTemplates()
         await refreshDiagnostics()
     }
 

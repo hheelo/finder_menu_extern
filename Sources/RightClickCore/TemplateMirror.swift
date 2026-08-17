@@ -28,6 +28,12 @@ public struct TemplateMirror {
 
     private let fileManager: FileManager
 
+    private struct SourceTemplate {
+        let url: URL
+        let fileSize: Int
+        let modificationDate: Date?
+    }
+
     public init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
     }
@@ -48,14 +54,22 @@ public struct TemplateMirror {
             at: sourceDirectory,
             includingPropertiesForKeys: Array(keys),
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
-        ).filter { url in
+        ).compactMap { url -> SourceTemplate? in
             guard FileCreator.isSafeFilename(url.lastPathComponent),
                   let values = try? url.resourceValues(forKeys: keys) else {
-                return false
+                return nil
             }
-            return values.isRegularFile == true && values.isSymbolicLink != true
-        }.sorted { $0.lastPathComponent.localizedStandardCompare(
-            $1.lastPathComponent
+            guard values.isRegularFile == true,
+                  values.isSymbolicLink != true else {
+                return nil
+            }
+            return SourceTemplate(
+                url: url,
+                fileSize: values.fileSize ?? 0,
+                modificationDate: values.contentModificationDate
+            )
+        }.sorted { $0.url.lastPathComponent.localizedStandardCompare(
+            $1.url.lastPathComponent
         ) == .orderedAscending }
 
         guard sources.count <= CustomFileTemplate.validMenuSlots.count else {
@@ -66,7 +80,7 @@ public struct TemplateMirror {
             existing.map { ($0.filename, $0) },
             uniquingKeysWith: { first, _ in first }
         )
-        let sourceNames = Set(sources.map(\.lastPathComponent))
+        let sourceNames = Set(sources.map(\.url.lastPathComponent))
         var usedSlots = Set(
             existing.filter { sourceNames.contains($0.filename) }.map(\.menuSlot)
         )
@@ -74,17 +88,18 @@ public struct TemplateMirror {
         var expectedNames: Set<String> = []
 
         for source in sources {
-            let values = try source.resourceValues(forKeys: keys)
-            guard (values.fileSize ?? 0) <= Self.maximumFileSize else {
-                throw TemplateMirrorError.templateTooLarge(source.lastPathComponent)
+            guard source.fileSize <= Self.maximumFileSize else {
+                throw TemplateMirrorError.templateTooLarge(
+                    source.url.lastPathComponent
+                )
             }
-            let filename = source.lastPathComponent
+            let filename = source.url.lastPathComponent
             expectedNames.insert(filename)
             let destination = mirrorDirectory.appendingPathComponent(filename)
             let mirroredValues = try? destination.resourceValues(
                 forKeys: [.fileSizeKey, .contentModificationDateKey]
             )
-            let sourceDate = values.contentModificationDate
+            let sourceDate = source.modificationDate
             let mirroredDate = mirroredValues?.contentModificationDate
             // Foundation 通过文件属性回写 Date 时可能损失亚毫秒精度；这种精度
             // 舍入不代表源文件变化，否则每次同步仍会原子替换镜像。
@@ -94,14 +109,14 @@ public struct TemplateMirror {
                 }
             } ?? false
             let isUnchanged = sourceDate != nil
-                && mirroredValues?.fileSize == values.fileSize
+                && mirroredValues?.fileSize == source.fileSize
                 && modificationDateMatches
 
             // B1 之后每次宿主界面呈现都会同步。模板上限是 300 × 10 MB，
             // 未变化时不能继续全量读写。size + mtime 相同但内容不同的极端情况
             // 会被跳过；这里的目标正是避免为内容哈希读取全文，且镜像不是安全边界。
             if !isUnchanged {
-                try Data(contentsOf: source).write(
+                try Data(contentsOf: source.url).write(
                     to: destination,
                     options: .atomic
                 )

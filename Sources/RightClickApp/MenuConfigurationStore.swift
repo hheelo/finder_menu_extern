@@ -10,7 +10,7 @@ import RightClickCore
 final class MenuConfigurationStore {
     typealias Loader = (URL) -> MenuConfiguration
     typealias Saver = (MenuConfiguration, URL) throws -> Void
-    typealias TemplateSynchronizer = (
+    typealias TemplateSynchronizer = @Sendable (
         _ existing: [CustomFileTemplate],
         _ sourceDirectory: URL,
         _ mirrorDirectory: URL
@@ -29,6 +29,7 @@ final class MenuConfigurationStore {
     private let persistenceDelay: Duration
     private var pendingPersist: Task<Void, Never>?
     private var deferredInitializationFailure: String?
+    private var isRefreshingCustomTemplates = false
 
     init(
         configurationURL: URL,
@@ -110,15 +111,24 @@ final class MenuConfigurationStore {
     /// 宿主界面每次真正呈现时都调用同步，让新增与删除无需进入设置页即可生效。
     /// 模板集合通常不变，此时镜像同步仍会完成清理，但不会重写 menu.json，
     /// 也不会用“已同步”覆盖最近一次有意义的动作状态。
-    func refreshCustomTemplates() {
+    func refreshCustomTemplates() async {
+        guard !isRefreshingCustomTemplates else { return }
+        isRefreshingCustomTemplates = true
+        defer { isRefreshingCustomTemplates = false }
+        let existing = configuration.customTemplates
+        let sourceDirectory = customTemplatesDirectory
+        let mirrorDirectory = MenuConfigurationFile.mirroredTemplatesDirectory(
+            configurationURL: configurationURL
+        )
+        let synchronizeTemplates = synchronizeTemplates
         do {
-            let templates = try synchronizeTemplates(
-                configuration.customTemplates,
-                customTemplatesDirectory,
-                MenuConfigurationFile.mirroredTemplatesDirectory(
-                    configurationURL: configurationURL
+            let templates = try await Task.detached(priority: .utility) {
+                try synchronizeTemplates(
+                    existing,
+                    sourceDirectory,
+                    mirrorDirectory
                 )
-            )
+            }.value
             guard templates != configuration.customTemplates else { return }
             updateImmediately { $0.customTemplates = templates }
             onStatus?(L10n.format(

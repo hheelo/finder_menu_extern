@@ -75,4 +75,16 @@ struct ProcessRunnerTests {
             Issue.record("返回了错误的异常类型：\(error)")
         }
     }
+
+    @Test
+    func forceTerminationWaitHasAnUpperBound() async {
+        let startedAt = ContinuousClock.now
+        let stopped = await ProcessRunner.waitUntilStopped(
+            deadline: Date().addingTimeInterval(0.03),
+            isRunning: { true }
+        )
+
+        #expect(!stopped)
+        #expect(startedAt.duration(to: .now) < .milliseconds(200))
+    }
 }
