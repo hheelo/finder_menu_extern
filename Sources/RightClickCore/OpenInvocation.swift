@@ -6,7 +6,9 @@ import Foundation
 /// 因此「用 VS Code 打开」这类动作只能由未沙箱的宿主执行。扩展把请求编码成
 /// `rightclick://open` 深链，用 `NSWorkspace.open(_ url:)` 唤起宿主——
 /// 打开 URL 是沙箱允许的，指定 App 去启动则不是。
-public struct OpenInvocation: Equatable, Sendable {
+public struct OpenInvocation: Equatable, SignedInvocation, Sendable {
+    public static let deepLinkHost = "open"
+
     /// 显式限制而不是静默截断：少打开几个文件会让用户误以为全部成功。
     /// LaunchServices 的 URL 长度上限属于实现细节，这里只负责给请求设一个
     /// 可预期的边界，不把 128 当作系统阈值。
@@ -26,32 +28,17 @@ public struct OpenInvocation: Equatable, Sendable {
         self.authenticationToken = authenticationToken
     }
 
-    public var deepLink: URL? {
-        deepLink(now: Date(), nonce: UUID().uuidString)
-    }
-
-    public func deepLink(now: Date, nonce: String) -> URL? {
+    public var deepLinkQueryItems: [URLQueryItem]? {
         guard !targets.isEmpty,
               targets.count <= Self.maximumTargets,
-              targets.allSatisfy({ $0.isFileURL && $0.path.hasPrefix("/") }),
-              authenticationToken.map(
-                  ExtensionRequestTokenStore.isValidToken
-              ) ?? true else {
+              targets.allSatisfy(
+                  DeepLinkComponents.validAbsoluteFileURL
+              ) else {
             return nil
         }
-
-        var components = URLComponents()
-        components.scheme = AppConstants.deepLinkScheme
-        components.host = "open"
-        components.queryItems =
+        return
             [URLQueryItem(name: "app", value: application.identifier)]
             + targets.map { URLQueryItem(name: "path", value: $0.path) }
-        return DeepLinkSignature.signedURL(
-            components: components,
-            token: authenticationToken,
-            now: now,
-            nonce: nonce
-        )
     }
 
     /// 严格解析：只接受白名单内的 App 标识，路径必须是已存在的绝对路径。
@@ -59,14 +46,11 @@ public struct OpenInvocation: Equatable, Sendable {
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard let components = DeepLinkComponents(
+        guard let components = DeepLinkComponents.authenticated(
             deepLink: deepLink,
-            host: "open",
-            allowedNames: [
-                "app", "path", "v", "ts", "nonce", "sig"
-            ]
+            host: Self.deepLinkHost,
+            semanticNames: ["app", "path"]
         ),
-              DeepLinkSignature.authentication(in: deepLink) != nil,
               let identifier = components.single("app"),
               let application = ExternalApplication(identifier: identifier)
         else {

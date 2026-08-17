@@ -247,17 +247,24 @@ final class DeepLinkCoordinator {
         terminalWindowBehavior: TerminalWindowBehavior,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
-        let actionName = LocalActionName(invocation.command)
-        emit(.status(L10n.format(
-            "status.starting",
-            fallback: "正在启动 %@…",
-            invocation.command.title
-        )))
-        Task {
+        perform(
+            actionName: LocalActionName(invocation.command),
+            startingTitle: L10n.format(
+                "status.starting",
+                fallback: "正在启动 %@…",
+                invocation.command.title
+            ),
+            startedTitle: L10n.format(
+                "status.started",
+                fallback: "已启动 %@",
+                invocation.command.title
+            ),
+            emit: emit
+        ) {
             do {
-                try await executor.execute(
+                try await self.executor.execute(
                     invocation,
-                    terminalProfile: terminalResolver.resolvedProfile(
+                    terminalProfile: self.terminalResolver.resolvedProfile(
                         for: terminalProfile
                     ),
                     terminalWindowBehavior: terminalWindowBehavior
@@ -265,25 +272,11 @@ final class DeepLinkCoordinator {
                 appLogger.notice(
                     "CLI 启动成功 tool=\(invocation.command.rawValue, privacy: .public)"
                 )
-                recordAction(actionName, .succeeded, nil)
-                emit(.status(L10n.format(
-                    "status.started",
-                    fallback: "已启动 %@",
-                    invocation.command.title
-                )))
             } catch {
                 appLogger.error(
                     "CLI 启动失败：\(error.localizedDescription, privacy: .public)"
                 )
-                recordAction(
-                    actionName,
-                    .failed,
-                    actionErrorCategory(error)
-                )
-                reportFailure(
-                    error.localizedDescription,
-                    emit: emit
-                )
+                throw error
             }
         }
     }
@@ -294,37 +287,26 @@ final class DeepLinkCoordinator {
         terminalWindowBehavior: TerminalWindowBehavior,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
-        let actionName = LocalActionName.openInTerminal
         let resolved = terminalResolver.resolvedProfile(for: terminalProfile)
-        emit(.status(L10n.format(
-            "status.opening_with",
-            fallback: "正在用 %@ 打开…",
-            resolved.title
-        )))
-        Task {
-            do {
-                try await executor.openDirectory(
-                    directory,
-                    terminalProfile: resolved,
-                    terminalWindowBehavior: terminalWindowBehavior
-                )
-                recordAction(actionName, .succeeded, nil)
-                emit(.status(L10n.format(
-                    "status.opened_with",
-                    fallback: "已用 %@ 打开",
-                    resolved.title
-                )))
-            } catch {
-                recordAction(
-                    actionName,
-                    .failed,
-                    actionErrorCategory(error)
-                )
-                reportFailure(
-                    error.localizedDescription,
-                    emit: emit
-                )
-            }
+        perform(
+            actionName: .openInTerminal,
+            startingTitle: L10n.format(
+                "status.opening_with",
+                fallback: "正在用 %@ 打开…",
+                resolved.title
+            ),
+            startedTitle: L10n.format(
+                "status.opened_with",
+                fallback: "已用 %@ 打开",
+                resolved.title
+            ),
+            emit: emit
+        ) {
+            try await self.executor.openDirectory(
+                directory,
+                terminalProfile: resolved,
+                terminalWindowBehavior: terminalWindowBehavior
+            )
         }
     }
 
@@ -335,28 +317,44 @@ final class DeepLinkCoordinator {
         terminalWindowBehavior: TerminalWindowBehavior,
         emit: @escaping @MainActor (DeepLinkEvent) -> Void
     ) {
-        let actionName = LocalActionName.configuredCLI
-        emit(.status(L10n.format(
-            "status.starting",
-            fallback: "正在启动 %@…",
-            profile.title
-        )))
+        perform(
+            actionName: .configuredCLI,
+            startingTitle: L10n.format(
+                "status.starting",
+                fallback: "正在启动 %@…",
+                profile.title
+            ),
+            startedTitle: L10n.format(
+                "status.started",
+                fallback: "已启动 %@",
+                profile.title
+            ),
+            emit: emit
+        ) {
+            try await self.executor.executeConfigured(
+                profile,
+                workingDirectory: directory,
+                terminalProfile: self.terminalResolver.resolvedProfile(
+                    for: terminalProfile
+                ),
+                terminalWindowBehavior: terminalWindowBehavior
+            )
+        }
+    }
+
+    private func perform(
+        actionName: LocalActionName,
+        startingTitle: String,
+        startedTitle: String,
+        emit: @escaping @MainActor (DeepLinkEvent) -> Void,
+        operation: @escaping @MainActor () async throws -> Void
+    ) {
+        emit(.status(startingTitle))
         Task {
             do {
-                try await executor.executeConfigured(
-                    profile,
-                    workingDirectory: directory,
-                    terminalProfile: terminalResolver.resolvedProfile(
-                        for: terminalProfile
-                    ),
-                    terminalWindowBehavior: terminalWindowBehavior
-                )
+                try await operation()
                 recordAction(actionName, .succeeded, nil)
-                emit(.status(L10n.format(
-                    "status.started",
-                    fallback: "已启动 %@",
-                    profile.title
-                )))
+                emit(.status(startedTitle))
             } catch {
                 recordAction(
                     actionName,

@@ -1,6 +1,8 @@
 import Foundation
 
-public struct CLIInvocation: Equatable, Sendable {
+public struct CLIInvocation: Equatable, SignedInvocation, Sendable {
+    public static let deepLinkHost = "run"
+
     public let command: CLICommand
     public let workingDirectory: URL
     public let authenticationToken: String?
@@ -15,46 +17,25 @@ public struct CLIInvocation: Equatable, Sendable {
         self.authenticationToken = authenticationToken
     }
 
-    public var deepLink: URL? {
-        deepLink(now: Date(), nonce: UUID().uuidString)
-    }
-
-    public func deepLink(now: Date, nonce: String) -> URL? {
-        guard workingDirectory.isFileURL,
-              workingDirectory.path.hasPrefix("/"),
-              authenticationToken.map(
-                  ExtensionRequestTokenStore.isValidToken
-              ) ?? true else {
-            return nil
-        }
-
-        var components = URLComponents()
-        components.scheme = AppConstants.deepLinkScheme
-        components.host = "run"
-        components.queryItems = [
+    public var deepLinkQueryItems: [URLQueryItem]? {
+        guard DeepLinkComponents.validWorkingDirectory(
+            workingDirectory
+        ) else { return nil }
+        return [
             URLQueryItem(name: "tool", value: command.rawValue),
             URLQueryItem(name: "cwd", value: workingDirectory.path)
         ]
-        return DeepLinkSignature.signedURL(
-            components: components,
-            token: authenticationToken,
-            now: now,
-            nonce: nonce
-        )
     }
 
     public init?(
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard let components = DeepLinkComponents(
+        guard let components = DeepLinkComponents.authenticated(
             deepLink: deepLink,
-            host: "run",
-            allowedNames: [
-                "tool", "cwd", "v", "ts", "nonce", "sig"
-            ]
+            host: Self.deepLinkHost,
+            semanticNames: ["tool", "cwd"]
         ),
-              DeepLinkSignature.authentication(in: deepLink) != nil,
               let tool = components.single("tool"),
               let command = CLICommand(rawValue: tool),
               let directory = components.existingAbsoluteDirectory(

@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=1.0.3 ./scripts/build-release.sh
+VERSION=1.0.4 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -90,6 +90,8 @@ VERSION=1.0.3 ./scripts/build-release.sh
   `rightclick://` 链接，确认不会执行动作或显示通知
 - 对扩展生成的 v2 请求分别篡改工具、路径、参数顺序、时间戳和签名，确认全部拒绝；
   同一 URL 连续提交两次，第二次必须因 nonce 重放被拒绝
+- 分别执行 run、run-configured、terminal、open 与 error 五类已认证深链，确认
+  v1.0.4 重构后生成 URL、动作结果、状态提示与失败通知均保持原有行为
 - 安装 v0.6.x 后升级到 v0.7.0，确认 App 自动刷新 Finder 会话；旧版 `token=` 与
   无签名 terminal/open 链接必须被拒绝，重启 Finder 后所有新动作恢复正常
 - 从 v0.9.0 升级到 v0.9.1 时保持旧 Finder 会话，确认旧扩展生成的签名被拒绝；

@@ -21,10 +21,6 @@ public enum DeepLinkSignature {
     public static let version = 2
     public static let validityWindow: TimeInterval = 30
 
-    private static let authenticationNames: Set<String> = [
-        "v", "ts", "nonce", "sig"
-    ]
-
     public static func signedURL(
         components: URLComponents,
         token: String?,
@@ -37,7 +33,8 @@ public enum DeepLinkSignature {
               let host = components.host,
               let semanticItems = components.queryItems,
               semanticItems.allSatisfy({
-                  !authenticationNames.contains($0.name) && $0.value != nil
+                  !DeepLinkComponents.authenticationNames.contains($0.name)
+                    && $0.value != nil
               }) else {
             return nil
         }
@@ -75,7 +72,7 @@ public enum DeepLinkSignature {
             return nil
         }
         let authenticationItems = queryItems.filter {
-            authenticationNames.contains($0.name)
+            DeepLinkComponents.authenticationNames.contains($0.name)
         }
         if authenticationItems.isEmpty {
             return .unsigned
@@ -129,7 +126,7 @@ public enum DeepLinkSignature {
             return false
         }
         let semanticItems = queryItems.filter {
-            !authenticationNames.contains($0.name)
+            !DeepLinkComponents.authenticationNames.contains($0.name)
         }
         let payload = payloadData(
             host: host,

@@ -7,7 +7,33 @@ struct MenuItemPayloadTests {
     /// 就会与模板槽位撞车，而那种冲突在运行时只表现为「点了执行成另一个动作」。
     @Test
     func fixedActionsStayBelowTheDynamicSectionBase() {
-        #expect(RightClickAction.allMenuActions.count < 100)
+        #expect(
+            RightClickAction.allMenuActions.count
+                < MenuTagSpace.customTemplateBase
+        )
+    }
+
+    @Test
+    func menuTagSegmentsAreDisjointAndStayInsideTheStride() {
+        let segments = MenuTagSpace.actionCodeSegments
+
+        #expect(MenuTagSpace.arePairwiseDisjoint(segments))
+        #expect(segments.allSatisfy {
+            $0.lowerBound > 0
+                && $0.upperBound <= MenuTagSpace.actionStride
+        })
+    }
+
+    @Test
+    func overlapDetectorRejectsASyntheticSlotCollision() {
+        let collisionStart = MenuTagSpace.customTemplateCodes.upperBound - 1
+        let collisionEnd = MenuTagSpace.configuredCLICodes.upperBound
+        let collision = [
+            MenuTagSpace.customTemplateCodes,
+            collisionStart..<collisionEnd
+        ]
+
+        #expect(!MenuTagSpace.arePairwiseDisjoint(collision))
     }
 
     /// `menuTag` 是已发出的跨进程契约：Finder 里可能还挂着旧版本构建的菜单项。

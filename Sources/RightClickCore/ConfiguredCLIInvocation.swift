@@ -1,7 +1,9 @@
 import Foundation
 
 /// 动态 CLI 深链只携带配置 ID 与工作目录；可执行名和参数永不进入 URL。
-public struct ConfiguredCLIInvocation: Equatable, Sendable {
+public struct ConfiguredCLIInvocation: Equatable, SignedInvocation, Sendable {
+    public static let deepLinkHost = "run-configured"
+
     public let profileID: String
     public let workingDirectory: URL
     public let authenticationToken: String?
@@ -16,45 +18,28 @@ public struct ConfiguredCLIInvocation: Equatable, Sendable {
         self.authenticationToken = authenticationToken
     }
 
-    public var deepLink: URL? {
-        deepLink(now: Date(), nonce: UUID().uuidString)
-    }
-
-    public func deepLink(now: Date, nonce: String) -> URL? {
+    public var deepLinkQueryItems: [URLQueryItem]? {
         guard CLIProfile.isValidID(profileID),
-              workingDirectory.isFileURL,
-              workingDirectory.path.hasPrefix("/"),
-              authenticationToken.map(
-                  ExtensionRequestTokenStore.isValidToken
-              ) ?? true else {
+              DeepLinkComponents.validWorkingDirectory(
+                  workingDirectory
+              ) else {
             return nil
         }
-        var components = URLComponents()
-        components.scheme = AppConstants.deepLinkScheme
-        components.host = "run-configured"
-        components.queryItems = [
+        return [
             URLQueryItem(name: "profile", value: profileID),
             URLQueryItem(name: "cwd", value: workingDirectory.path)
         ]
-        return DeepLinkSignature.signedURL(
-            components: components,
-            token: authenticationToken,
-            now: now,
-            nonce: nonce
-        )
     }
 
     public init?(
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard let components = DeepLinkComponents(
+        guard let components = DeepLinkComponents.authenticated(
             deepLink: deepLink,
-            host: "run-configured",
-            allowedNames: [
-                "profile", "cwd", "v", "ts", "nonce", "sig"
-            ]
-        ), DeepLinkSignature.authentication(in: deepLink) != nil,
+            host: Self.deepLinkHost,
+            semanticNames: ["profile", "cwd"]
+        ),
               let profileID = components.single("profile"),
               CLIProfile.isValidID(profileID),
               let directory = components.existingAbsoluteDirectory(

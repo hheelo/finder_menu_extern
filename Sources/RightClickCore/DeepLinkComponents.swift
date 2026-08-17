@@ -5,6 +5,10 @@ import Foundation
 /// 每种 invocation 只负责自己的字段语义；协议、host、凭据、fragment 和查询项
 /// 白名单在这里统一检查，避免不同动作的安全边界随复制粘贴逐渐漂移。
 struct DeepLinkComponents {
+    static let authenticationNames: Set<String> = [
+        "v", "ts", "nonce", "sig"
+    ]
+
     let queryItems: [URLQueryItem]
 
     init?(
@@ -29,6 +33,29 @@ struct DeepLinkComponents {
             return nil
         }
         self.queryItems = queryItems
+    }
+
+    static func authenticated(
+        deepLink: URL,
+        host: String,
+        semanticNames: Set<String>
+    ) -> DeepLinkComponents? {
+        guard let components = DeepLinkComponents(
+            deepLink: deepLink,
+            host: host,
+            allowedNames: semanticNames.union(authenticationNames)
+        ), DeepLinkSignature.authentication(in: deepLink) != nil else {
+            return nil
+        }
+        return components
+    }
+
+    static func validAbsoluteFileURL(_ url: URL) -> Bool {
+        url.isFileURL && url.path.hasPrefix("/")
+    }
+
+    static func validWorkingDirectory(_ directory: URL) -> Bool {
+        validAbsoluteFileURL(directory)
     }
 
     func single(_ name: String) -> String? {

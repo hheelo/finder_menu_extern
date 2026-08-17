@@ -8,7 +8,9 @@ import Foundation
 ///
 /// 与 `OpenInvocation` 分开是有意的：那个深链携带确定的 App 标识，而这里携带的
 /// 是「用户的终端」这一意图，具体是哪个 App 由宿主在收到时才解析。
-public struct TerminalInvocation: Equatable, Sendable {
+public struct TerminalInvocation: Equatable, SignedInvocation, Sendable {
+    public static let deepLinkHost = "terminal"
+
     public let workingDirectory: URL
     public let authenticationToken: String?
 
@@ -20,45 +22,24 @@ public struct TerminalInvocation: Equatable, Sendable {
         self.authenticationToken = authenticationToken
     }
 
-    public var deepLink: URL? {
-        deepLink(now: Date(), nonce: UUID().uuidString)
-    }
-
-    public func deepLink(now: Date, nonce: String) -> URL? {
-        guard workingDirectory.isFileURL,
-              workingDirectory.path.hasPrefix("/"),
-              authenticationToken.map(
-                  ExtensionRequestTokenStore.isValidToken
-              ) ?? true else {
-            return nil
-        }
-
-        var components = URLComponents()
-        components.scheme = AppConstants.deepLinkScheme
-        components.host = "terminal"
-        components.queryItems = [
+    public var deepLinkQueryItems: [URLQueryItem]? {
+        guard DeepLinkComponents.validWorkingDirectory(
+            workingDirectory
+        ) else { return nil }
+        return [
             URLQueryItem(name: "cwd", value: workingDirectory.path)
         ]
-        return DeepLinkSignature.signedURL(
-            components: components,
-            token: authenticationToken,
-            now: now,
-            nonce: nonce
-        )
     }
 
     public init?(
         deepLink: URL,
         fileManager: FileManager = .default
     ) {
-        guard let components = DeepLinkComponents(
+        guard let components = DeepLinkComponents.authenticated(
             deepLink: deepLink,
-            host: "terminal",
-            allowedNames: [
-                "cwd", "v", "ts", "nonce", "sig"
-            ]
+            host: Self.deepLinkHost,
+            semanticNames: ["cwd"]
         ),
-              DeepLinkSignature.authentication(in: deepLink) != nil,
               let directory = components.existingAbsoluteDirectory(
                   "cwd",
                   fileManager: fileManager
