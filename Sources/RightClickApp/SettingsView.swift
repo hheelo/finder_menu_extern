@@ -5,6 +5,9 @@ struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var selectedTab: SettingsTab = .menu
     @State private var confirmsFinderRestart = false
+    @FocusState private var focusedControl: SettingsFocus?
+    @ScaledMetric(relativeTo: .body) private var templateTitleWidth = 110
+    @ScaledMetric(relativeTo: .body) private var templateEncodingWidth = 150
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -56,6 +59,12 @@ struct SettingsView: View {
         .finderRestartConfirmation(isPresented: $confirmsFinderRestart) {
             model.restartFinder()
         }
+        .onAppear {
+            focusFirstControl(in: selectedTab)
+        }
+        .onChange(of: selectedTab) { _, tab in
+            focusFirstControl(in: tab)
+        }
         .onDisappear {
             model.flushPendingMenuConfiguration()
         }
@@ -106,6 +115,7 @@ struct SettingsView: View {
                 ),
                 isOn: $model.menuConfiguration.collapseIntoSubmenu
             )
+            .focused($focusedControl, equals: .collapseMenu)
             .onChange(of: model.menuConfiguration.collapseIntoSubmenu) {
                 model.persistMenuConfigurationImmediately()
             }
@@ -175,6 +185,7 @@ struct SettingsView: View {
                     HStack {
                         Image(systemName: "folder")
                             .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
                         Text(path)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -187,6 +198,10 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.borderless)
                         .help(L10n.text(
+                            "button.remove_monitored_directory",
+                            fallback: "移除监控目录"
+                        ))
+                        .accessibilityLabel(L10n.text(
                             "button.remove_monitored_directory",
                             fallback: "移除监控目录"
                         ))
@@ -246,6 +261,7 @@ struct SettingsView: View {
                     ).tag(terminal)
                 }
             }
+            .focused($focusedControl, equals: .terminalProfile)
             Picker(
                 L10n.text("settings.run_cli_behavior", fallback: "运行 AI CLI 时"),
                 selection: $model.terminalWindowBehavior
@@ -274,6 +290,7 @@ struct SettingsView: View {
                 ),
                 isOn: $model.menuBarIconEnabled
             )
+            .focused($focusedControl, equals: .menuBarIcon)
             Text(L10n.text(
                 "settings.menu_bar_icon_help",
                 fallback: "关闭主窗口后，可从菜单栏快速打开设置、复制诊断信息或重启 Finder。"
@@ -330,6 +347,14 @@ struct SettingsView: View {
                                 Image(systemName: "minus.circle")
                             }
                             .buttonStyle(.borderless)
+                            .help(L10n.text(
+                                "button.remove_argument",
+                                fallback: "移除参数"
+                            ))
+                            .accessibilityLabel(L10n.text(
+                                "button.remove_argument",
+                                fallback: "移除参数"
+                            ))
                         }
                     }
                     HStack {
@@ -384,6 +409,7 @@ struct SettingsView: View {
                 Button(L10n.text("button.open_templates", fallback: "打开模板目录")) {
                     model.openCustomTemplatesDirectory()
                 }
+                .focused($focusedControl, equals: .openTemplates)
                 Button(L10n.text("button.refresh", fallback: "刷新模板")) {
                     Task { await model.refreshCustomTemplates() }
                 }
@@ -413,33 +439,27 @@ struct SettingsView: View {
         )) {
             ForEach(FileTemplate.allCases, id: \.rawValue) { template in
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(template.title)
-                            .frame(width: 110, alignment: .leading)
-                        TextField(
-                            template.preferredFilename,
-                            text: Binding(
-                                get: { model.templateFilename(for: template) },
-                                set: {
-                                    model.setTemplateFilename($0, for: template)
-                                }
-                            )
-                        )
-                        Picker(
-                            "",
-                            selection: Binding(
-                                get: { model.templateEncoding(for: template) },
-                                set: {
-                                    model.setTemplateEncoding($0, for: template)
-                                }
-                            )
-                        ) {
-                            ForEach(TemplateEncoding.allCases, id: \.self) {
-                                Text($0.title).tag($0)
-                            }
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            Text(template.title)
+                                .frame(
+                                    minWidth: templateTitleWidth,
+                                    alignment: .leading
+                                )
+                            templateFilenameField(for: template)
+                            templateEncodingPicker(for: template)
+                                .frame(minWidth: templateEncodingWidth)
                         }
-                        .labelsHidden()
-                        .frame(width: 150)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(template.title)
+                                .fontWeight(.semibold)
+                            templateFilenameField(for: template)
+                            templateEncodingPicker(for: template)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    alignment: .leading
+                                )
+                        }
                     }
                     let filename = model.templateFilename(for: template)
                     if !filename.isEmpty,
@@ -468,12 +488,26 @@ struct SettingsView: View {
         Section(L10n.text("settings.diagnostics", fallback: "环境诊断")) {
             ForEach(model.diagnostics) { item in
                 LabeledContent {
-                    Text(item.detail)
-                        .foregroundStyle(
-                            item.passed ? Color.secondary : Color.orange
-                        )
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(item.passed
+                            ? L10n.text(
+                                "diagnostic.status_passed",
+                                fallback: "通过"
+                            )
+                            : L10n.text(
+                                "diagnostic.status_attention",
+                                fallback: "需要注意"
+                            ))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(
+                                item.passed ? Color.green : Color.orange
+                            )
+                        Text(item.detail)
+                            .foregroundStyle(
+                                item.passed ? Color.secondary : Color.orange
+                            )
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 } label: {
                     Label(
                         item.title,
@@ -485,6 +519,7 @@ struct SettingsView: View {
                         item.passed ? Color.green : Color.orange
                     )
                 }
+                .accessibilityElement(children: .combine)
             }
 
             HStack {
@@ -563,6 +598,52 @@ struct SettingsView: View {
         }
     }
 
+    private func templateFilenameField(
+        for template: FileTemplate
+    ) -> some View {
+        TextField(
+            template.preferredFilename,
+            text: Binding(
+                get: { model.templateFilename(for: template) },
+                set: { model.setTemplateFilename($0, for: template) }
+            )
+        )
+    }
+
+    private func templateEncodingPicker(
+        for template: FileTemplate
+    ) -> some View {
+        let label = L10n.format(
+            "settings.template_encoding",
+            fallback: "%@ 编码",
+            template.title
+        )
+        return Picker(
+            label,
+            selection: Binding(
+                get: { model.templateEncoding(for: template) },
+                set: { model.setTemplateEncoding($0, for: template) }
+            )
+        ) {
+            ForEach(TemplateEncoding.allCases, id: \.self) {
+                Text($0.title).tag($0)
+            }
+        }
+        .labelsHidden()
+        .accessibilityLabel(label)
+    }
+
+    private func focusFirstControl(in tab: SettingsTab) {
+        DispatchQueue.main.async {
+            switch tab {
+            case .menu: focusedControl = .collapseMenu
+            case .terminal: focusedControl = .terminalProfile
+            case .templates: focusedControl = .openTemplates
+            case .diagnostics: focusedControl = .menuBarIcon
+            }
+        }
+    }
+
 }
 
 private enum SettingsTab: Hashable {
@@ -570,4 +651,11 @@ private enum SettingsTab: Hashable {
     case terminal
     case templates
     case diagnostics
+}
+
+private enum SettingsFocus: Hashable {
+    case collapseMenu
+    case terminalProfile
+    case openTemplates
+    case menuBarIcon
 }

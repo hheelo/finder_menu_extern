@@ -128,31 +128,19 @@ public extension RightClickAction {
     /// 所有可出现在菜单里的动作，顺序即 `menuTag` 的编码顺序。
     ///
     /// 新增动作请追加到末尾，不要插入中间：已发出的菜单项可能仍带着旧 tag。
-    /// 分段追加而不是写成一串 `+`：拼到这个长度后 Swift 6 的类型检查器会超时
-    /// （Xcode 16.4 实测报 "unable to type-check this expression in reasonable
-    /// time"）。拆开只是为了让编译器过得去，顺序与结果完全不变。
-    static let allMenuActions: [RightClickAction] = {
-        var actions: [RightClickAction] = [
-            .copyPath, .copyFilename, .openInVSCode, .openInCodex,
-            .openInTerminal, .runCodexCLI, .runClaudeCode
-        ]
-        actions.append(
-            contentsOf: FileTemplate.allCases.map {
-                RightClickAction.createFile($0)
-            }
-        )
-        // 以下每一段都必须追加，不能插入前面：已发出的菜单 tag 是跨进程契约。
-        actions.append(
-            contentsOf: [.copyFileURL, .copyShellPath, .copyParentPath]
-        )
-        actions.append(contentsOf: [
-            .openInCursor, .openInZed, .openInSublimeText, .openInXcode,
-            .openInJetBrains, .openInDefaultApplication
-        ])
-        actions.append(contentsOf: [.createFolder, .createFileFromClipboard])
-        actions.append(.copyRelativePath)
-        return actions
-    }()
+    /// Xcode 16.4 曾无法在合理时间内检查这条表达式，因此旧实现分段 append；
+    /// 当前工具链已可直接处理。黄金 tag 测试继续保护这里的发布顺序。
+    static let allMenuActions: [RightClickAction] = [
+        .copyPath, .copyFilename, .openInVSCode, .openInCodex,
+        .openInTerminal, .runCodexCLI, .runClaudeCode
+    ] + FileTemplate.allCases.map {
+        RightClickAction.createFile($0)
+    } + [
+        .copyFileURL, .copyShellPath, .copyParentPath,
+        .openInCursor, .openInZed, .openInSublimeText, .openInXcode,
+        .openInJetBrains, .openInDefaultApplication,
+        .createFolder, .createFileFromClipboard, .copyRelativePath
+    ]
 
     private static let menuTagByAction = Dictionary(
         uniqueKeysWithValues: allMenuActions.enumerated().map {

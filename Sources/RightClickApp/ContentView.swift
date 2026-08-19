@@ -6,13 +6,15 @@ struct ContentView: View {
     @EnvironmentObject private var model: AppModel
     @State private var errorsExpanded = false
     @State private var confirmsFinderRestart = false
+    @ScaledMetric(relativeTo: .largeTitle) private var appIconSize = 38
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(spacing: 14) {
                 Image(systemName: "cursorarrow.click.2")
-                    .font(.system(size: 38))
+                    .font(.system(size: appIconSize))
                     .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("RightClick")
                         .font(.largeTitle.bold())
@@ -129,12 +131,15 @@ struct ContentView: View {
                 SettingsLink {
                     Text(L10n.text("button.settings", fallback: "设置…"))
                 }
+                .keyboardShortcut(",", modifiers: .command)
                 Button(L10n.text("button.check_updates", fallback: "检查更新")) {
                     updater.checkForUpdates()
                 }
+                .keyboardShortcut("u", modifiers: .command)
                 Button(L10n.text("button.copy_diagnostics", fallback: "复制诊断信息")) {
                     model.copyDiagnostics()
                 }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
                 // 附属应用没有 Dock 图标也没有菜单栏，必须给一个显式的退出入口，
                 // 否则用户只能去活动监视器里结束进程。
                 Button(L10n.text("button.quit", fallback: "退出 RightClick")) {
@@ -219,15 +224,18 @@ private struct FeatureRow: View {
     let icon: String
     let title: String
     let detail: String
+    @ScaledMetric(relativeTo: .body) private var iconWidth = 24
+    @ScaledMetric(relativeTo: .body) private var titleWidth = 64
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .frame(width: 24)
+                .frame(minWidth: iconWidth)
                 .foregroundStyle(.tint)
+                .accessibilityHidden(true)
             Text(title)
                 .fontWeight(.semibold)
-                .frame(width: 64, alignment: .leading)
+                .frame(minWidth: titleWidth, alignment: .leading)
             Text(detail)
                 .foregroundStyle(.secondary)
         }

@@ -60,12 +60,14 @@ final class MenuBarController: NSObject {
                 "menu.show_rightclick",
                 fallback: "显示 RightClick"
             ),
-            action: #selector(showRightClick)
+            action: #selector(showRightClick),
+            keyEquivalent: "r"
         )
         addItem(
             to: menu,
             title: L10n.text("button.settings", fallback: "设置…"),
-            action: #selector(showSettings)
+            action: #selector(showSettings),
+            keyEquivalent: ","
         )
         menu.addItem(.separator())
         addItem(
@@ -74,7 +76,9 @@ final class MenuBarController: NSObject {
                 "button.copy_diagnostics",
                 fallback: "复制诊断信息"
             ),
-            action: #selector(copyDiagnostics)
+            action: #selector(copyDiagnostics),
+            keyEquivalent: "c",
+            modifierMask: [.command, .shift]
         )
         addItem(
             to: menu,
@@ -82,7 +86,9 @@ final class MenuBarController: NSObject {
                 "button.restart_finder",
                 fallback: "重启 Finder"
             ),
-            action: #selector(restartFinder)
+            action: #selector(restartFinder),
+            keyEquivalent: "r",
+            modifierMask: [.command, .shift]
         )
         menu.addItem(.separator())
         addItem(
@@ -91,7 +97,8 @@ final class MenuBarController: NSObject {
                 "button.quit",
                 fallback: "退出 RightClick"
             ),
-            action: #selector(quit)
+            action: #selector(quit),
+            keyEquivalent: "q"
         )
         return menu
     }
@@ -99,14 +106,17 @@ final class MenuBarController: NSObject {
     private func addItem(
         to menu: NSMenu,
         title: String,
-        action: Selector
+        action: Selector,
+        keyEquivalent: String,
+        modifierMask: NSEvent.ModifierFlags = .command
     ) {
         let item = NSMenuItem(
             title: title,
             action: action,
-            keyEquivalent: ""
+            keyEquivalent: keyEquivalent
         )
         item.target = self
+        item.keyEquivalentModifierMask = modifierMask
         menu.addItem(item)
     }
 

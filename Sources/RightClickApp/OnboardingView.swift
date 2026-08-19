@@ -5,14 +5,17 @@ struct OnboardingView: View {
     @EnvironmentObject private var model: AppModel
     @State private var step = 0
     @State private var pollingStopped = false
+    @ScaledMetric(relativeTo: .title) private var appIconSize = 30
+    @ScaledMetric(relativeTo: .body) private var stepContentMinHeight = 235
     let openSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack {
                 Image(systemName: "cursorarrow.click.2")
-                    .font(.system(size: 30))
+                    .font(.system(size: appIconSize))
                     .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.text(
                         "onboarding.title",
@@ -35,7 +38,7 @@ struct OnboardingView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(12)
             }
-            .frame(minHeight: 235)
+            .frame(minHeight: stepContentMinHeight)
 
             HStack {
                 Button(L10n.text(
@@ -81,7 +84,12 @@ struct OnboardingView: View {
             }
         }
         .padding(28)
-        .frame(width: 540, height: 430)
+        .frame(
+            minWidth: 480,
+            idealWidth: 540,
+            minHeight: 380,
+            idealHeight: 430
+        )
         .interactiveDismissDisabled()
         .task {
             // 系统设置在另一个进程中修改扩展开关。旧系统每次检测都要启动

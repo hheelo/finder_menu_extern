@@ -13,7 +13,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=1.0.6 ./scripts/build-release.sh
+VERSION=1.0.7 ./scripts/build-release.sh
 ```
 
 第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
@@ -99,6 +99,14 @@ VERSION=1.0.6 ./scripts/build-release.sh
 - 在设置里禁用、排序菜单项并切换 RightClick 子菜单，确认下一次右键立即生效
 - 打开设置，确认菜单、终端、模板、诊断四栏内容完整；缩放到最小尺寸时每栏仍可
   滚动且控件不裁切。确认设置窗口不再显示非标准的“返回主窗口”按钮
+- 使用 VoiceOver 遍历四个设置栏，确认移除目录、移除参数和删除 CLI 都读出操作
+  名称而不是 SF Symbol；七个模板编码 Picker 均读出模板名与“编码”，诊断逐项读出
+  “通过”或“需要注意”及完整详情，不能只依赖颜色
+- 仅用键盘操作主窗口与设置：验证 ⌘, 打开设置、⌘U 检查更新、⇧⌘C 复制诊断，
+  切换设置栏后焦点落在首个控件，Tab 顺序与视觉顺序一致。打开菜单栏菜单并验证
+  每一项显示且响应其快捷键
+- 将系统字号调到最大，确认主窗口功能摘要、四个设置栏的内置模板编辑器和首次向导
+  自动扩展或换行，文字不截断、按钮不重叠，窗口仍可缩放
 - 在菜单栏拖动多个动作跨越较远位置，确认 `menu.json` 与下一次 Finder 右键顺序
   一致；点击“恢复默认排序”后回到出厂顺序
 - 把 Finder 监控目录限制为 `~/Projects`，重启 Finder 后确认该目录及其子目录有
