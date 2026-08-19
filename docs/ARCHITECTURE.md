@@ -218,8 +218,9 @@
   路径从源头不进入 `WindowGroup`；窗口场景也用空的 `handlesExternalEvents`
   集合明确拒绝所有外部事件
 - `applicationShouldHandleReopen` 在有窗口时自行恢复并返回 false；最后一个窗口
-  已关闭时返回 true，让 AppKit/SwiftUI 新建窗口。不能因「本进程是无声启动」
-  就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App。首次启动、窗口恢复、
+  已关闭时通过已注册的 `openWindow` 动作显式新建主窗口。设置/诊断窗口不能充当
+  主窗口；即使它仍可见，双击 App 也必须恢复“检查更新”等主界面入口。不能因
+  「本进程是无声启动」就拒绝 reopen，用户可能在宿主被深链唤起后才去双击 App。首次启动、窗口恢复、
   菜单栏入口统一调用 `AppModel.refreshForUserPresentation()`；onboarding、模板同步
   和诊断刷新不能绕开这条用户可见通道，后台更新检查沿用同一个呈现判定
 - Terminal / iTerm2 自动化首次使用会触发 macOS 权限提示。iTerm2 原生支持创建

@@ -19,18 +19,6 @@ enum WindowPresenter {
         mainWindow = window
     }
 
-    static var hasPresentableWindow: Bool {
-        presentableWindow != nil
-    }
-
-    static func bringToFront() {
-        guard let window = mainWindow ?? presentableWindow else {
-            appLogger.error("无法请出窗口：没有可恢复窗口")
-            return
-        }
-        present(window)
-    }
-
     static func bringMainWindowToFront() {
         guard let mainWindow else {
             appLogger.error("无法返回主窗口：主窗口已不存在")
@@ -39,17 +27,21 @@ enum WindowPresenter {
         present(mainWindow)
     }
 
-    static func showOrCreateMainWindow() {
+    @discardableResult
+    static func showOrCreateMainWindow() -> Bool {
         if let mainWindow {
             present(mainWindow)
-            return
+            return true
         }
         guard let openMainWindowAction else {
             appLogger.error("无法新建主窗口：窗口动作尚未注册")
-            return
+            return false
         }
         notePresentationRequested()
+        NSApp.unhide(nil)
+        NSApp.activate(ignoringOtherApps: true)
         openMainWindowAction()
+        return true
     }
 
     static func showSettings() {
@@ -86,8 +78,10 @@ enum WindowPresenter {
         isPresentationRequested = true
     }
 
-    private static var presentableWindow: NSWindow? {
-        NSApp.windows.first { $0.contentViewController != nil }
+    /// UI 回归测试用：让设置窗口成为唯一剩余窗口，复现用户报告的 reopen 状态。
+    static func closeMainWindowForUITesting() {
+        guard AppEnvironment.isRunningUITests else { return }
+        mainWindow?.close()
     }
 }
 

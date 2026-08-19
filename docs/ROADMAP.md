@@ -88,3 +88,5 @@
   焦点顺序，以 ScaledMetric/自适应布局完成 Dynamic Type，并清理 Swift 6 变通
 - [x] v1.0.8：新增独立 Bundle ID 的 macOS UI smoke，覆盖主窗口与设置窗口呈现；
   DMG 验证会真实启动其中的签名 App 并等待 SwiftUI 首屏就绪
+- [x] v1.0.9：修复仅剩设置/诊断窗口时双击 App 无法重建主窗口的问题，并以
+  LaunchServices reopen UI 回归锁定该窗口生命周期

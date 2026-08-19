@@ -25,7 +25,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   test
 
-VERSION=1.0.8 ./scripts/build-release.sh
+VERSION=1.0.9 ./scripts/build-release.sh
 ```
 
 第二条命令使用独立 Bundle ID 的测试宿主启动 macOS UI 自动化，验证主窗口首屏和
@@ -94,6 +94,8 @@ VERSION=1.0.8 ./scripts/build-release.sh
   主窗口都不会因深链冷启动而闪现；随后双击 App，向导才应正常出现
 - 快速触发两个 CLI 动作，确认两个终端请求都执行且始终没有 RightClick 窗口
 - 关闭 RightClick 的最后一个窗口但不退出进程，再双击 App，确认会新建并显示窗口
+- 打开设置后关闭主窗口、保留设置窗口，再双击 App，确认会新建主窗口而不是只把
+  设置窗口请到前台；主窗口中的“检查更新”入口必须重新可达
 - 将 RightClick 窗口最小化或隐藏后再双击 App，确认只恢复原窗口而不重复创建
 - 先用 Finder 右键动作无声唤起宿主，再双击 App，确认日志出现
   「后台检查更新」；单纯右键唤起时不应有 Sparkle 初始化日志

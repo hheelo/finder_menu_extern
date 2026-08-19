@@ -100,28 +100,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        let hasPresentableWindow = WindowPresenter.hasPresentableWindow
+        let hasMainWindow = WindowPresenter.hasMainWindow
         appLogger.notice(
-            "收到 reopen 有可见窗口=\(flag, privacy: .public) 有可恢复窗口=\(hasPresentableWindow, privacy: .public) 用户启动=\(self.isUserLaunch, privacy: .public)"
+            "收到 reopen 有可见窗口=\(flag, privacy: .public) 有主窗口=\(hasMainWindow, privacy: .public) 用户启动=\(self.isUserLaunch, privacy: .public)"
         )
         switch ReopenPolicy.action(
-            hasVisibleWindows: flag,
-            hasPresentableWindow: hasPresentableWindow
+            hasMainWindow: hasMainWindow,
+            hasVisibleWindows: flag
         ) {
-        case .keepVisible:
-            // 已有可见窗口时什么都不做：激活由系统负责。
-            return false
-        case .restoreExisting:
+        case .restoreMainWindow:
             refreshForUserPresentation()
-            WindowPresenter.bringToFront()
+            WindowPresenter.bringMainWindowToFront()
             return false
-        case .createWindow:
-            // 红色关闭按钮会把最后一个 SwiftUI 窗口销毁，但 LSUIElement 宿主
-            // 仍在后台运行。此时交回 AppKit/SwiftUI 的默认 reopen 行为新建窗口。
-            appLogger.notice("没有可恢复窗口，交给系统新建窗口")
-            WindowPresenter.notePresentationRequested()
+        case .createMainWindow:
+            // 设置窗口不等于主窗口。若主窗口已关闭，必须显式走 openWindow；
+            // 只返回 true 会让 AppKit 因仍有设置窗口而跳过主窗口创建。
+            appLogger.notice("没有主窗口，显式新建主窗口")
             refreshForUserPresentation()
-            return true
+            return !WindowPresenter.showOrCreateMainWindow()
         }
     }
 

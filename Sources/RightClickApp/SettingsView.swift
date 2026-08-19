@@ -61,6 +61,11 @@ struct SettingsView: View {
         }
         .onAppear {
             focusFirstControl(in: selectedTab)
+            if AppEnvironment.shouldCloseMainWindowOnSettingsForUITesting {
+                DispatchQueue.main.async {
+                    WindowPresenter.closeMainWindowForUITesting()
+                }
+            }
         }
         .onChange(of: selectedTab) { _, tab in
             focusFirstControl(in: tab)

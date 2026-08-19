@@ -60,22 +60,17 @@ struct AppPresentationTests {
     }
 
     @Test(arguments: [true, false], [true, false])
-    func reopenChoosesTheExpectedWindowAction(
-        hasVisibleWindows: Bool,
-        hasPresentableWindow: Bool
+    func reopenOnlyTreatsTheMainWindowAsRestorable(
+        hasMainWindow: Bool,
+        hasVisibleWindows: Bool
     ) {
-        let expected: ReopenAction
-        if hasPresentableWindow {
-            expected = .restoreExisting
-        } else if hasVisibleWindows {
-            expected = .keepVisible
-        } else {
-            expected = .createWindow
-        }
+        let expected: ReopenAction = hasMainWindow
+            ? .restoreMainWindow
+            : .createMainWindow
 
         #expect(ReopenPolicy.action(
-            hasVisibleWindows: hasVisibleWindows,
-            hasPresentableWindow: hasPresentableWindow
+            hasMainWindow: hasMainWindow,
+            hasVisibleWindows: hasVisibleWindows
         ) == expected)
     }
 }

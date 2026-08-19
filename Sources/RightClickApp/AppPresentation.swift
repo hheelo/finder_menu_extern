@@ -2,6 +2,8 @@ import Foundation
 
 enum AppEnvironment {
     static let uiTestingEnvironmentKey = "RIGHTCLICK_UI_TESTING"
+    static let closeMainWindowOnSettingsEnvironmentKey =
+        "RIGHTCLICK_UI_TEST_CLOSE_MAIN_ON_SETTINGS"
 
     static var isRunningUITests: Bool {
         isRunningUITests(in: ProcessInfo.processInfo.environment)
@@ -9,6 +11,12 @@ enum AppEnvironment {
 
     static var isRunningTests: Bool {
         isRunningTests(in: ProcessInfo.processInfo.environment)
+    }
+
+    static var shouldCloseMainWindowOnSettingsForUITesting: Bool {
+        isRunningUITests && ProcessInfo.processInfo.environment[
+            closeMainWindowOnSettingsEnvironmentKey
+        ] == "1"
     }
 
     static func isRunningUITests(in environment: [String: String]) -> Bool {
@@ -57,18 +65,15 @@ struct AppLaunchState {
 }
 
 enum ReopenAction: Equatable {
-    case keepVisible
-    case restoreExisting
-    case createWindow
+    case restoreMainWindow
+    case createMainWindow
 }
 
 enum ReopenPolicy {
     static func action(
-        hasVisibleWindows: Bool,
-        hasPresentableWindow: Bool
+        hasMainWindow: Bool,
+        hasVisibleWindows _: Bool
     ) -> ReopenAction {
-        if hasPresentableWindow { return .restoreExisting }
-        if hasVisibleWindows { return .keepVisible }
-        return .createWindow
+        hasMainWindow ? .restoreMainWindow : .createMainWindow
     }
 }
