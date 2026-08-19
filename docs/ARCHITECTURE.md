@@ -106,6 +106,15 @@
 - `Localizable.xcstrings` 跟随 Core framework 打包，宿主与 Finder 扩展统一
   通过 `L10n` 从 framework bundle 取简体中文 / 英文文案
 
+## 自动验证边界
+
+- 逻辑单元测试继续以无宿主 bundle 运行，不启动 `LSUIElement` App，也不依赖
+  Sparkle 或开发机上已安装的正式副本
+- UI 自动化使用不嵌入 Finder 扩展的 `RightClickUITestHost`，其 Bundle ID 与正式
+  App 隔离；显式测试环境只关闭 onboarding、诊断刷新和更新检查，不改变正式启动路径
+- 发布脚本从只读 DMG 直接启动已完成 Ad-hoc 签名的正式 App。主视图 `onAppear`
+  只在脚本提供的系统临时子目录内写入 ready 标记，验证完成后终止进程并清理标记
+
 ## 安全边界
 
 - 不把完整 shell 命令塞进 URL；可配置 CLI 的 URL 只携带配置 ID 与工作目录。

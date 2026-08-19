@@ -13,10 +13,25 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGNING_ALLOWED=NO \
   test
 
-VERSION=1.0.7 ./scripts/build-release.sh
+xcodebuild -project RightClick.xcodeproj \
+  -scheme RightClickUI \
+  -configuration Debug \
+  -destination 'platform=macOS' \
+  -derivedDataPath .build/UIDerivedData \
+  CODE_SIGN_STYLE=Manual \
+  CODE_SIGN_IDENTITY=- \
+  CODE_SIGNING_ALLOWED=YES \
+  CODE_SIGNING_REQUIRED=YES \
+  CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+  test
+
+VERSION=1.0.8 ./scripts/build-release.sh
 ```
 
-第二条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容。
+第二条命令使用独立 Bundle ID 的测试宿主启动 macOS UI 自动化，验证主窗口首屏和
+设置窗口可以呈现；即使 `/Applications/RightClick.app` 已安装或正在运行也不会冲突。
+第三条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容，
+并从只读挂载的 DMG 启动签名 App，等待 SwiftUI 首屏就绪标记后才算通过。
 
 `RightClickAppTests` 是无宿主逻辑测试：被测文件直接编入测试包，不启动
 `LSUIElement` App，也不依赖已安装的同 Bundle ID 副本或 Sparkle。装有

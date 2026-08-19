@@ -57,9 +57,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         menuBarController.setEnabled(sharedAppModel.menuBarIconEnabled)
 
-        let isDefaultLaunch = notification.userInfo?[
-            NSApplication.launchIsDefaultUserInfoKey
-        ] as? Bool ?? true
+        // XCTest 通过测试运行器启动 LSUIElement App 时会把这次启动标为非默认。
+        // 显式 UI 测试模式需要可见主窗口；真实深链启动仍完全依赖系统分类。
+        let isDefaultLaunch = AppEnvironment.isRunningUITests ||
+            (notification.userInfo?[
+                NSApplication.launchIsDefaultUserInfoKey
+            ] as? Bool ?? true)
         launchState.finish(isDefaultLaunch: isDefaultLaunch)
         appLogger.notice(
             "启动完成 用户主动启动=\(self.isUserLaunch, privacy: .public)"
@@ -162,7 +165,9 @@ struct RightClickApp: App {
                         isPresentationRequested:
                             WindowPresenter.isPresentationRequested
                     )
-                    if newPhase == .active, isUserVisible {
+                    if newPhase == .active,
+                       isUserVisible,
+                       !AppEnvironment.isRunningTests {
                         Task { await model.refreshForUserPresentation() }
                         updater.checkInBackground()
                     }

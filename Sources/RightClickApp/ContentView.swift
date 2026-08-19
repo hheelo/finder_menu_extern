@@ -75,6 +75,7 @@ struct ContentView: View {
                     model.openExtensionSettings()
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("rightclick.main.extension-settings")
 
                 Button(L10n.text("button.restart_finder", fallback: "重启 Finder")) {
                     confirmsFinderRestart = true
@@ -132,19 +133,23 @@ struct ContentView: View {
                     Text(L10n.text("button.settings", fallback: "设置…"))
                 }
                 .keyboardShortcut(",", modifiers: .command)
+                .accessibilityIdentifier("rightclick.main.settings")
                 Button(L10n.text("button.check_updates", fallback: "检查更新")) {
                     updater.checkForUpdates()
                 }
                 .keyboardShortcut("u", modifiers: .command)
+                .accessibilityIdentifier("rightclick.main.check-updates")
                 Button(L10n.text("button.copy_diagnostics", fallback: "复制诊断信息")) {
                     model.copyDiagnostics()
                 }
                 .keyboardShortcut("c", modifiers: [.command, .shift])
+                .accessibilityIdentifier("rightclick.main.copy-diagnostics")
                 // 附属应用没有 Dock 图标也没有菜单栏，必须给一个显式的退出入口，
                 // 否则用户只能去活动监视器里结束进程。
                 Button(L10n.text("button.quit", fallback: "退出 RightClick")) {
                     NSApp.terminate(nil)
                 }
+                .accessibilityIdentifier("rightclick.main.quit")
             }
 
             if !model.errorHistory.isEmpty {
@@ -190,6 +195,9 @@ struct ContentView: View {
             }
         }
         .padding(28)
+        .onAppear {
+            AppSmokeTest.markReady()
+        }
         .finderRestartConfirmation(isPresented: $confirmsFinderRestart) {
             model.restartFinder()
         }

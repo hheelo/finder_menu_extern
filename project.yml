@@ -11,9 +11,9 @@ settings:
     SWIFT_VERSION: "6.0"
     # 仅供 Xcode 内直接构建。install.sh、build-release.sh 和 Release CI 都调用
     # derive-build-number.sh 从 MARKETING_VERSION 推导并覆盖该值。
-    CURRENT_PROJECT_VERSION: 10007
+    CURRENT_PROJECT_VERSION: 10008
     # scripts/read-marketing-version.sh 读取这一项，并兼容有/无引号的标量。
-    MARKETING_VERSION: 1.0.7
+    MARKETING_VERSION: 1.0.8
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true
@@ -138,6 +138,7 @@ targets:
       - Sources/RightClickApp/AppLogger.swift
       - Sources/RightClickApp/AppModel.swift
       - Sources/RightClickApp/AppPresentation.swift
+      - Sources/RightClickApp/AppSmokeTest.swift
       - Sources/RightClickApp/AppVersion.swift
       - Sources/RightClickApp/DeepLinkCoordinator.swift
       - Sources/RightClickApp/DeepLinkRequest.swift
@@ -156,6 +157,41 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.AppTests
         GENERATE_INFOPLIST_FILE: true
 
+  # UI 自动化使用独立 Bundle ID，避免开发机上已安装或正在运行的正式 App
+  # 被 LaunchServices 误认为测试宿主。该 target 不嵌入 Finder 扩展，也不发布。
+  RightClickUITestHost:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/RightClickApp
+      - Resources/Assets.xcassets
+      - Resources/RightClickApp
+    dependencies:
+      - target: RightClickCore
+        embed: true
+      - package: Sparkle
+        product: Sparkle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.UITestHost
+        PRODUCT_NAME: RightClickUITestHost
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: RightClick UI Test Host
+        INFOPLIST_KEY_LSUIElement: true
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+
+  RightClickUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - Tests/RightClickUITests
+    dependencies:
+      - target: RightClickUITestHost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.UITests
+        GENERATE_INFOPLIST_FILE: true
+
 schemes:
   RightClick:
     build:
@@ -169,3 +205,12 @@ schemes:
       targets:
         - RightClickCoreTests
         - RightClickAppTests
+
+  RightClickUI:
+    build:
+      targets:
+        RightClickUITestHost: all
+        RightClickUITests: [test]
+    test:
+      targets:
+        - RightClickUITests

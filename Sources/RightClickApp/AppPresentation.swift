@@ -1,8 +1,23 @@
 import Foundation
 
 enum AppEnvironment {
+    static let uiTestingEnvironmentKey = "RIGHTCLICK_UI_TESTING"
+
+    static var isRunningUITests: Bool {
+        isRunningUITests(in: ProcessInfo.processInfo.environment)
+    }
+
     static var isRunningTests: Bool {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        isRunningTests(in: ProcessInfo.processInfo.environment)
+    }
+
+    static func isRunningUITests(in environment: [String: String]) -> Bool {
+        environment[uiTestingEnvironmentKey] == "1"
+    }
+
+    static func isRunningTests(in environment: [String: String]) -> Bool {
+        environment["XCTestConfigurationFilePath"] != nil ||
+            isRunningUITests(in: environment)
     }
 }
 

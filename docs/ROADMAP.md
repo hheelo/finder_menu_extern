@@ -70,7 +70,7 @@
 - [ ] Developer ID 签名与公证
 - [x] 完整的分步首次启动向导
 - [x] 崩溃与请求日志（默认本地；有界动作日志、异常终止标记与隐私安全导出）
-- [ ] UI 自动化和签名后 smoke test
+- [x] UI 自动化和签名后 smoke test
 
 ## M5：1.0.x 优化线
 
@@ -86,3 +86,5 @@
   主窗口诊断摘要/加载态，以及三个 Finder 重启入口确认
 - [x] v1.0.7：补齐 VoiceOver 标签与诊断状态文字，加入主窗口/菜单栏快捷键和设置
   焦点顺序，以 ScaledMetric/自适应布局完成 Dynamic Type，并清理 Swift 6 变通
+- [x] v1.0.8：新增独立 Bundle ID 的 macOS UI smoke，覆盖主窗口与设置窗口呈现；
+  DMG 验证会真实启动其中的签名 App 并等待 SwiftUI 首屏就绪

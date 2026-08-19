@@ -38,4 +38,6 @@ if [[ ! -L "${mount_point}/Applications" ]]; then
     exit 1
 fi
 
-echo "✓ DMG 挂载与内容验证通过"
+"${0:A:h}/smoke-test-app.sh" "${mount_point}/RightClick.app"
+
+echo "✓ DMG 挂载、内容与启动验证通过"

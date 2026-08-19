@@ -116,6 +116,7 @@ struct SettingsView: View {
                 isOn: $model.menuConfiguration.collapseIntoSubmenu
             )
             .focused($focusedControl, equals: .collapseMenu)
+            .accessibilityIdentifier("rightclick.settings.menu.collapse")
             .onChange(of: model.menuConfiguration.collapseIntoSubmenu) {
                 model.persistMenuConfigurationImmediately()
             }

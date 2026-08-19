@@ -1,6 +1,15 @@
 import Testing
 
 struct AppPresentationTests {
+    @Test
+    func explicitUITestEnvironmentIsClassifiedAsATestRun() {
+        let environment = [AppEnvironment.uiTestingEnvironmentKey: "1"]
+
+        #expect(AppEnvironment.isRunningUITests(in: environment))
+        #expect(AppEnvironment.isRunningTests(in: environment))
+        #expect(!AppEnvironment.isRunningTests(in: [:]))
+    }
+
     @Test(arguments: [true, false], [true, false])
     func visibilityIncludesUserLaunchAndExplicitPresentation(
         isUserLaunch: Bool,

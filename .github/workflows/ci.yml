@@ -38,6 +38,21 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             test
 
+      - name: UI smoke test
+        run: |
+          xcodebuild -quiet \
+            -project RightClick.xcodeproj \
+            -scheme RightClickUI \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath .build/CIUIDerivedData \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+            test
+
       - name: Build Universal Release
         run: |
           xcodebuild \

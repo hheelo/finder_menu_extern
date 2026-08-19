@@ -476,7 +476,7 @@ final class AppModel: ObservableObject {
     /// 界面。所有用户呈现入口先由 `AppPresentation` 判定，再调用本方法，避免新增
     /// 一项刷新职责时再次漏掉某个窗口恢复分支。
     func refreshForUserPresentation() async {
-        if !hasCompletedOnboarding {
+        if !hasCompletedOnboarding && !AppEnvironment.isRunningUITests {
             shouldPresentOnboarding = true
         }
         guard !AppEnvironment.isRunningTests else { return }
