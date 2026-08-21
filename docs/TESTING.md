@@ -25,7 +25,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   test
 
-VERSION=1.0.9 ./scripts/build-release.sh
+VERSION=1.0.10 ./scripts/build-release.sh
 ```
 
 第二条命令使用独立 Bundle ID 的测试宿主启动 macOS UI 自动化，验证主窗口首屏和
@@ -142,6 +142,8 @@ VERSION=1.0.9 ./scripts/build-release.sh
   后用同样方式确认菜单项与扩展容器镜像都消失，创建结果仍保留内容且不覆盖同名文件
 - 保持 Finder 右键菜单打开，在设置里删除对应的自定义 CLI；对模板则先删除源文件
   并重新呈现宿主完成同步。回到旧菜单点击，确认收到“配置已被修改”通知而非无反应
+- 同时放入合法模板和超过 10 MB 的模板，并删除一个旧模板；刷新后确认合法模板正常
+  更新、超大模板显示警告且不进菜单、已删除模板及其扩展容器镜像仍被清理
 - 主窗口版本号应可选中复制，并与“复制诊断信息”首行及 Finder“显示简介”一致；
   VoiceOver 应读出版本号和构建号，而不是逐字念数字
 - 菜单栏图标默认不出现；在设置中启用后确认可显示主窗口、打开设置、复制诊断、
@@ -157,6 +159,8 @@ VERSION=1.0.9 ./scripts/build-release.sh
   2 秒、再到 5 秒，五分钟后停止自动检测并显示“刷新扩展状态”按钮
 - 在 macOS 14.0–14.3 让 `pluginkit` 无法启动，确认诊断显示“无法检测”而不是
   “未启用”，且统一日志中记录检测失败
+- 在 macOS 14.0–14.3 模拟 `pluginkit` 长时间不退出，确认检测在 5 秒内结束、
+  诊断显示“无法检测”，首次向导仍可继续操作
 - 在 macOS 15/26 把 50 MB 文本放入剪贴板后反复打开 Finder 右键菜单，确认无
   隐私提示、无可感知延迟，并用 pasteboard 子系统日志复核；只有真正点击创建时
   才读取内容

@@ -21,6 +21,21 @@ public enum TemplateMirrorError: LocalizedError {
     }
 }
 
+/// 一次模板镜像的可提交结果。单个超大文件是局部输入错误，不应阻断其他模板
+/// 更新或过期镜像清理；调用方仍可用文件名向用户呈现警告。
+public struct TemplateMirrorResult: Equatable, Sendable {
+    public let templates: [CustomFileTemplate]
+    public let skippedOversizedFilenames: [String]
+
+    public init(
+        templates: [CustomFileTemplate],
+        skippedOversizedFilenames: [String] = []
+    ) {
+        self.templates = templates
+        self.skippedOversizedFilenames = skippedOversizedFilenames
+    }
+}
+
 /// 把用户可编辑的模板目录镜像到 Finder 扩展自己的容器。
 /// 扩展只读取镜像；不跟随符号链接，也不接受子目录或超大文件。
 public struct TemplateMirror {
@@ -42,7 +57,7 @@ public struct TemplateMirror {
         existing: [CustomFileTemplate],
         sourceDirectory: URL,
         mirrorDirectory: URL
-    ) throws -> [CustomFileTemplate] {
+    ) throws -> TemplateMirrorResult {
         try createPrivateDirectory(sourceDirectory)
         try createPrivateDirectory(mirrorDirectory)
 
@@ -72,7 +87,15 @@ public struct TemplateMirror {
             $1.url.lastPathComponent
         ) == .orderedAscending }
 
-        guard sources.count <= CustomFileTemplate.validMenuSlots.count else {
+        let oversizedSources = sources.filter {
+            $0.fileSize > Self.maximumFileSize
+        }
+        let eligibleSources = sources.filter {
+            $0.fileSize <= Self.maximumFileSize
+        }
+
+        let maximumTemplateCount = CustomFileTemplate.validMenuSlots.count
+        guard eligibleSources.count <= maximumTemplateCount else {
             throw TemplateMirrorError.tooManyTemplates
         }
 
@@ -80,19 +103,14 @@ public struct TemplateMirror {
             existing.map { ($0.filename, $0) },
             uniquingKeysWith: { first, _ in first }
         )
-        let sourceNames = Set(sources.map(\.url.lastPathComponent))
+        let sourceNames = Set(eligibleSources.map(\.url.lastPathComponent))
         var usedSlots = Set(
             existing.filter { sourceNames.contains($0.filename) }.map(\.menuSlot)
         )
         var templates: [CustomFileTemplate] = []
         var expectedNames: Set<String> = []
 
-        for source in sources {
-            guard source.fileSize <= Self.maximumFileSize else {
-                throw TemplateMirrorError.templateTooLarge(
-                    source.url.lastPathComponent
-                )
-            }
+        for source in eligibleSources {
             let filename = source.url.lastPathComponent
             expectedNames.insert(filename)
             let destination = mirrorDirectory.appendingPathComponent(filename)
@@ -160,7 +178,12 @@ public struct TemplateMirror {
         ) where !expectedNames.contains(mirrored.lastPathComponent) {
             try fileManager.removeItem(at: mirrored)
         }
-        return templates
+        return TemplateMirrorResult(
+            templates: templates,
+            skippedOversizedFilenames: oversizedSources.map(
+                \.url.lastPathComponent
+            )
+        )
     }
 
     private func createPrivateDirectory(_ url: URL) throws {

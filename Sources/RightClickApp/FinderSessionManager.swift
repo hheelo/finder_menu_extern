@@ -103,48 +103,48 @@ final class FinderSessionManager {
 
 /// macOS 14.0–14.3 的 Finder 扩展状态检测。
 enum LegacyFinderExtensionStatus {
+    private static let detectionTimeout: TimeInterval = 5
+    private static let maximumOutputBytes = 64 * 1_024
+
     static func isEnabled(
         executableURL: URL = AppConstants.plugInKitURL,
+        arguments: [String] = [
+            "-m", "-A", "-D", "-i",
+            AppConstants.finderExtensionBundleIdentifier
+        ],
+        timeout: TimeInterval = detectionTimeout,
         logFailure: @escaping @Sendable (String) -> Void = { message in
             appLogger.error("\(message, privacy: .public)")
         }
     ) async -> Bool? {
-        await Task.detached(priority: .utility) {
-            let process = Process()
-            let outputPipe = Pipe()
-            process.executableURL = executableURL
-            process.arguments = [
-                "-m", "-A", "-D", "-i",
-                AppConstants.finderExtensionBundleIdentifier
-            ]
-            process.standardInput = FileHandle.nullDevice
-            process.standardOutput = outputPipe
-            process.standardError = FileHandle.nullDevice
-
-            do {
-                try process.run()
-            } catch {
-                logFailure(
-                    "无法启动 pluginkit 检测 Finder 扩展状态："
-                        + error.localizedDescription
-                )
-                return nil
-            }
-
-            // 查询结果很小；先读到 EOF 可避免未来 verbose 输出增大后堵住管道。
-            let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else {
-                logFailure(
-                    "pluginkit 检测 Finder 扩展状态失败，退出码："
-                        + String(process.terminationStatus)
-                )
-                return nil
-            }
-
-            return AppConstants.plugInKitOutputIndicatesEnabled(
-                String(decoding: data, as: UTF8.self)
+        let result: ProcessRunnerResult
+        do {
+            // 旧系统的 pluginkit 也必须走统一进程边界：若系统服务异常或子进程
+            // 长时间持有输出端，诊断和首次向导不能无限等待。
+            result = try await ProcessRunner.run(
+                executableURL: executableURL,
+                arguments: arguments,
+                timeout: timeout,
+                maximumOutputBytes: maximumOutputBytes
             )
-        }.value
+        } catch {
+            logFailure(
+                "无法完成 pluginkit 检测 Finder 扩展状态："
+                    + error.localizedDescription
+            )
+            return nil
+        }
+
+        guard result.terminationStatus == 0 else {
+            logFailure(
+                "pluginkit 检测 Finder 扩展状态失败，退出码："
+                    + String(result.terminationStatus)
+            )
+            return nil
+        }
+
+        return AppConstants.plugInKitOutputIndicatesEnabled(
+            result.standardOutput
+        )
     }
 }

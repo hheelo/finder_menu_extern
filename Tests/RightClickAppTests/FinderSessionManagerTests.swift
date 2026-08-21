@@ -16,6 +16,23 @@ struct FinderSessionManagerTests {
         #expect(recorder.messages.count == 1)
         #expect(recorder.messages.first?.contains("pluginkit") == true)
     }
+
+    @Test
+    func legacyDetectionHasABoundedTimeout() async {
+        let recorder = FailureRecorder()
+        let startedAt = ContinuousClock.now
+        let result = await LegacyFinderExtensionStatus.isEnabled(
+            executableURL: URL(fileURLWithPath: "/bin/sleep"),
+            arguments: ["10"],
+            timeout: 0.05,
+            logFailure: { recorder.append($0) }
+        )
+
+        #expect(result == nil)
+        #expect(startedAt.duration(to: .now) < .seconds(1))
+        #expect(recorder.messages.count == 1)
+        #expect(recorder.messages.first?.contains("pluginkit") == true)
+    }
 }
 
 private final class FailureRecorder: @unchecked Sendable {

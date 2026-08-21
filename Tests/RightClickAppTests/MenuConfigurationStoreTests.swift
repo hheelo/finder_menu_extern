@@ -57,7 +57,7 @@ struct MenuConfigurationStoreTests {
             save: { _, _ in },
             synchronizeTemplates: { existing, _, _ in
                 probe.beginAndWait()
-                return existing
+                return TemplateMirrorResult(templates: existing)
             }
         )
 
@@ -75,6 +75,41 @@ struct MenuConfigurationStoreTests {
     }
 
     @Test
+    func oversizedTemplateWarningDoesNotPreventValidConfigurationCommit() async {
+        let template = CustomFileTemplate(
+            id: "valid-template",
+            title: "Valid.txt",
+            filename: "Valid.txt",
+            menuSlot: 1
+        )
+        var saves: [MenuConfiguration] = []
+        var failures: [String] = []
+        let store = MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.terminal.rawValue,
+            load: { _ in MenuConfiguration(
+                terminalProfileID: TerminalProfile.terminal.rawValue
+            ) },
+            save: { configuration, _ in saves.append(configuration) },
+            synchronizeTemplates: { _, _, _ in
+                TemplateMirrorResult(
+                    templates: [template],
+                    skippedOversizedFilenames: ["Oversized.bin"]
+                )
+            }
+        )
+        store.onFailure = { failures.append($0) }
+
+        await store.refreshCustomTemplates()
+
+        #expect(store.configuration.customTemplates == [template])
+        #expect(saves.count == 1)
+        #expect(failures.count == 1)
+        #expect(failures[0].contains("Oversized.bin"))
+    }
+
+    @Test
     func immediateConfigurationEditsAreForwardedAndPersisted() {
         var saveCount = 0
         var forwarded: MenuConfiguration?
@@ -86,7 +121,9 @@ struct MenuConfigurationStoreTests {
                 terminalProfileID: TerminalProfile.terminal.rawValue
             ) },
             save: { _, _ in saveCount += 1 },
-            synchronizeTemplates: { existing, _, _ in existing }
+            synchronizeTemplates: {
+                existing, _, _ in TemplateMirrorResult(templates: existing)
+            }
         )
         store.onChange = { forwarded = $0 }
 
@@ -150,7 +187,9 @@ struct MenuConfigurationStoreTests {
             terminalProfileID: TerminalProfile.ghostty.rawValue,
             load: { _ in .default },
             save: { configuration, _ in saves.append(configuration) },
-            synchronizeTemplates: { existing, _, _ in existing }
+            synchronizeTemplates: {
+                existing, _, _ in TemplateMirrorResult(templates: existing)
+            }
         )
 
         #expect(saves.count == 1)
@@ -170,7 +209,9 @@ struct MenuConfigurationStoreTests {
             ) },
             save: save,
             persistenceDelay: persistenceDelay,
-            synchronizeTemplates: { existing, _, _ in existing }
+            synchronizeTemplates: {
+                existing, _, _ in TemplateMirrorResult(templates: existing)
+            }
         )
     }
 

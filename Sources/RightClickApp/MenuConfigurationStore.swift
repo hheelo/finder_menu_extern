@@ -14,7 +14,7 @@ final class MenuConfigurationStore {
         _ existing: [CustomFileTemplate],
         _ sourceDirectory: URL,
         _ mirrorDirectory: URL
-    ) throws -> [CustomFileTemplate]
+    ) throws -> TemplateMirrorResult
 
     private(set) var configuration: MenuConfiguration
     var onChange: ((MenuConfiguration) -> Void)?
@@ -122,20 +122,27 @@ final class MenuConfigurationStore {
         )
         let synchronizeTemplates = synchronizeTemplates
         do {
-            let templates = try await Task.detached(priority: .utility) {
+            let result = try await Task.detached(priority: .utility) {
                 try synchronizeTemplates(
                     existing,
                     sourceDirectory,
                     mirrorDirectory
                 )
             }.value
-            guard templates != configuration.customTemplates else { return }
-            updateImmediately { $0.customTemplates = templates }
-            onStatus?(L10n.format(
-                "status.synced_templates",
-                fallback: "已同步 %lld 个自定义模板",
-                Int64(templates.count)
-            ))
+            if result.templates != configuration.customTemplates {
+                updateImmediately { $0.customTemplates = result.templates }
+                onStatus?(L10n.format(
+                    "status.synced_templates",
+                    fallback: "已同步 %lld 个自定义模板",
+                    Int64(result.templates.count)
+                ))
+            }
+            for filename in result.skippedOversizedFilenames {
+                onFailure?(
+                    TemplateMirrorError.templateTooLarge(filename)
+                        .localizedDescription
+                )
+            }
         } catch {
             onFailure?(L10n.format(
                 "error.sync_templates",
