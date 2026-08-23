@@ -20,6 +20,27 @@ struct AppModelTests {
     }
 
     @Test
+    func extensionStatusRefreshesDoNotOverlap() async throws {
+        let probe = ExtensionStatusProbe()
+        let fixture = try makeFixture(
+            extensionStatusProvider: { await probe.detect() }
+        )
+        defer { fixture.cleanUp() }
+
+        let first = Task { await fixture.model.refreshExtensionStatus() }
+        await Task.yield()
+        #expect(probe.callCount == 1)
+
+        let second = Task { await fixture.model.refreshExtensionStatus() }
+        await second.value
+        #expect(probe.callCount == 1)
+
+        probe.complete(with: true)
+        await first.value
+        #expect(fixture.model.extensionEnabled)
+    }
+
+    @Test
     func menuBarSettingNotifiesTheOneWayControllerHook() throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }
@@ -456,7 +477,9 @@ struct AppModelTests {
         #expect(fixture.model.errorHistory.count == 1)
     }
 
-    private func makeFixture() throws -> Fixture {
+    private func makeFixture(
+        extensionStatusProvider: (@MainActor () async -> Bool?)? = nil
+    ) throws -> Fixture {
         let suiteName = "RightClickAppTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
@@ -481,6 +504,7 @@ struct AppModelTests {
                 "menu.json"
             ),
             actionLogStore: actionLogStore,
+            extensionStatusProvider: extensionStatusProvider,
             performInitialRefresh: false
         )
         return Fixture(
@@ -510,6 +534,24 @@ struct AppModelTests {
         await withCheckedContinuation { continuation in
             DispatchQueue.main.async { continuation.resume() }
         }
+    }
+}
+
+@MainActor
+private final class ExtensionStatusProbe {
+    private(set) var callCount = 0
+    private var continuation: CheckedContinuation<Bool?, Never>?
+
+    func detect() async -> Bool? {
+        callCount += 1
+        return await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func complete(with result: Bool?) {
+        continuation?.resume(returning: result)
+        continuation = nil
     }
 }
 

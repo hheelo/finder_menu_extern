@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public enum TemplateMirrorError: LocalizedError {
@@ -42,15 +43,24 @@ public struct TemplateMirror {
     public static let maximumFileSize = 10 * 1_024 * 1_024
 
     private let fileManager: FileManager
+    private let willOpenSource: (URL) -> Void
 
     private struct SourceTemplate {
         let url: URL
         let fileSize: Int
-        let modificationDate: Date?
     }
 
     public init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
+        willOpenSource = { _ in }
+    }
+
+    init(
+        fileManager: FileManager = .default,
+        willOpenSource: @escaping (URL) -> Void
+    ) {
+        self.fileManager = fileManager
+        self.willOpenSource = willOpenSource
     }
 
     public func synchronize(
@@ -62,8 +72,7 @@ public struct TemplateMirror {
         try createPrivateDirectory(mirrorDirectory)
 
         let keys: Set<URLResourceKey> = [
-            .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey,
-            .contentModificationDateKey
+            .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey
         ]
         let sources = try fileManager.contentsOfDirectory(
             at: sourceDirectory,
@@ -80,8 +89,7 @@ public struct TemplateMirror {
             }
             return SourceTemplate(
                 url: url,
-                fileSize: values.fileSize ?? 0,
-                modificationDate: values.contentModificationDate
+                fileSize: values.fileSize ?? 0
             )
         }.sorted { $0.url.lastPathComponent.localizedStandardCompare(
             $1.url.lastPathComponent
@@ -109,35 +117,33 @@ public struct TemplateMirror {
         )
         var templates: [CustomFileTemplate] = []
         var expectedNames: Set<String> = []
+        var oversizedFilenames = oversizedSources.map(\.url.lastPathComponent)
 
         for source in eligibleSources {
             let filename = source.url.lastPathComponent
-            expectedNames.insert(filename)
             let destination = mirrorDirectory.appendingPathComponent(filename)
             let mirroredValues = try? destination.resourceValues(
                 forKeys: [.fileSizeKey, .contentModificationDateKey]
             )
-            let sourceDate = source.modificationDate
-            let mirroredDate = mirroredValues?.contentModificationDate
-            // Foundation 通过文件属性回写 Date 时可能损失亚毫秒精度；这种精度
-            // 舍入不代表源文件变化，否则每次同步仍会原子替换镜像。
-            let modificationDateMatches = sourceDate.flatMap { sourceDate in
-                mirroredDate.map {
-                    abs($0.timeIntervalSince(sourceDate)) < 0.001
-                }
-            } ?? false
-            let isUnchanged = sourceDate != nil
-                && mirroredValues?.fileSize == source.fileSize
-                && modificationDateMatches
-
-            // B1 之后每次宿主界面呈现都会同步。模板上限是 300 × 10 MB，
-            // 未变化时不能继续全量读写。size + mtime 相同但内容不同的极端情况
-            // 会被跳过；这里的目标正是避免为内容哈希读取全文，且镜像不是安全边界。
-            if !isUnchanged {
-                try Data(contentsOf: source.url).write(
-                    to: destination,
-                    options: .atomic
-                )
+            willOpenSource(source.url)
+            let sourceResult = try readSource(
+                source.url,
+                mirroredFileSize: mirroredValues?.fileSize,
+                mirroredModificationDate:
+                    mirroredValues?.contentModificationDate
+            )
+            let sourceDate: Date?
+            switch sourceResult {
+            case .skipped:
+                continue
+            case .oversized:
+                oversizedFilenames.append(filename)
+                continue
+            case let .unchanged(modificationDate):
+                sourceDate = modificationDate
+            case let .contents(contents, modificationDate):
+                sourceDate = modificationDate
+                try contents.write(to: destination, options: .atomic)
                 try fileManager.setAttributes(
                     [.posixPermissions: 0o600],
                     ofItemAtPath: destination.path
@@ -150,6 +156,7 @@ public struct TemplateMirror {
                     )
                 }
             }
+            expectedNames.insert(filename)
 
             if let previous = existingByFilename[filename], previous.isValid {
                 templates.append(previous)
@@ -180,10 +187,68 @@ public struct TemplateMirror {
         }
         return TemplateMirrorResult(
             templates: templates,
-            skippedOversizedFilenames: oversizedSources.map(
-                \.url.lastPathComponent
-            )
+            skippedOversizedFilenames: oversizedFilenames
         )
+    }
+
+    /// 打开、类型检查、大小检查和读取始终使用同一个描述符。`O_NOFOLLOW`
+    /// 阻止目录枚举后被替换的符号链接；分块读取再次限制增长中的文件。
+    private func readSource(
+        _ url: URL,
+        mirroredFileSize: Int?,
+        mirroredModificationDate: Date?
+    ) throws -> SourceReadResult {
+        let descriptor = url.path.withCString {
+            Darwin.open($0, O_RDONLY | O_CLOEXEC | O_NOFOLLOW)
+        }
+        guard descriptor >= 0 else {
+            if errno == ELOOP || errno == ENOENT { return .skipped }
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        defer { Darwin.close(descriptor) }
+
+        var status = stat()
+        guard Darwin.fstat(descriptor, &status) == 0 else {
+            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+        }
+        guard status.st_mode & S_IFMT == S_IFREG else { return .skipped }
+        guard status.st_size >= 0,
+              status.st_size <= off_t(Self.maximumFileSize) else {
+            return .oversized
+        }
+
+        let modificationDate = Date(
+            timeIntervalSince1970:
+                TimeInterval(status.st_mtimespec.tv_sec)
+                + TimeInterval(status.st_mtimespec.tv_nsec) / 1_000_000_000
+        )
+        let modificationDateMatches = mirroredModificationDate.map {
+            abs($0.timeIntervalSince(modificationDate)) < 0.001
+        } ?? false
+        // B1 之后每次宿主界面呈现都会同步。未变化时只做 open + fstat，
+        // 不读取最多 10 MB 的全文。size + mtime 相同但内容不同仍是既有性能折中。
+        if mirroredFileSize == Int(status.st_size), modificationDateMatches {
+            return .unchanged(modificationDate: modificationDate)
+        }
+
+        let handle = FileHandle(
+            fileDescriptor: descriptor,
+            closeOnDealloc: false
+        )
+        var contents = Data()
+        while contents.count <= Self.maximumFileSize {
+            let remaining = Self.maximumFileSize - contents.count + 1
+            guard let chunk = try handle.read(
+                upToCount: min(64 * 1_024, remaining)
+            ), !chunk.isEmpty else {
+                return .contents(
+                    contents,
+                    modificationDate: modificationDate
+                )
+            }
+            contents.append(chunk)
+        }
+        return .oversized
     }
 
     private func createPrivateDirectory(_ url: URL) throws {
@@ -197,4 +262,11 @@ public struct TemplateMirror {
             ofItemAtPath: url.path
         )
     }
+}
+
+private enum SourceReadResult {
+    case skipped
+    case oversized
+    case unchanged(modificationDate: Date)
+    case contents(Data, modificationDate: Date)
 }

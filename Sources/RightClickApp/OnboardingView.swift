@@ -102,7 +102,7 @@ struct OnboardingView: View {
             while !Task.isCancelled,
                   !model.extensionEnabled,
                   clock.now < deadline {
-                model.refreshExtensionStatus()
+                await model.refreshExtensionStatus()
                 let interval = OnboardingPollingPolicy.nextPollInterval(
                     attempt: attempt
                 )
@@ -163,7 +163,7 @@ struct OnboardingView: View {
                         "onboarding.refresh_extension",
                         fallback: "刷新扩展状态"
                     )) {
-                        model.refreshExtensionStatus()
+                        Task { await model.refreshExtensionStatus() }
                     }
                 }
             }

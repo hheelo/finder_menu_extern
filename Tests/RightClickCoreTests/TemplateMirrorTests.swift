@@ -168,4 +168,66 @@ struct TemplateMirrorTests {
             atPath: mirror.appendingPathComponent("Oversized.bin").path
         ))
     }
+
+    @Test
+    func replacementSymlinkIsNotFollowed() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let mirror = root.appendingPathComponent("mirror", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: source,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceFile = source.appendingPathComponent("Note.txt")
+        let secretFile = root.appendingPathComponent("Secret.txt")
+        try Data("placeholder".utf8).write(to: sourceFile)
+        try Data("must not be mirrored".utf8).write(to: secretFile)
+
+        let synchronizer = TemplateMirror { url in
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.createSymbolicLink(
+                at: url,
+                withDestinationURL: secretFile
+            )
+        }
+        let result = try synchronizer.synchronize(
+            existing: [],
+            sourceDirectory: source,
+            mirrorDirectory: mirror
+        )
+
+        #expect(result.templates.isEmpty)
+        #expect(!FileManager.default.fileExists(
+            atPath: mirror.appendingPathComponent("Note.txt").path
+        ))
+    }
+
+    @Test
+    func growthAfterEnumerationIsStillRejectedAsOversized() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let mirror = root.appendingPathComponent("mirror", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: source,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceFile = source.appendingPathComponent("Growing.bin")
+        try Data("small".utf8).write(to: sourceFile)
+
+        let synchronizer = TemplateMirror { url in
+            try? Data(count: TemplateMirror.maximumFileSize + 1).write(to: url)
+        }
+        let result = try synchronizer.synchronize(
+            existing: [],
+            sourceDirectory: source,
+            mirrorDirectory: mirror
+        )
+
+        #expect(result.templates.isEmpty)
+        #expect(result.skippedOversizedFilenames == ["Growing.bin"])
+    }
 }

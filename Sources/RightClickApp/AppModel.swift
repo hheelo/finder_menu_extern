@@ -52,12 +52,14 @@ final class AppModel: ObservableObject {
     private let deepLinkCoordinator: DeepLinkCoordinator
     private let diagnosticsStore: DiagnosticsStore
     private let finderSessionManager: FinderSessionManager
+    private let extensionStatusProvider: @MainActor () async -> Bool?
     private let notifier: any UserNotifying
     private let menuConfigurationStore: MenuConfigurationStore
     private let actionLogStore: LocalActionLogStore
     private let actionLogSessionTracker: LocalActionSessionTracker
     private let extensionActionLogURL: URL?
     private var diagnosticsAreAuthoritative = false
+    private var isRefreshingExtensionStatus = false
     var onMenuBarIconEnabledChange: ((Bool) -> Void)?
 
     init(
@@ -80,6 +82,7 @@ final class AppModel: ObservableObject {
         customTemplatesDirectory: URL = MenuConfigurationFile.hostTemplatesDirectory(),
         actionLogStore: LocalActionLogStore? = nil,
         extensionActionLogURL: URL? = nil,
+        extensionStatusProvider: (@MainActor () async -> Bool?)? = nil,
         performInitialRefresh: Bool = true
     ) {
         self.settings = settings
@@ -117,7 +120,13 @@ final class AppModel: ObservableObject {
             applicationURL: applicationURL
         )
         diagnosticsStore = DiagnosticsStore(settings: settings)
-        finderSessionManager = FinderSessionManager(settings: settings)
+        let resolvedFinderSessionManager = FinderSessionManager(
+            settings: settings
+        )
+        finderSessionManager = resolvedFinderSessionManager
+        self.extensionStatusProvider = extensionStatusProvider ?? {
+            await resolvedFinderSessionManager.extensionIsEnabled()
+        }
         self.notifier = notifier
         terminalProfile = settings.terminalProfile
         terminalWindowBehavior = settings.terminalWindowBehavior
@@ -161,13 +170,13 @@ final class AppModel: ObservableObject {
         FIFinderSyncController.showExtensionManagementInterface()
     }
 
-    func refreshExtensionStatus() {
-        Task { [weak self] in
-            guard let self else { return }
-            applyExtensionStatus(
-                await finderSessionManager.extensionIsEnabled()
-            )
-        }
+    func refreshExtensionStatus() async {
+        // 首次向导会频繁轮询；旧系统的一次 pluginkit 检测可持续 5 秒。
+        // 同一时刻只允许一项检测，避免多个进程重叠并乱序覆盖状态。
+        guard !isRefreshingExtensionStatus else { return }
+        isRefreshingExtensionStatus = true
+        defer { isRefreshingExtensionStatus = false }
+        applyExtensionStatus(await extensionStatusProvider())
     }
 
     func applyExtensionStatus(_ enabled: Bool?) {
@@ -480,9 +489,10 @@ final class AppModel: ObservableObject {
             shouldPresentOnboarding = true
         }
         guard !AppEnvironment.isRunningTests else { return }
-        refreshExtensionStatus()
-        await refreshCustomTemplates()
-        await refreshDiagnostics()
+        async let extensionRefresh: Void = refreshExtensionStatus()
+        async let templateRefresh: Void = refreshCustomTemplates()
+        async let diagnosticRefresh: Void = refreshDiagnostics()
+        _ = await (extensionRefresh, templateRefresh, diagnosticRefresh)
     }
 
     func addMonitoredDirectories() {

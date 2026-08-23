@@ -28,6 +28,9 @@ jobs:
       - name: Verify localization catalog
         run: ./scripts/verify-localization.sh
 
+      - name: Verify release version guard
+        run: ./scripts/test-release-version-validation.sh
+
       - name: Build and test
         run: |
           xcodebuild \

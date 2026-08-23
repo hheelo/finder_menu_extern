@@ -110,7 +110,7 @@ enum ProcessRunner {
             // 数量级。
             var pollInterval = Duration.milliseconds(10)
             let maximumPollInterval = Duration.milliseconds(100)
-            var tickCount = 0
+            var previousOutputSize = 0
             while process.isRunning {
                 // 取消和超时是两回事：混在一起时，未设超时的调用被取消会报出
                 // 「进程执行超过 0 秒」这种自相矛盾的提示。
@@ -122,33 +122,22 @@ enum ProcessRunner {
                     didTimeOut = true
                     break
                 }
-                tickCount += 1
-                if tickCount.isMultiple(of: 10),
-                   totalOutputSize() > maximumOutputBytes {
+                let outputSize = totalOutputSize()
+                if outputSize > maximumOutputBytes {
                     exceededOutputLimit = true
                     break
                 }
                 try? await Task.sleep(for: pollInterval)
-                pollInterval = min(pollInterval * 2, maximumPollInterval)
+                // 有输出时维持 10ms 采样，避免高速输出在退避到 100ms 后
+                // 大幅越过上限；完全安静的授权等待才逐步降低唤醒频率。
+                pollInterval = outputSize > previousOutputSize
+                    ? .milliseconds(10)
+                    : min(pollInterval * 2, maximumPollInterval)
+                previousOutputSize = outputSize
             }
 
             if didTimeOut || wasCancelled || exceededOutputLimit {
-                process.terminate()
-                let graceDeadline = Date().addingTimeInterval(
-                    terminationGracePeriod
-                )
-                while process.isRunning && Date() < graceDeadline {
-                    try? await Task.sleep(for: .milliseconds(10))
-                }
-                if process.isRunning {
-                    _ = Darwin.kill(process.processIdentifier, SIGKILL)
-                    _ = await waitUntilStopped(
-                        deadline: Date().addingTimeInterval(
-                            forceTerminationWait
-                        ),
-                        isRunning: { process.isRunning }
-                    )
-                }
+                await terminateProcessTree(process)
             }
 
             // 正常退出时不再调用 `waitUntilExit()`：macOS 26 的 Foundation 会
@@ -209,5 +198,80 @@ enum ProcessRunner {
             try? await Task.sleep(for: .milliseconds(10))
         }
         return !isRunning()
+    }
+
+    /// 先暂停整棵树，阻止遍历期间继续 fork，再按从叶子到根的顺序终止。
+    /// `Process.terminate()` 只处理直接子进程；登录 Shell 的 rc 文件若启动了
+    /// 后台命令，那些后代会继续持有输出文件并在超时后存活。
+    private static func terminateProcessTree(_ process: Process) async {
+        let rootPID = process.processIdentifier
+        let processTree = suspendedProcessTree(rootPID: rootPID)
+
+        for pid in processTree {
+            _ = Darwin.kill(pid, SIGTERM)
+        }
+        // 被 SIGSTOP 的进程必须恢复后才能处理挂起的 SIGTERM。
+        for pid in processTree {
+            _ = Darwin.kill(pid, SIGCONT)
+        }
+
+        let graceDeadline = Date().addingTimeInterval(terminationGracePeriod)
+        while process.isRunning && Date() < graceDeadline {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        // 根进程可能先退出并让仍存活的后代变成孤儿；不能以
+        // `process.isRunning == false` 作为整棵树已经停止的依据。
+        for pid in processTree where processExists(pid) {
+            _ = Darwin.kill(pid, SIGKILL)
+        }
+        _ = await waitUntilStopped(
+            deadline: Date().addingTimeInterval(forceTerminationWait),
+            isRunning: {
+                process.isRunning || processTree.contains(where: processExists)
+            }
+        )
+    }
+
+    /// 返回从叶子到根排列的 PID。每个节点在枚举子节点前先暂停，确保它不会
+    /// 在遍历窗口里继续产生未被收集的新后代。
+    private static func suspendedProcessTree(rootPID: pid_t) -> [pid_t] {
+        var visited: Set<pid_t> = []
+        var result: [pid_t] = []
+
+        func collect(_ pid: pid_t) {
+            guard pid > 0, visited.insert(pid).inserted else { return }
+            _ = Darwin.kill(pid, SIGSTOP)
+            for childPID in childProcessIDs(of: pid) {
+                collect(childPID)
+            }
+            result.append(pid)
+        }
+
+        collect(rootPID)
+        return result
+    }
+
+    private static func childProcessIDs(of parentPID: pid_t) -> [pid_t] {
+        let estimatedCount = max(
+            Int(proc_listchildpids(parentPID, nil, 0)),
+            16
+        )
+        var pids = [pid_t](repeating: 0, count: estimatedCount)
+        let count = pids.withUnsafeMutableBytes { buffer in
+            proc_listchildpids(
+                parentPID,
+                buffer.baseAddress,
+                Int32(buffer.count)
+            )
+        }
+        guard count > 0 else { return [] }
+        return Array(pids.prefix(Int(count))).filter { $0 > 0 }
+    }
+
+    private static func processExists(_ pid: pid_t) -> Bool {
+        guard pid > 0 else { return false }
+        if Darwin.kill(pid, 0) == 0 { return true }
+        return errno == EPERM
     }
 }

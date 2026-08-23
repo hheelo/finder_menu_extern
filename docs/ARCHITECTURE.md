@@ -140,7 +140,8 @@
 - shell 命令作为 `osascript` 参数传递，不插入 AppleScript 源码
 - 登录 shell、`osascript` 与旧系统的 `pluginkit` 检测共用有超时和输出上限的
   进程执行器；stdout/stderr 写入权限为 `0600` 的临时文件，避免管道缓冲区或
-  子进程持有写端造成互锁
+  子进程持有写端造成互锁。超时、取消或超限时先暂停并遍历整棵进程树，再按
+  叶到根的顺序终止，避免 Shell 启动的后台后代成为孤儿
 - 文件创建使用 `.withoutOverwriting`，自动生成 `Untitled 2.ext`；
   检查名称到落盘之间若发生并发冲突，最多重新选名 8 次，始终不覆盖已有文件
 - 内置模板的文件名与编码覆盖保存在同一份菜单配置中；文件名必须通过安全校验，
@@ -182,7 +183,8 @@
 - Release 验证宿主/扩展版本、Bundle ID、签名、Universal 2 和 DMG 内容
 - `derive-build-number.sh` 是 semver → CFBundleVersion 的唯一实现，本地安装、发布
   构建和 Release 工作流共同调用；本地安装通过 `read-marketing-version.sh` 读取
-  `project.yml`，兼容带引号与不带引号的版本标量
+  `project.yml`，兼容带引号与不带引号的版本标量。Release 构建还会拒绝与源码
+  版本不一致的 Tag，以及不高于历史发布标签的构建号
 - 旧 App 压缩到 Application Support，避免同 Bundle ID 扩展并存
 
 ## 已知系统约束

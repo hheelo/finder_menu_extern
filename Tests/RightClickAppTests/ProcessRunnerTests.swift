@@ -1,4 +1,6 @@
+import Darwin
 import Foundation
+import RightClickCore
 import Testing
 
 struct ProcessRunnerTests {
@@ -74,6 +76,47 @@ struct ProcessRunnerTests {
         } catch {
             Issue.record("返回了错误的异常类型：\(error)")
         }
+    }
+
+    @Test
+    func timeoutTerminatesDescendantProcesses() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: false
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appendingPathComponent("child.pid")
+        let script = """
+        sleep 10 &
+        child=$!
+        printf '%s' "$child" > \(ShellCommandBuilder.quote(pidFile.path))
+        wait
+        """
+
+        do {
+            _ = try await ProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/bin/sh"),
+                arguments: ["-c", script],
+                timeout: 0.2
+            )
+            Issue.record("进程树本应超时")
+        } catch is ProcessRunnerError {
+            // 预期：超时路径应终止 shell 和它启动的 sleep。
+        }
+
+        let childPID = try #require(
+            Int32(String(contentsOf: pidFile, encoding: .utf8))
+        )
+        defer {
+            if Darwin.kill(childPID, 0) == 0 {
+                _ = Darwin.kill(childPID, SIGKILL)
+            }
+        }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(Darwin.kill(childPID, 0) == -1)
+        #expect(errno == ESRCH)
     }
 
     @Test

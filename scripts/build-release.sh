@@ -11,6 +11,10 @@ fi
 version="${VERSION}"
 version="${version#v}"
 
+# Tag 必须与源码声明一致，且构建号高于所有既有发布标签。否则 Sparkle 会
+# 忽略回退版本，而源码与二进制版本漂移也会让下一次发布难以恢复。
+"${script_dir}/verify-release-version.sh" "${version}"
+
 # CFBundleVersion 必须逐次发布单调递增：宿主 App 用「短版本号 + 构建号」
 # 判断升级后是否需要重新加载 Finder，而 LaunchServices 也依赖它区分版本。
 # 从 semver 推导，例如 0.2.5 → 205、1.0.0 → 10000（要求各段小于 100）。

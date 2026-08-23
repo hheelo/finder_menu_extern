@@ -127,6 +127,9 @@ final class MenuBarController: NSObject {
 
     @objc private func showSettings() {
         WindowPresenter.showSettings()
+        // 宿主可能由 Finder 深链无声冷启动。菜单栏是用户显式呈现入口，
+        // 与主窗口一样必须刷新扩展状态、模板、诊断并触发一次后台更新检查。
+        refreshForUserPresentation()
     }
 
     @objc private func copyDiagnostics() {
