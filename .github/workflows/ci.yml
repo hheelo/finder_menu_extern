@@ -110,6 +110,10 @@ jobs:
   minimum-system:
     name: macOS 14 compatibility
     runs-on: macos-14
+    env:
+      # macOS 14 runner 默认仍指向 Xcode 15.4，无法打开 Xcode 16 的工程格式；
+      # 镜像同时提供 Xcode 16.2，用它编译并在 macOS 14 runner 上执行测试。
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
 
     steps:
       - name: Checkout
@@ -122,6 +126,7 @@ jobs:
 
       - name: Verify and run logic tests
         run: |
+          xcodebuild -version
           ./scripts/verify-generated-project.sh
           xcodebuild -quiet \
             -project RightClick.xcodeproj \
