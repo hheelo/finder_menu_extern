@@ -1,4 +1,5 @@
 import SwiftUI
+import RightClickAppLogic
 import RightClickCore
 
 struct ContentView: View {

@@ -320,14 +320,66 @@ public enum MenuConfigurationFile {
     private static let filename = "menu.json"
 
     public static func load(from url: URL) -> MenuConfiguration {
-        guard let data = try? Data(contentsOf: url),
-              let configuration = try? JSONDecoder().decode(
-                  MenuConfiguration.self,
-                  from: data
-              ), configuration.version == MenuConfiguration.currentVersion else {
-            return .default
+        loadResult(from: url).configuration
+    }
+
+    /// 返回保留失败原因与原始数据的加载结果。Finder 扩展继续通过 ``load(from:)``
+    /// 安全回退默认菜单；宿主使用详细结果，避免把损坏或来自较新版本的配置静默
+    /// 覆盖成默认值。
+    public static func loadResult(
+        from url: URL,
+        fileManager: FileManager = .default
+    ) -> MenuConfigurationLoadResult {
+        guard fileManager.fileExists(atPath: url.path) else { return .missing }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            return .invalid(.unreadable, originalData: nil)
         }
-        return configuration.sanitized
+
+        let decoder = JSONDecoder()
+        guard let envelope = try? decoder.decode(
+            MenuConfigurationVersionEnvelope.self,
+            from: data
+        ) else {
+            return .invalid(.corrupted, originalData: data)
+        }
+
+        if envelope.version > MenuConfiguration.currentVersion {
+            return .invalid(
+                .unsupportedVersion(envelope.version),
+                originalData: data
+            )
+        }
+
+        do {
+            let configuration = try MenuConfigurationMigrator.decode(
+                data,
+                fromVersion: envelope.version,
+                decoder: decoder
+            )
+            if envelope.version == MenuConfiguration.currentVersion {
+                return .loaded(configuration.sanitized)
+            }
+            return .migrated(
+                configuration.sanitized,
+                fromVersion: envelope.version
+            )
+        } catch let error as MenuConfigurationMigrationError {
+            switch error {
+            case .unsupportedVersion:
+                return .invalid(
+                    .unsupportedVersion(envelope.version),
+                    originalData: data
+                )
+            case .invalidData:
+                return .invalid(.corrupted, originalData: data)
+            }
+        } catch {
+            return .invalid(.corrupted, originalData: data)
+        }
     }
 
     /// 只应由宿主调用。扩展 target 虽共享 Core，但运行时只走 ``load(from:)``。

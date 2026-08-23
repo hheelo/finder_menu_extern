@@ -1,5 +1,6 @@
 import AppKit
 import FinderSync
+import RightClickAppLogic
 import RightClickCore
 
 enum FinderSessionError: LocalizedError {

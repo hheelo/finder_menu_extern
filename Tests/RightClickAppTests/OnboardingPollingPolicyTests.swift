@@ -1,4 +1,5 @@
 import Foundation
+@testable import RightClickAppLogic
 import Testing
 
 struct OnboardingPollingPolicyTests {

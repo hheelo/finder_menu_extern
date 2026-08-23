@@ -83,6 +83,15 @@
   来自强制退出或断电，不能伪装成已确认的崩溃报告
 - 进程执行、窗口呈现和本地动作日志的存储、会话、文件权限、报告职责均使用独立
   源文件；设置页 `body` 只组合按功能划分的区块，避免后续界面改造继续扩大入口文件
+- `RightClickAppLogic` 保存版本、启动/窗口策略、深链解析、nonce 与向导轮询等纯逻辑，
+  宿主和无宿主测试共享同一 framework，避免测试复制生产源文件时遗漏新增依赖
+
+### RightClickFinderAdapter
+
+- 隔离 FinderSync 与 AppKit 菜单渲染边界：稳定 tag、置灰、图标和 stale selection
+  语义可在普通测试进程中验证，扩展只保留系统回调和动作执行
+- Finder 菜单构建由 `BuildFinderMenu` signpost 覆盖；高负载配置基线在 CI 中重复构建
+  菜单并设置宽松上界，用于捕获意外 I/O 或复杂度量级回归，而不是比较不同机器的微秒差异
 
 ### RightClickCore
 
@@ -115,6 +124,9 @@
   App 隔离；显式测试环境只关闭 onboarding、诊断刷新和更新检查，不改变正式启动路径
 - 发布脚本从只读 DMG 直接启动已完成 Ad-hoc 签名的正式 App。主视图 `onAppear`
   只在脚本提供的系统临时子目录内写入 ready 标记，验证完成后终止进程并清理标记
+- CI 在当前构建机运行覆盖率、静态分析、UI smoke 与 Universal Release，并在 macOS 14
+  runner 单独执行逻辑测试；失败时保存 xcresult。真实 Finder/权限/卷测试通过
+  `create-validation-report.sh` 生成不含个人路径的可归档报告
 
 ## 安全边界
 

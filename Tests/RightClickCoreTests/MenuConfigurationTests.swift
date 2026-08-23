@@ -44,6 +44,117 @@ struct MenuConfigurationTests {
     }
 
     @Test
+    func detailedLoadingPreservesInvalidBytesAndReason() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let url = root.appendingPathComponent("menu.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false
+        )
+
+        #expect(MenuConfigurationFile.loadResult(from: url) == .missing)
+
+        let corrupt = Data("not json".utf8)
+        try corrupt.write(to: url)
+        #expect(
+            MenuConfigurationFile.loadResult(from: url)
+                == .invalid(.corrupted, originalData: corrupt)
+        )
+
+        let newer = try JSONEncoder().encode(MenuConfiguration(version: 999))
+        try newer.write(to: url)
+        #expect(
+            MenuConfigurationFile.loadResult(from: url)
+                == .invalid(.unsupportedVersion(999), originalData: newer)
+        )
+    }
+
+    @Test
+    func recoveryBackupPreservesBytesPrivatelyAndPrunesOldEntries() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("menu.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false
+        )
+        let original = Data("broken".utf8)
+        try original.write(to: source)
+        let result = MenuConfigurationLoadResult.invalid(
+            .corrupted,
+            originalData: original
+        )
+
+        var latest: URL?
+        for index in 0..<(MenuConfigurationBackup.maximumBackupCount + 2) {
+            latest = try MenuConfigurationBackup.preserveInvalidConfiguration(
+                result,
+                sourceURL: source,
+                date: Date(timeIntervalSince1970: TimeInterval(index)),
+                identifier: UUID(uuidString: String(
+                    format: "00000000-0000-0000-0000-%012d",
+                    index
+                ))!
+            )
+        }
+
+        let backup = try #require(latest)
+        #expect(try Data(contentsOf: backup) == original)
+        let backupDirectory = backup.deletingLastPathComponent()
+        let files = try FileManager.default.contentsOfDirectory(
+            at: backupDirectory,
+            includingPropertiesForKeys: nil
+        )
+        #expect(files.count == MenuConfigurationBackup.maximumBackupCount)
+        let mode = try #require(
+            FileManager.default.attributesOfItem(atPath: backup.path)[
+                .posixPermissions
+            ] as? NSNumber
+        ).intValue
+        #expect(mode == 0o600)
+    }
+
+    @Test
+    func portableSettingsRoundTripPreservesMachineLocalState() throws {
+        let localTemplate = CustomFileTemplate(
+            id: "local-template",
+            title: "Local.md",
+            filename: "Local.md",
+            menuSlot: 1
+        )
+        let exported = MenuConfiguration(
+            disabledActions: [RightClickAction.copyFilename.configurationID],
+            collapseIntoSubmenu: true,
+            terminalProfileID: TerminalProfile.iTerm.rawValue,
+            cliProfiles: [CLIProfile(
+                id: "gemini",
+                title: "Gemini",
+                executable: "gemini",
+                menuSlot: 1
+            )],
+            customTemplates: [localTemplate]
+        )
+        let data = try MenuConfigurationTransfer.exportData(exported)
+        let current = MenuConfiguration(
+            terminalProfileID: TerminalProfile.ghostty.rawValue,
+            customTemplates: [localTemplate]
+        )
+
+        let imported = try MenuConfigurationTransfer.importData(
+            data,
+            preservingLocalStateFrom: current
+        )
+
+        #expect(imported.collapseIntoSubmenu)
+        #expect(imported.cliProfiles.map { $0.id } == ["gemini"])
+        #expect(imported.terminalProfileID == TerminalProfile.ghostty.rawValue)
+        #expect(imported.customTemplates == [localTemplate])
+    }
+
+    @Test
     func hostWritesPrivateFileAndDirectory() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)

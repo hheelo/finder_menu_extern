@@ -31,17 +31,44 @@ jobs:
       - name: Verify release version guard
         run: ./scripts/test-release-version-validation.sh
 
+      - name: Verify validation report generator
+        run: ./scripts/test-create-validation-report.sh
+
       - name: Build and test
         run: |
+          mkdir -p .build/CIResults
           xcodebuild \
             -project RightClick.xcodeproj \
             -scheme RightClick \
             -configuration Debug \
             -derivedDataPath .build/CIDerivedData \
+            -resultBundlePath .build/CIResults/Logic.xcresult \
+            -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             test
 
+      - name: Publish coverage summary
+        run: |
+          echo '### Logic coverage' >> "${GITHUB_STEP_SUMMARY}"
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"
+          xcrun xccov view --report --only-targets \
+            .build/CIResults/Logic.xcresult | tee -a "${GITHUB_STEP_SUMMARY}"
+          echo '```' >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Static analysis
+        run: |
+          xcodebuild -quiet \
+            -project RightClick.xcodeproj \
+            -scheme RightClick \
+            -configuration Debug \
+            -derivedDataPath .build/CIAnalyzeDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            analyze
+
       - name: UI smoke test
+        timeout-minutes: 10
         run: |
           xcodebuild -quiet \
             -project RightClick.xcodeproj \
@@ -49,6 +76,7 @@ jobs:
             -configuration Debug \
             -destination 'platform=macOS' \
             -derivedDataPath .build/CIUIDerivedData \
+            -resultBundlePath .build/CIResults/UI.xcresult \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_ALLOWED=YES \
@@ -65,6 +93,41 @@ jobs:
             -destination 'generic/platform=macOS' \
             -derivedDataPath .build/CIReleaseBuild \
             CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             ARCHS='arm64 x86_64' \
             ONLY_ACTIVE_ARCH=NO \
             build
+
+      - name: Upload test diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rightclick-test-results
+          path: .build/CIResults/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
+
+  minimum-system:
+    name: macOS 14 compatibility
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pinned XcodeGen
+        run: |
+          ./scripts/install-pinned-xcodegen.sh "${RUNNER_TEMP}/rightclick-xcodegen"
+          echo "${RUNNER_TEMP}/rightclick-xcodegen/xcodegen/bin" >> "${GITHUB_PATH}"
+
+      - name: Verify and run logic tests
+        run: |
+          ./scripts/verify-generated-project.sh
+          xcodebuild -quiet \
+            -project RightClick.xcodeproj \
+            -scheme RightClick \
+            -configuration Debug \
+            -derivedDataPath .build/MinimumSystemDerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            test

@@ -10,16 +10,20 @@ fi
 
 extension_path="${app_path}/Contents/PlugIns/RightClickFinderExtension.appex"
 core_path="${app_path}/Contents/Frameworks/RightClickCore.framework"
+app_logic_path="${app_path}/Contents/Frameworks/RightClickAppLogic.framework"
 sparkle_path="${app_path}/Contents/Frameworks/Sparkle.framework"
 icon_path="${app_path}/Contents/Resources/AppIcon.icns"
 extension_core_path="${extension_path}/Contents/Frameworks/RightClickCore.framework"
+extension_adapter_path="${extension_path}/Contents/Frameworks/RightClickFinderAdapter.framework"
 
 if [[ ! -d "${extension_path}" ||
       ! -d "${core_path}" ||
+      ! -d "${app_logic_path}" ||
       ! -d "${extension_core_path}" ||
+      ! -d "${extension_adapter_path}" ||
       ! -d "${sparkle_path}" ||
       ! -f "${icon_path}" ]]; then
-    echo "App 缺少 Finder 扩展、RightClickCore/Sparkle.framework 或 AppIcon" >&2
+    echo "App 缺少 Finder 扩展、内部 framework、Sparkle.framework 或 AppIcon" >&2
     exit 1
 fi
 
@@ -107,6 +111,8 @@ binaries=(
     "${app_path}/Contents/MacOS/RightClick"
     "${extension_path}/Contents/MacOS/RightClickFinderExtension"
     "${core_path}/Versions/A/RightClickCore"
+    "${app_logic_path}/Versions/A/RightClickAppLogic"
+    "${extension_adapter_path}/Versions/A/RightClickFinderAdapter"
     "${sparkle_path}/Sparkle"
     # 真正执行更新安装的助手；单架构会让另一半用户的更新失败
     "${sparkle_path}/Autoupdate"

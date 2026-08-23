@@ -11,9 +11,9 @@ settings:
     SWIFT_VERSION: "6.0"
     # 仅供 Xcode 内直接构建。install.sh、build-release.sh 和 Release CI 都调用
     # derive-build-number.sh 从 MARKETING_VERSION 推导并覆盖该值。
-    CURRENT_PROJECT_VERSION: 10100
+    CURRENT_PROJECT_VERSION: 10101
     # scripts/read-marketing-version.sh 读取这一项，并兼容有/无引号的标量。
-    MARKETING_VERSION: 1.1.0
+    MARKETING_VERSION: 1.1.1
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true
@@ -37,6 +37,33 @@ targets:
         DEFINES_MODULE: true
         APPLICATION_EXTENSION_API_ONLY: true
 
+  RightClickFinderAdapter:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/RightClickFinderAdapter
+    dependencies:
+      - target: RightClickCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.FinderAdapter
+        GENERATE_INFOPLIST_FILE: true
+        DEFINES_MODULE: true
+        APPLICATION_EXTENSION_API_ONLY: true
+
+  RightClickAppLogic:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/RightClickAppLogic
+    dependencies:
+      - target: RightClickCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.AppLogic
+        GENERATE_INFOPLIST_FILE: true
+        DEFINES_MODULE: true
+
   RightClick:
     type: application
     platform: macOS
@@ -46,6 +73,8 @@ targets:
       - Resources/RightClickApp
     dependencies:
       - target: RightClickCore
+        embed: true
+      - target: RightClickAppLogic
         embed: true
       - target: RightClickFinderExtension
         embed: true
@@ -88,6 +117,8 @@ targets:
       - Sources/RightClickFinderExtension
     dependencies:
       - target: RightClickCore
+        embed: true
+      - target: RightClickFinderAdapter
         embed: true
     info:
       path: Configuration/RightClickFinderExtension-Info.plist
@@ -137,24 +168,36 @@ targets:
       - Sources/RightClickApp/AppDiagnostics.swift
       - Sources/RightClickApp/AppLogger.swift
       - Sources/RightClickApp/AppModel.swift
-      - Sources/RightClickApp/AppPresentation.swift
+      - Sources/RightClickApp/AppModelDataManagement.swift
+      - Sources/RightClickApp/AppModelLifecycle.swift
+      - Sources/RightClickApp/AppModelMenuConfiguration.swift
       - Sources/RightClickApp/AppSmokeTest.swift
-      - Sources/RightClickApp/AppVersion.swift
       - Sources/RightClickApp/DeepLinkCoordinator.swift
-      - Sources/RightClickApp/DeepLinkRequest.swift
       - Sources/RightClickApp/DiagnosticsStore.swift
       - Sources/RightClickApp/FinderSessionManager.swift
       - Sources/RightClickApp/MenuConfigurationStore.swift
-      - Sources/RightClickApp/NonceCache.swift
-      - Sources/RightClickApp/OnboardingPollingPolicy.swift
       - Sources/RightClickApp/TerminalResolver.swift
       - Sources/RightClickApp/UserLoginShell.swift
       - Sources/RightClickApp/UserNotifier.swift
     dependencies:
       - target: RightClickCore
+      - target: RightClickAppLogic
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.AppTests
+        GENERATE_INFOPLIST_FILE: true
+
+  RightClickFinderAdapterTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/RightClickFinderAdapterTests
+    dependencies:
+      - target: RightClickFinderAdapter
+      - target: RightClickCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.FinderAdapterTests
         GENERATE_INFOPLIST_FILE: true
 
   # UI 自动化使用独立 Bundle ID，避免开发机上已安装或正在运行的正式 App
@@ -168,6 +211,8 @@ targets:
       - Resources/RightClickApp
     dependencies:
       - target: RightClickCore
+        embed: true
+      - target: RightClickAppLogic
         embed: true
       - package: Sparkle
         product: Sparkle
@@ -201,10 +246,12 @@ schemes:
         RightClickCore: all
         RightClickCoreTests: [test]
         RightClickAppTests: [test]
+        RightClickFinderAdapterTests: [test]
     test:
       targets:
         - RightClickCoreTests
         - RightClickAppTests
+        - RightClickFinderAdapterTests
 
   RightClickUI:
     build:

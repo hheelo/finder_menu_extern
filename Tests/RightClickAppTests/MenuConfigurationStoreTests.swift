@@ -23,9 +23,9 @@ struct MenuConfigurationStoreTests {
             configurationURL: configurationURL,
             customTemplatesDirectory: source,
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in MenuConfiguration(
+            load: { _ in .loaded(MenuConfiguration(
                 terminalProfileID: TerminalProfile.terminal.rawValue
-            ) },
+            )) },
             save: { configuration, _ in saves.append(configuration) }
         )
 
@@ -51,9 +51,9 @@ struct MenuConfigurationStoreTests {
             configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
             customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in MenuConfiguration(
+            load: { _ in .loaded(MenuConfiguration(
                 terminalProfileID: TerminalProfile.terminal.rawValue
-            ) },
+            )) },
             save: { _, _ in },
             synchronizeTemplates: { existing, _, _ in
                 probe.beginAndWait()
@@ -88,9 +88,9 @@ struct MenuConfigurationStoreTests {
             configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
             customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in MenuConfiguration(
+            load: { _ in .loaded(MenuConfiguration(
                 terminalProfileID: TerminalProfile.terminal.rawValue
-            ) },
+            )) },
             save: { configuration, _ in saves.append(configuration) },
             synchronizeTemplates: { _, _, _ in
                 TemplateMirrorResult(
@@ -117,9 +117,9 @@ struct MenuConfigurationStoreTests {
             configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
             customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in MenuConfiguration(
+            load: { _ in .loaded(MenuConfiguration(
                 terminalProfileID: TerminalProfile.terminal.rawValue
-            ) },
+            )) },
             save: { _, _ in saveCount += 1 },
             synchronizeTemplates: {
                 existing, _, _ in TemplateMirrorResult(templates: existing)
@@ -185,7 +185,7 @@ struct MenuConfigurationStoreTests {
             configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
             customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
             terminalProfileID: TerminalProfile.ghostty.rawValue,
-            load: { _ in .default },
+            load: { _ in .loaded(.default) },
             save: { configuration, _ in saves.append(configuration) },
             synchronizeTemplates: {
                 existing, _, _ in TemplateMirrorResult(templates: existing)
@@ -196,6 +196,67 @@ struct MenuConfigurationStoreTests {
         #expect(saves.first?.terminalProfileID == TerminalProfile.ghostty.rawValue)
     }
 
+    @Test
+    func invalidConfigurationIsBackedUpAndNeverOverwrittenImplicitly() {
+        let original = Data("broken".utf8)
+        var backups: [Data] = []
+        var saves: [MenuConfiguration] = []
+        let store = MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.ghostty.rawValue,
+            load: { _ in .invalid(.corrupted, originalData: original) },
+            save: { configuration, _ in saves.append(configuration) },
+            backupInvalidConfiguration: { result, _ in
+                backups.append(try #require(result.originalData))
+                return URL(fileURLWithPath: "/tmp/backup.json")
+            },
+            backupExistingConfiguration: { _ in nil },
+            synchronizeTemplates: {
+                existing, _, _ in TemplateMirrorResult(templates: existing)
+            }
+        )
+
+        store.updateImmediately { $0.collapseIntoSubmenu = true }
+
+        #expect(store.requiresConfigurationRecovery)
+        #expect(backups == [original])
+        #expect(saves.isEmpty)
+    }
+
+    @Test
+    func importingValidSettingsBacksUpAndLeavesRecoveryMode() throws {
+        let original = Data("broken".utf8)
+        var backupCount = 0
+        var saves: [MenuConfiguration] = []
+        let store = MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.terminal.rawValue,
+            load: { _ in .invalid(.corrupted, originalData: original) },
+            save: { configuration, _ in saves.append(configuration) },
+            backupInvalidConfiguration: { _, _ in
+                URL(fileURLWithPath: "/tmp/recovery.json")
+            },
+            backupExistingConfiguration: { _ in
+                backupCount += 1
+                return URL(fileURLWithPath: "/tmp/settings.json")
+            },
+            synchronizeTemplates: {
+                existing, _, _ in TemplateMirrorResult(templates: existing)
+            }
+        )
+        let imported = MenuConfiguration(collapseIntoSubmenu: true)
+        let data = try MenuConfigurationTransfer.exportData(imported)
+
+        try store.importSettingsData(data)
+
+        #expect(!store.requiresConfigurationRecovery)
+        #expect(store.configuration.collapseIntoSubmenu)
+        #expect(backupCount == 1)
+        #expect(saves.count == 1)
+    }
+
     private func makeStore(
         persistenceDelay: Duration,
         save: @escaping MenuConfigurationStore.Saver
@@ -204,9 +265,9 @@ struct MenuConfigurationStoreTests {
             configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
             customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
             terminalProfileID: TerminalProfile.terminal.rawValue,
-            load: { _ in MenuConfiguration(
+            load: { _ in .loaded(MenuConfiguration(
                 terminalProfileID: TerminalProfile.terminal.rawValue
-            ) },
+            )) },
             save: save,
             persistenceDelay: persistenceDelay,
             synchronizeTemplates: {

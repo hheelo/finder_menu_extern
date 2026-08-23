@@ -8,8 +8,13 @@ import RightClickCore
 /// 细节和界面状态混在一起。
 @MainActor
 final class MenuConfigurationStore {
-    typealias Loader = (URL) -> MenuConfiguration
+    typealias Loader = (URL) -> MenuConfigurationLoadResult
     typealias Saver = (MenuConfiguration, URL) throws -> Void
+    typealias InvalidConfigurationBackupper = (
+        MenuConfigurationLoadResult,
+        URL
+    ) throws -> URL?
+    typealias ExistingConfigurationBackupper = (URL) throws -> URL?
     typealias TemplateSynchronizer = @Sendable (
         _ existing: [CustomFileTemplate],
         _ sourceDirectory: URL,
@@ -17,6 +22,7 @@ final class MenuConfigurationStore {
     ) throws -> TemplateMirrorResult
 
     private(set) var configuration: MenuConfiguration
+    private(set) var recoveryFailure: MenuConfigurationLoadFailure?
     var onChange: ((MenuConfiguration) -> Void)?
     var onStatus: ((String) -> Void)?
     var onFailure: ((String) -> Void)?
@@ -25,6 +31,8 @@ final class MenuConfigurationStore {
 
     private let configurationURL: URL
     private let save: Saver
+    private let backupInvalidConfiguration: InvalidConfigurationBackupper
+    private let backupExistingConfiguration: ExistingConfigurationBackupper
     private let synchronizeTemplates: TemplateSynchronizer
     private let persistenceDelay: Duration
     private var pendingPersist: Task<Void, Never>?
@@ -35,9 +43,18 @@ final class MenuConfigurationStore {
         configurationURL: URL,
         customTemplatesDirectory: URL,
         terminalProfileID: String,
-        load: Loader = { MenuConfigurationFile.load(from: $0) },
+        load: Loader = { MenuConfigurationFile.loadResult(from: $0) },
         save: @escaping Saver = {
             try MenuConfigurationFile.saveForHost($0, to: $1)
+        },
+        backupInvalidConfiguration: @escaping InvalidConfigurationBackupper = {
+            try MenuConfigurationBackup.preserveInvalidConfiguration(
+                $0,
+                sourceURL: $1
+            )
+        },
+        backupExistingConfiguration: @escaping ExistingConfigurationBackupper = {
+            try MenuConfigurationBackup.preserveExistingConfiguration(at: $0)
         },
         persistenceDelay: Duration = .milliseconds(400),
         synchronizeTemplates: @escaping TemplateSynchronizer = {
@@ -51,17 +68,44 @@ final class MenuConfigurationStore {
         self.configurationURL = configurationURL
         self.customTemplatesDirectory = customTemplatesDirectory
         self.save = save
+        self.backupInvalidConfiguration = backupInvalidConfiguration
+        self.backupExistingConfiguration = backupExistingConfiguration
         self.persistenceDelay = persistenceDelay
         self.synchronizeTemplates = synchronizeTemplates
 
-        let loaded = load(configurationURL)
+        let loadResult = load(configurationURL)
+        let loaded = loadResult.configuration
         var initial = loaded
         initial.terminalProfileID = terminalProfileID
         configuration = initial
+        recoveryFailure = loadResult.failure
+
+        if recoveryFailure != nil {
+            do {
+                let backupURL = try backupInvalidConfiguration(
+                    loadResult,
+                    configurationURL
+                )
+                deferredInitializationFailure = Self.recoveryFailureMessage(
+                    loadResult.failure,
+                    backupURL: backupURL
+                )
+            } catch {
+                deferredInitializationFailure = Self.recoveryBackupFailureMessage(error)
+            }
+            return
+        }
 
         // init 中补齐终端能力不会触发任何 didSet。配置文件缺失或损坏时必须
-        // 静默补写，否则扩展会把不支持 CLI 的终端菜单显示为可用。
-        if loaded != initial {
+        // 静默补写，否则扩展会把不支持 CLI 的终端菜单显示为可用。损坏或更高
+        // 版本的文件会在上方进入只读恢复状态，绝不在这里覆盖。
+        let wasMigrated: Bool
+        if case .migrated = loadResult {
+            wasMigrated = true
+        } else {
+            wasMigrated = false
+        }
+        if loaded != initial || wasMigrated {
             do {
                 try save(initial, configurationURL)
             } catch {
@@ -108,10 +152,44 @@ final class MenuConfigurationStore {
         onFailure?(message)
     }
 
+    var requiresConfigurationRecovery: Bool { recoveryFailure != nil }
+
+    func exportSettingsData() throws -> Data {
+        try MenuConfigurationTransfer.exportData(configuration)
+    }
+
+    /// 导入前先保存当前原始文件；只有备份和新配置落盘都成功后才解除恢复状态。
+    func importSettingsData(_ data: Data) throws {
+        let imported = try MenuConfigurationTransfer.importData(
+            data,
+            preservingLocalStateFrom: configuration
+        )
+        _ = try backupExistingConfiguration(configurationURL)
+        try save(imported, configurationURL)
+        pendingPersist?.cancel()
+        pendingPersist = nil
+        recoveryFailure = nil
+        configuration = imported
+        onChange?(imported)
+    }
+
+    /// 用户明确选择重置时才允许替换无法解析的原始文件，并且仍先做备份。
+    func resetAfterRecovery() throws {
+        guard recoveryFailure != nil else { return }
+        _ = try backupExistingConfiguration(configurationURL)
+        var reset = MenuConfiguration.default
+        reset.terminalProfileID = configuration.terminalProfileID
+        try save(reset, configurationURL)
+        recoveryFailure = nil
+        configuration = reset
+        onChange?(reset)
+    }
+
     /// 宿主界面每次真正呈现时都调用同步，让新增与删除无需进入设置页即可生效。
     /// 模板集合通常不变，此时镜像同步仍会完成清理，但不会重写 menu.json，
     /// 也不会用“已同步”覆盖最近一次有意义的动作状态。
     func refreshCustomTemplates() async {
+        guard recoveryFailure == nil else { return }
         guard !isRefreshingCustomTemplates else { return }
         isRefreshingCustomTemplates = true
         defer { isRefreshingCustomTemplates = false }
@@ -171,6 +249,10 @@ final class MenuConfigurationStore {
     }
 
     private func persist(reportStatus: Bool) {
+        guard recoveryFailure == nil else {
+            onFailure?(Self.recoveryRequiredMessage())
+            return
+        }
         do {
             try save(configuration, configurationURL)
             if reportStatus {
@@ -189,6 +271,59 @@ final class MenuConfigurationStore {
             "error.save_menu",
             fallback: "无法保存 Finder 菜单设置：%@",
             error.localizedDescription
+        )
+    }
+
+    private static func recoveryFailureMessage(
+        _ failure: MenuConfigurationLoadFailure?,
+        backupURL: URL?
+    ) -> String {
+        let reason: String = switch failure {
+        case .corrupted:
+            L10n.text(
+                "error.menu_configuration_corrupted",
+                fallback: "Finder 菜单配置已损坏。"
+            )
+        case let .unsupportedVersion(version):
+            L10n.format(
+                "error.menu_configuration_newer",
+                fallback: "Finder 菜单配置来自较新的版本（v%lld）。",
+                Int64(version)
+            )
+        case .unreadable:
+            L10n.text(
+                "error.menu_configuration_unreadable",
+                fallback: "Finder 菜单配置无法读取。"
+            )
+        case nil:
+            L10n.text(
+                "error.menu_configuration_invalid",
+                fallback: "Finder 菜单配置无效。"
+            )
+        }
+        guard let backupURL else {
+            return reason + " " + recoveryRequiredMessage()
+        }
+        return L10n.format(
+            "error.menu_configuration_recovery_with_backup",
+            fallback: "%@ 已备份到 %@；导入有效设置或明确重置前不会覆盖原文件。",
+            reason,
+            backupURL.path
+        )
+    }
+
+    private static func recoveryBackupFailureMessage(_ error: Error) -> String {
+        L10n.format(
+            "error.menu_configuration_backup",
+            fallback: "配置异常且无法创建恢复备份：%@。原文件不会被覆盖。",
+            error.localizedDescription
+        )
+    }
+
+    private static func recoveryRequiredMessage() -> String {
+        L10n.text(
+            "error.menu_configuration_recovery_required",
+            fallback: "请导入有效设置或在设置中明确重置后再修改。"
         )
     }
 }

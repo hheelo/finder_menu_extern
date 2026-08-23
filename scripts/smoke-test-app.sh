@@ -8,8 +8,10 @@ if [[ -z "${app_path}" || ! -d "${app_path}" ]]; then
     exit 2
 fi
 
-executable="${app_path}/Contents/MacOS/RightClick"
-if [[ ! -x "${executable}" ]]; then
+executable_name="$(plutil -extract CFBundleExecutable raw -o - \
+    "${app_path}/Contents/Info.plist" 2>/dev/null || true)"
+executable="${app_path}/Contents/MacOS/${executable_name}"
+if [[ -z "${executable_name}" || ! -f "${executable}" || ! -x "${executable}" ]]; then
     echo "App 缺少可执行文件：${executable}" >&2
     exit 1
 fi

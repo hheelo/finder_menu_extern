@@ -1,6 +1,7 @@
 @preconcurrency import AppKit
 @preconcurrency import FinderSync
 import RightClickCore
+import RightClickFinderAdapter
 import os
 
 /// 用 `os.Logger` 而不是 `NSLog`：`NSLog` 只写到 stderr，扩展由 launchd
@@ -12,6 +13,10 @@ import os
 private let logger = Logger(
     subsystem: AppConstants.loggingSubsystem,
     category: "extension"
+)
+private let performanceLog = OSLog(
+    subsystem: AppConstants.loggingSubsystem,
+    category: "performance"
 )
 
 final class FinderSync: FIFinderSync {
@@ -42,6 +47,21 @@ final class FinderSync: FIFinderSync {
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
+        let signpostID = OSSignpostID(log: performanceLog)
+        os_signpost(
+            .begin,
+            log: performanceLog,
+            name: "BuildFinderMenu",
+            signpostID: signpostID
+        )
+        defer {
+            os_signpost(
+                .end,
+                log: performanceLog,
+                name: "BuildFinderMenu",
+                signpostID: signpostID
+            )
+        }
         guard let placement = MenuPlacement(menuKind),
               placement.providesContextActions else {
             logger.notice(
@@ -59,21 +79,19 @@ final class FinderSync: FIFinderSync {
             context: context,
             configuration: configuration
         )
-        guard !nodes.isEmpty else { return nil }
-
         // 一次菜单构建只探测一次类型；即使菜单有多个分组，也不重复触碰
         // pasteboard 服务。真正内容仍只在用户点击创建动作后读取。
         let hasClipboardText = NSPasteboard.general.canReadObject(
             forClasses: [NSString.self]
         )
-        let menu = Self.makeMenu(title: "RightClick")
-        for node in nodes {
-            menu.addItem(item(
-                for: node,
-                placement: placement,
-                hasClipboardText: hasClipboardText
-            ))
-        }
+        guard let menu = FinderMenuRenderer.menu(
+            nodes: nodes,
+            placement: placement,
+            hasClipboardText: hasClipboardText,
+            authenticationAvailable: currentToken() != nil,
+            target: self,
+            action: #selector(performAction(_:))
+        ) else { return nil }
 
         // 空白处/边栏右键完全依赖 targetedURL：它一旦为 nil，选区上下文就全空，
         // 菜单虽然返回了但每一项都是灰的。把判定依据一并记下来，
@@ -90,136 +108,12 @@ final class FinderSync: FIFinderSync {
         return menu
     }
 
-    /// `NSMenu` 默认开启 `autoenablesItems`，会按「target 是否响应 action」
-    /// 重新计算启用状态，从而覆盖这里手工设置的 `isEnabled`，让本该置灰的
-    /// 菜单项仍然可点。菜单全部由这里构造，统一关掉自动启用。
-    private static func makeMenu(title: String) -> NSMenu {
-        let menu = NSMenu(title: title)
-        menu.autoenablesItems = false
-        return menu
-    }
-
-    /// 把 Core 描述的菜单结构渲染成 AppKit 菜单项。
-    private func item(
-        for node: RightClickMenuNode,
-        placement: MenuPlacement,
-        hasClipboardText: Bool
-    ) -> NSMenuItem {
-        switch node {
-        case .separator:
-            return .separator()
-        case let .action(action, isEnabled):
-            return actionItem(
-                action,
-                placement: placement,
-                isEnabled: isEnabled,
-                hasClipboardText: hasClipboardText
-            )
-        case let .configuredCLI(profile, isEnabled):
-            let item = NSMenuItem(
-                title: L10n.format(
-                    "extension.run_profile",
-                    fallback: "在终端运行 %@",
-                    profile.title
-                ),
-                action: #selector(performAction(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.tag = ConfiguredCLIMenuItemPayload(
-                menuSlot: profile.menuSlot,
-                placement: placement
-            ).menuTag
-            item.image = Self.menuImage(
-                named: "terminal.fill",
-                accessibilityDescription: profile.title
-            )
-            item.isEnabled = isEnabled && currentToken() != nil
-            return item
-        case let .customTemplate(template, isEnabled):
-            let item = NSMenuItem(
-                title: template.title,
-                action: #selector(performAction(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.tag = CustomTemplateMenuItemPayload(
-                menuSlot: template.menuSlot,
-                placement: placement
-            ).menuTag
-            item.image = Self.menuImage(
-                named: "doc.badge.plus",
-                accessibilityDescription: template.title
-            )
-            item.isEnabled = isEnabled
-            return item
-        case let .submenu(title, isEnabled, items):
-            let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-            let submenu = Self.makeMenu(title: title)
-            for child in items {
-                submenu.addItem(item(
-                    for: child,
-                    placement: placement,
-                    hasClipboardText: hasClipboardText
-                ))
-            }
-            root.submenu = submenu
-            root.isEnabled = isEnabled
-            return root
-        }
-    }
-
     private func context(for placement: MenuPlacement) -> SelectionContext {
-        SelectionContext(
-            selectedURLs: placement.usesTargetedURLOnly
-                ? []
-                : controller.selectedItemURLs() ?? [],
+        FinderSelectionResolver.context(
+            placement: placement,
+            selectedURLs: controller.selectedItemURLs() ?? [],
             targetedURL: controller.targetedURL()
         )
-    }
-
-    private func actionItem(
-        _ action: RightClickAction,
-        placement: MenuPlacement,
-        isEnabled: Bool = true,
-        hasClipboardText: Bool
-    ) -> NSMenuItem {
-        let item = NSMenuItem(
-            title: action.title,
-            action: #selector(performAction(_:)),
-            keyEquivalent: ""
-        )
-        item.target = self
-        item.tag = RightClickMenuItemPayload(
-            action: action,
-            placement: placement
-        ).menuTag
-        item.image = Self.menuImage(
-            named: action.systemImageName,
-            accessibilityDescription: action.title
-        )
-        // 宿主型动作全部依赖认证。令牌获取失败时菜单先置灰；下次构建菜单或
-        // 执行动作会再次尝试，不会让一次初始化竞争锁死整个扩展进程。
-        item.isEnabled = isEnabled && FinderActionPolicy.isSatisfied(
-            action,
-            hasClipboardText: hasClipboardText
-        ) && (
-            !FinderActionPolicy.requiresAuthenticatedHost(action) ||
-                currentToken() != nil
-        )
-        return item
-    }
-
-    private static func menuImage(
-        named systemName: String,
-        accessibilityDescription: String
-    ) -> NSImage? {
-        let image = NSImage(
-            systemSymbolName: systemName,
-            accessibilityDescription: accessibilityDescription
-        )
-        image?.isTemplate = true
-        return image
     }
 
     @objc private func performAction(_ sender: NSMenuItem) {

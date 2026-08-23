@@ -1,8 +1,8 @@
 import Foundation
 import RightClickCore
 
-struct DeepLinkRequest: Equatable {
-    enum Payload: Equatable {
+public struct DeepLinkRequest: Equatable {
+    public enum Payload: Equatable {
         case cli(CLIInvocation)
         case configuredCLI(ConfiguredCLIInvocation)
         case terminal(TerminalInvocation)
@@ -10,9 +10,9 @@ struct DeepLinkRequest: Equatable {
         case error(ErrorInvocation)
     }
 
-    let payload: Payload
+    public let payload: Payload
 
-    init(
+    public init(
         deepLink url: URL,
         expectedAuthenticationToken: String?,
         now: Date = Date(),
@@ -52,12 +52,11 @@ struct DeepLinkRequest: Equatable {
             throw DeepLinkRequestError.unknownAction(url.host)
         }
 
-        guard let transportAuthentication = DeepLinkSignature.authentication(
-            in: url
-        ) else {
+        guard let authentication = DeepLinkSignature.authentication(in: url)
+        else {
             throw Self.rejection(for: payload)
         }
-        switch transportAuthentication {
+        switch authentication {
         case let .signed(signed):
             guard let expectedAuthenticationToken,
                   DeepLinkSignature.verify(
@@ -73,9 +72,7 @@ struct DeepLinkRequest: Equatable {
         }
     }
 
-    private static func rejection(
-        for payload: Payload
-    ) -> DeepLinkRequestError {
+    private static func rejection(for payload: Payload) -> DeepLinkRequestError {
         switch payload {
         case .cli, .configuredCLI: .invalidCLI
         case .terminal: .invalidTerminal
@@ -85,7 +82,7 @@ struct DeepLinkRequest: Equatable {
     }
 }
 
-enum DeepLinkRequestError: Error, Equatable {
+public enum DeepLinkRequestError: Error, Equatable {
     case invalidScheme
     case invalidCLI
     case invalidTerminal
@@ -93,7 +90,7 @@ enum DeepLinkRequestError: Error, Equatable {
     case invalidError
     case unknownAction(String?)
 
-    var rejectionReason: String {
+    public var rejectionReason: String {
         switch self {
         case .invalidScheme:
             "链接协议不是 rightclick。"

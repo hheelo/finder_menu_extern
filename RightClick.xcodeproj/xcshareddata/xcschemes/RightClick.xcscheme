@@ -65,6 +65,20 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "866145F5647A692060C977D9"
+               BuildableName = "RightClickFinderAdapterTests.xctest"
+               BlueprintName = "RightClickFinderAdapterTests"
+               ReferencedContainer = "container:RightClick.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
@@ -114,6 +128,17 @@
                BlueprintIdentifier = "0363C5CD29448014616D9C1A"
                BuildableName = "RightClickAppTests.xctest"
                BlueprintName = "RightClickAppTests"
+               ReferencedContainer = "container:RightClick.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "866145F5647A692060C977D9"
+               BuildableName = "RightClickFinderAdapterTests.xctest"
+               BlueprintName = "RightClickFinderAdapterTests"
                ReferencedContainer = "container:RightClick.xcodeproj">
             </BuildableReference>
          </TestableReference>

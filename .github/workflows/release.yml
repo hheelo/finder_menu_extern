@@ -26,6 +26,12 @@ jobs:
       - name: Verify generated project is up to date
         run: ./scripts/verify-generated-project.sh
 
+      - name: Verify localization and release tooling
+        run: |
+          ./scripts/verify-localization.sh
+          ./scripts/test-release-version-validation.sh
+          ./scripts/test-create-validation-report.sh
+
       - name: Test
         run: |
           xcodebuild \
@@ -37,6 +43,7 @@ jobs:
             test
 
       - name: UI smoke test
+        timeout-minutes: 10
         run: |
           xcodebuild -quiet \
             -project RightClick.xcodeproj \

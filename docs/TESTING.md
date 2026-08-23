@@ -3,6 +3,18 @@
 单元测试和签名验证不能替代 Finder 扩展的真实系统测试。每个正式版本发布前，
 至少在一台没有安装过 RightClick 的 Mac 上完成以下检查。
 
+先为每台机器生成独立报告，第二个参数可传候选 App 或 DMG：
+
+```sh
+./scripts/create-validation-report.sh \
+  .build/validation/macos-14-arm64.md \
+  /path/to/RightClick.dmg
+```
+
+生成器只记录系统/硬件标识与构建元数据，不记录用户名、主机名或测试文件路径，
+而且拒绝覆盖已有报告。完成报告中的核心验收后，再按本页长清单补做与本次改动相关
+的专项；报告随 GitHub Release 或 Issue 归档，不提交含测试者信息的本地报告到仓库。
+
 ## 自动验证
 
 ```sh
@@ -25,7 +37,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   test
 
-VERSION=1.1.0 ./scripts/build-release.sh
+VERSION=1.1.1 ./scripts/build-release.sh
 ```
 
 第二条命令使用独立 Bundle ID 的测试宿主启动 macOS UI 自动化，验证主窗口首屏和
@@ -35,7 +47,7 @@ VERSION=1.1.0 ./scripts/build-release.sh
 
 `RightClickAppTests` 是无宿主逻辑测试：被测文件直接编入测试包，不启动
 `LSUIElement` App，也不依赖已安装的同 Bundle ID 副本或 Sparkle。装有
-`/Applications/RightClick.app` 时应同样能在数秒内跑完两个测试 bundle。
+`/Applications/RightClick.app` 时应同样能在数秒内跑完三个逻辑测试 bundle。
 
 ## 干净机器
 
@@ -201,7 +213,7 @@ VERSION=1.1.0 ./scripts/build-release.sh
 
 ## 存储位置
 
-- Apple Silicon：至少一台当前正式版 macOS
+- Apple Silicon：至少一台最低支持版 macOS 14，以及一台当前正式版 macOS
 - Intel：至少一台仍受支持的 macOS
 - 可选：外置磁盘、网络卷和 iCloud Drive
 

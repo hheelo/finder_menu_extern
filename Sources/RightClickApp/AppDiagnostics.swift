@@ -1,4 +1,5 @@
 import AppKit
+import RightClickAppLogic
 import RightClickCore
 
 struct DiagnosticItem: Codable, Identifiable, Sendable {
