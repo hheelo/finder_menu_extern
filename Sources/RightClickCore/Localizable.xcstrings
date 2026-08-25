@@ -1,6 +1,7 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "settings.security" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Permissions & Security" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "权限与安全" } } } },
     "menu.show_rightclick" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show RightClick" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示 RightClick" } } } },
     "settings.application" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Application" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "应用" } } } },
     "settings.builtin_templates" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Built-in File Templates" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "内置文件模板" } } } },

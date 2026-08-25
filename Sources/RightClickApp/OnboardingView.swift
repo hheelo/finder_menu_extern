@@ -6,85 +6,104 @@ struct OnboardingView: View {
     @EnvironmentObject private var model: AppModel
     @State private var step = 0
     @State private var pollingStopped = false
-    @ScaledMetric(relativeTo: .title) private var appIconSize = 30
     @ScaledMetric(relativeTo: .body) private var stepContentMinHeight = 235
     let openSettings: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack {
-                Image(systemName: "cursorarrow.click.2")
-                    .font(.system(size: appIconSize))
-                    .foregroundStyle(.tint)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L10n.text(
-                        "onboarding.title",
-                        fallback: "欢迎使用 RightClick"
-                    ))
-                        .font(.title.bold())
-                    Text(L10n.format(
-                        "onboarding.progress",
-                        fallback: "第 %1$lld 步，共 %2$lld 步",
-                        Int64(step + 1),
-                        Int64(3)
-                    ))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+        ZStack {
+            AppSurfaceBackground()
 
-            GroupBox {
-                stepContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(12)
-            }
-            .frame(minHeight: stepContentMinHeight)
-
-            HStack {
-                Button(L10n.text(
-                    "button.onboarding_later",
-                    fallback: "稍后再说"
-                )) {
-                    model.skipOnboarding()
-                }
-                if step > 0 {
-                    Button(L10n.text("button.back", fallback: "返回")) {
-                        step -= 1
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 14) {
+                    AppIconMark(size: 48)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L10n.text(
+                            "onboarding.title",
+                            fallback: "欢迎使用 RightClick"
+                        ))
+                            .font(.system(.title, design: .rounded).weight(.bold))
+                        Text(L10n.format(
+                            "onboarding.progress",
+                            fallback: "第 %1$lld 步，共 %2$lld 步",
+                            Int64(step + 1),
+                            Int64(3)
+                        ))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
+                    Spacer()
+                    stepIndicator
                 }
-                Spacer()
-                if step < 2 {
+
+                VisualPanel {
+                    stepContent
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: stepContentMinHeight,
+                            alignment: .topLeading
+                        )
+                }
+
+                HStack(spacing: 10) {
                     Button(L10n.text(
-                        "button.continue",
-                        fallback: "继续"
+                        "button.onboarding_later",
+                        fallback: "稍后再说"
                     )) {
-                        step += 1
-                        if step == 1 {
-                            Task { await model.refreshDiagnostics(force: true) }
+                        model.skipOnboarding()
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    if step > 0 {
+                        Button {
+                            step -= 1
+                        } label: {
+                            Label(
+                                L10n.text("button.back", fallback: "返回"),
+                                systemImage: "chevron.left"
+                            )
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(step == 0 && !model.extensionEnabled)
-                } else {
-                    Button(L10n.text(
-                        "button.finish",
-                        fallback: "完成"
-                    )) {
-                        model.completeOnboarding()
+                    Spacer()
+                    if step < 2 {
+                        Button {
+                            step += 1
+                            if step == 1 {
+                                Task { await model.refreshDiagnostics(force: true) }
+                            }
+                        } label: {
+                            Label(
+                                L10n.text("button.continue", fallback: "继续"),
+                                systemImage: "chevron.right"
+                            )
+                            .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(step == 0 && !model.extensionEnabled)
+                    } else {
+                        Button(L10n.text(
+                            "button.finish",
+                            fallback: "完成"
+                        )) {
+                            model.completeOnboarding()
+                        }
+                        Button {
+                            model.completeOnboarding()
+                            openSettings()
+                        } label: {
+                            Label(
+                                L10n.text(
+                                    "button.finish_open_settings",
+                                    fallback: "完成并打开设置"
+                                ),
+                                systemImage: "gearshape"
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    Button(L10n.text(
-                        "button.finish_open_settings",
-                        fallback: "完成并打开设置"
-                    )) {
-                        model.completeOnboarding()
-                        openSettings()
-                    }
-                    .buttonStyle(.borderedProminent)
                 }
             }
+            .padding(28)
         }
-        .padding(28)
         .frame(
             minWidth: 480,
             idealWidth: 540,
@@ -116,6 +135,20 @@ struct OnboardingView: View {
                 pollingStopped = true
             }
         }
+    }
+
+    private var stepIndicator: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { index in
+                Capsule()
+                    .fill(index <= step
+                        ? Color.accentColor
+                        : Color.secondary.opacity(0.20))
+                    .frame(width: index == step ? 24 : 8, height: 8)
+                    .animation(.easeInOut(duration: 0.2), value: step)
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder

@@ -8,12 +8,14 @@ extension SettingsView {
             monitoredDirectoriesSection
         }
         .listStyle(.inset)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
     }
 
     @ViewBuilder
     var finderMenuSection: some View {
         let actions = model.configuredMenuActions
-        Section(L10n.text("settings.finder_menu", fallback: "Finder 菜单")) {
+        Section {
             Toggle(
                 L10n.text(
                     "settings.collapse_menu",
@@ -66,16 +68,18 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.finder_menu", fallback: "Finder 菜单"),
+                systemImage: "list.bullet.rectangle"
+            )
         }
 
     }
 
     @ViewBuilder
     var monitoredDirectoriesSection: some View {
-        Section(L10n.text(
-            "settings.monitored_directories",
-            fallback: "Finder 监控目录"
-        )) {
+        Section {
             if model.menuConfiguration.monitoredDirectories.isEmpty {
                 Label(
                     L10n.text(
@@ -146,6 +150,14 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text(
+                    "settings.monitored_directories",
+                    fallback: "Finder 监控目录"
+                ),
+                systemImage: "folder.badge.gearshape"
+            )
         }
 
     }

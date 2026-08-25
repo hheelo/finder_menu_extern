@@ -8,11 +8,13 @@ extension SettingsView {
             builtinTemplatesSection
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
     }
 
     @ViewBuilder
     var customTemplatesSection: some View {
-        Section(L10n.text("settings.templates", fallback: "自定义文件模板")) {
+        Section {
             HStack {
                 Button(L10n.text("button.open_templates", fallback: "打开模板目录")) {
                     model.openCustomTemplatesDirectory()
@@ -35,16 +37,18 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.templates", fallback: "自定义文件模板"),
+                systemImage: "folder.badge.plus"
+            )
         }
 
     }
 
     @ViewBuilder
     var builtinTemplatesSection: some View {
-        Section(L10n.text(
-            "settings.builtin_templates",
-            fallback: "内置文件模板"
-        )) {
+        Section {
             ForEach(FileTemplate.allCases, id: \.rawValue) { template in
                 VStack(alignment: .leading, spacing: 6) {
                     ViewThatFits(in: .horizontal) {
@@ -87,6 +91,14 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text(
+                    "settings.builtin_templates",
+                    fallback: "内置文件模板"
+                ),
+                systemImage: "doc.on.doc"
+            )
         }
 
     }

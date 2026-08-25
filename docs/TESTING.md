@@ -37,7 +37,7 @@ xcodebuild -project RightClick.xcodeproj \
   CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   test
 
-VERSION=1.1.1 ./scripts/build-release.sh
+VERSION=1.1.2 ./scripts/build-release.sh
 ```
 
 第二条命令使用独立 Bundle ID 的测试宿主启动 macOS UI 自动化，验证主窗口首屏和

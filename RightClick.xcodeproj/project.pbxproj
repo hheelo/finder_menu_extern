@@ -124,6 +124,7 @@
 		8EAE17CB9FAB6C3C307D982A /* AppModelLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC2034AE5F2CA005AEE6220 /* AppModelLifecycle.swift */; };
 		8F9D9D7FCEAEC489CF6BBCF4 /* LoginShellArgumentsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D7AA581A31DC387EBBFF5D /* LoginShellArgumentsTests.swift */; };
 		92410F07C53CF569F8B44376 /* AppLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42DBD87D7F4F1FE3843A8D6A /* AppLogger.swift */; };
+		92D229C497CC0E0ADF965254 /* AppVisualStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CBB5677BD63788A12745F0F /* AppVisualStyle.swift */; };
 		9300C61E10E2E6635A8E90E9 /* RightClickCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0DF51065ECEA09BE65AB04C7 /* RightClickCore.framework */; };
 		9320B783BBE29258B928382C /* DiagnosticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B07C78FB63B792F77E26AD8 /* DiagnosticsStore.swift */; };
 		94D25B747EEE3B0ECAF86A49 /* MenuConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35615BB162D8EA95F24922DC /* MenuConfigurationStore.swift */; };
@@ -201,6 +202,7 @@
 		F4EC95622A3AAD29D247F7D9 /* ActionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7299E52324848B5CC0E1CD18 /* ActionExecutor.swift */; };
 		F8F85CF7EB1C1AC922E8F2DF /* ExternalApplicationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0D46A7C4A1A215960D4108 /* ExternalApplicationTests.swift */; };
 		FC5B9474E3B7DE66A075CDC4 /* AppModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30568F1902D0E7645E5EE2BF /* AppModelTests.swift */; };
+		FE8CD7BDE83CE6CFB58AB385 /* AppVisualStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CBB5677BD63788A12745F0F /* AppVisualStyle.swift */; };
 		FEAE969F63C2BDD9AD5CE5D5 /* MenuConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A620B3B3938DF58F4A33C24A /* MenuConfiguration.swift */; };
 /* End PBXBuildFile section */
 
@@ -435,6 +437,7 @@
 		4809F6985A7D2364B09E19B2 /* OpenInvocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenInvocation.swift; sourceTree = "<group>"; };
 		4A801943D2745DDD8E3636DE /* RightClickFinderAdapter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = RightClickFinderAdapter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4B45B2F0C41B89F0B23D6B42 /* LoginShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginShell.swift; sourceTree = "<group>"; };
+		4CBB5677BD63788A12745F0F /* AppVisualStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVisualStyle.swift; sourceTree = "<group>"; };
 		4E7E074E2C74FC38A4037772 /* AppSmokeTestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSmokeTestTests.swift; sourceTree = "<group>"; };
 		4F433F459F8A7FE1A26396AB /* FinderMenuRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderMenuRenderer.swift; sourceTree = "<group>"; };
 		5039053471DBFB3117544E2E /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -684,6 +687,7 @@
 				BDC2034AE5F2CA005AEE6220 /* AppModelLifecycle.swift */,
 				826BB63C6CBA7981A3D29601 /* AppModelMenuConfiguration.swift */,
 				C5B3D4081C1D2B861530F06F /* AppSmokeTest.swift */,
+				4CBB5677BD63788A12745F0F /* AppVisualStyle.swift */,
 				9FD7F83B07E605091F56E6D3 /* ContentView.swift */,
 				1A521CE536B110E777962EC2 /* DeepLinkCoordinator.swift */,
 				3B07C78FB63B792F77E26AD8 /* DiagnosticsStore.swift */,
@@ -1326,6 +1330,7 @@
 				8EAE17CB9FAB6C3C307D982A /* AppModelLifecycle.swift in Sources */,
 				4F865AB08AD8106BBAF54C7B /* AppModelMenuConfiguration.swift in Sources */,
 				2AFD9824482802A711629C3A /* AppSmokeTest.swift in Sources */,
+				92D229C497CC0E0ADF965254 /* AppVisualStyle.swift in Sources */,
 				ACD7809A47C1170D8FA32244 /* ContentView.swift in Sources */,
 				40CB976D00DCE4ABD1998D62 /* DeepLinkCoordinator.swift in Sources */,
 				2F32C23D62334BB5D9ACB795 /* DiagnosticsStore.swift in Sources */,
@@ -1373,6 +1378,7 @@
 				B9AFACD9CC0E2B124A8D0AE3 /* AppModelLifecycle.swift in Sources */,
 				A83C89E31086DFDBA513AF72 /* AppModelMenuConfiguration.swift in Sources */,
 				8CB3D2F558CD8A04F0288B86 /* AppSmokeTest.swift in Sources */,
+				FE8CD7BDE83CE6CFB58AB385 /* AppVisualStyle.swift in Sources */,
 				A83BF1C191764624D565794F /* ContentView.swift in Sources */,
 				27ABF8115AA82CA847C8FECA /* DeepLinkCoordinator.swift in Sources */,
 				8E25C241BD399B4A04DAA428 /* DiagnosticsStore.swift in Sources */,
@@ -1685,7 +1691,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10101;
+				CURRENT_PROJECT_VERSION = 10102;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -1706,7 +1712,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.1.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1954,7 +1960,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10101;
+				CURRENT_PROJECT_VERSION = 10102;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1969,7 +1975,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.1.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

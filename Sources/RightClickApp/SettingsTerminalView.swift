@@ -9,11 +9,13 @@ extension SettingsView {
             securitySection
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
     }
 
     @ViewBuilder
     var terminalSection: some View {
-        Section(L10n.text("settings.terminal", fallback: "终端")) {
+        Section {
             Picker(
                 L10n.text("settings.terminal_picker", fallback: "默认终端"),
                 selection: $model.terminalProfile
@@ -44,13 +46,18 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.terminal", fallback: "终端"),
+                systemImage: "terminal"
+            )
         }
 
     }
 
     @ViewBuilder
     var cliSection: some View {
-        Section(L10n.text("settings.cli_title", fallback: "自定义 AI CLI")) {
+        Section {
             ForEach($model.menuConfiguration.cliProfiles) { $profile in
                 DisclosureGroup {
                     Toggle(L10n.text("settings.show_in_finder", fallback: "显示在 Finder 菜单"), isOn: $profile.isEnabled)
@@ -132,6 +139,11 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.cli_title", fallback: "自定义 AI CLI"),
+                systemImage: "chevron.left.forwardslash.chevron.right"
+            )
         }
 
     }
@@ -145,6 +157,11 @@ extension SettingsView {
             ))
                 .font(.callout)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.security", fallback: "权限与安全"),
+                systemImage: "lock.shield"
+            )
         }
 
     }

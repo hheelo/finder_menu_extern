@@ -9,11 +9,13 @@ extension SettingsView {
             errorHistorySection
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
     }
 
     @ViewBuilder
     var applicationSection: some View {
-        Section(L10n.text("settings.application", fallback: "应用")) {
+        Section {
             if model.configurationRecoveryRequired {
                 Label(
                     L10n.text(
@@ -80,13 +82,18 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.application", fallback: "应用"),
+                systemImage: "app.badge"
+            )
         }
 
     }
 
     @ViewBuilder
     var diagnosticsSection: some View {
-        Section(L10n.text("settings.diagnostics", fallback: "环境诊断")) {
+        Section {
             ForEach(model.diagnostics) { item in
                 LabeledContent {
                     VStack(alignment: .trailing, spacing: 3) {
@@ -154,6 +161,11 @@ extension SettingsView {
             ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.diagnostics", fallback: "环境诊断"),
+                systemImage: "stethoscope"
+            )
         }
 
     }
@@ -161,11 +173,7 @@ extension SettingsView {
     @ViewBuilder
     var errorHistorySection: some View {
         if !model.errorHistory.isEmpty {
-            Section(L10n.format(
-                "home.errors",
-                fallback: "最近错误（%lld）",
-                Int64(model.errorHistory.count)
-            )) {
+            Section {
                 ForEach(model.errorHistory) { record in
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         Text(record.date, style: .time)
@@ -182,6 +190,15 @@ extension SettingsView {
                         model.clearErrors()
                     }
                 }
+            } header: {
+                SettingsSectionHeader(
+                    title: L10n.format(
+                        "home.errors",
+                        fallback: "最近错误（%lld）",
+                        Int64(model.errorHistory.count)
+                    ),
+                    systemImage: "exclamationmark.triangle"
+                )
             }
         }
     }

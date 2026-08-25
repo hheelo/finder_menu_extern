@@ -12,48 +12,52 @@ struct SettingsView: View {
     @ScaledMetric(relativeTo: .body) var templateEncodingWidth = 150
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            menuSettings
-                .disabled(model.configurationRecoveryRequired)
-                .tabItem {
-                    Label(
-                        L10n.text("settings.tab.menu", fallback: "菜单"),
-                        systemImage: "list.bullet.rectangle"
-                    )
-                }
-                .tag(SettingsTab.menu)
+        ZStack {
+            AppSurfaceBackground()
 
-            terminalSettings
-                .disabled(model.configurationRecoveryRequired)
-                .tabItem {
-                    Label(
-                        L10n.text("settings.tab.terminal", fallback: "终端"),
-                        systemImage: "terminal"
-                    )
-                }
-                .tag(SettingsTab.terminal)
+            TabView(selection: $selectedTab) {
+                menuSettings
+                    .disabled(model.configurationRecoveryRequired)
+                    .tabItem {
+                        Label(
+                            L10n.text("settings.tab.menu", fallback: "菜单"),
+                            systemImage: "list.bullet.rectangle"
+                        )
+                    }
+                    .tag(SettingsTab.menu)
 
-            templateSettings
-                .disabled(model.configurationRecoveryRequired)
-                .tabItem {
-                    Label(
-                        L10n.text("settings.tab.templates", fallback: "模板"),
-                        systemImage: "doc.badge.plus"
-                    )
-                }
-                .tag(SettingsTab.templates)
+                terminalSettings
+                    .disabled(model.configurationRecoveryRequired)
+                    .tabItem {
+                        Label(
+                            L10n.text("settings.tab.terminal", fallback: "终端"),
+                            systemImage: "terminal"
+                        )
+                    }
+                    .tag(SettingsTab.terminal)
 
-            diagnosticSettings
-                .tabItem {
-                    Label(
-                        L10n.text(
-                            "settings.tab.diagnostics",
-                            fallback: "诊断"
-                        ),
-                        systemImage: "stethoscope"
-                    )
-                }
-                .tag(SettingsTab.diagnostics)
+                templateSettings
+                    .disabled(model.configurationRecoveryRequired)
+                    .tabItem {
+                        Label(
+                            L10n.text("settings.tab.templates", fallback: "模板"),
+                            systemImage: "doc.badge.plus"
+                        )
+                    }
+                    .tag(SettingsTab.templates)
+
+                diagnosticSettings
+                    .tabItem {
+                        Label(
+                            L10n.text(
+                                "settings.tab.diagnostics",
+                                fallback: "诊断"
+                            ),
+                            systemImage: "stethoscope"
+                        )
+                    }
+                    .tag(SettingsTab.diagnostics)
+            }
         }
         .frame(
             minWidth: 640,
