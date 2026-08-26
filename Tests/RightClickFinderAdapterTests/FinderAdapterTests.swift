@@ -76,7 +76,7 @@ struct FinderAdapterTests {
     }
 
     @Test
-    func dynamicCLIRequiresAuthenticationButTemplateDoesNot() throws {
+    func dynamicCLIAndTemplateRequireAuthentication() throws {
         let cli = CLIProfile(
             id: "gemini",
             title: "Gemini",
@@ -102,7 +102,7 @@ struct FinderAdapterTests {
         ))
 
         #expect(!menu.items[0].isEnabled)
-        #expect(menu.items[1].isEnabled)
+        #expect(!menu.items[1].isEnabled)
         #expect(
             MenuItemPayload(menuTag: menu.items[0].tag)
                 == .configuredCLI(ConfiguredCLIMenuItemPayload(

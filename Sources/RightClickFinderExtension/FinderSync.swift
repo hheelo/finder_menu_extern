@@ -21,7 +21,6 @@ private let performanceLog = OSLog(
 
 final class FinderSync: FIFinderSync {
     private let controller = FIFinderSyncController.default()
-    private let fileCreator = FileCreator()
     private let actionLogStore = LocalActionLogStore(
         fileURL: LocalActionLogFile.extensionURL()
     )
@@ -216,34 +215,23 @@ final class FinderSync: FIFinderSync {
             }
             try open(context.effectiveURLs, with: application)
         case let .createFile(template):
-            guard let directory = context.creationDirectory else {
-                throw FinderActionError.invalidTarget
-            }
-            let configuration = currentMenuConfiguration()
-            let createdURL = try fileCreator.create(
-                template,
-                override: configuration.templateOverride(for: template),
-                in: directory
+            try forwardCreation(
+                .builtInTemplate(template),
+                context: context,
+                action: LocalActionName(action)
             )
-            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
         case .createFolder:
-            guard let directory = context.creationDirectory else {
-                throw FinderActionError.invalidTarget
-            }
-            let createdURL = try fileCreator.createDirectory(in: directory)
-            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
-        case .createFileFromClipboard:
-            guard let directory = context.creationDirectory,
-                  let text = NSPasteboard.general.string(forType: .string),
-                  !text.isEmpty else {
-                throw FinderActionError.invalidTarget
-            }
-            let createdURL = try fileCreator.create(
-                contents: Data(text.utf8),
-                preferredFilename: "Untitled.txt",
-                in: directory
+            try forwardCreation(
+                .folder,
+                context: context,
+                action: .createFolder
             )
-            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
+        case .createFileFromClipboard:
+            try forwardCreation(
+                .clipboardText,
+                context: context,
+                action: .createFileFromClipboard
+            )
         case .openInTerminal:
             guard let token = currentToken() else {
                 throw FinderActionError.authenticationUnavailable
@@ -298,28 +286,38 @@ final class FinderSync: FIFinderSync {
         let context = context(for: payload.placement)
         reporting(
             .customTemplate,
-            successResult: .succeeded,
+            successResult: .forwarded,
             label: "自定义模板创建失败"
         ) {
             guard let template = currentMenuConfiguration()
                 .customTemplate(forSlot: payload.menuSlot) else {
                 throw FinderActionError.configurationUnavailable
             }
-            guard let directory = context.creationDirectory,
-                  let configurationURL = MenuConfigurationFile.extensionURL() else {
-                throw FinderActionError.invalidTarget
-            }
-            let source = MenuConfigurationFile.mirroredTemplatesDirectory(
-                configurationURL: configurationURL
-            ).appendingPathComponent(template.filename)
-            let contents = try Data(contentsOf: source)
-            let createdURL = try fileCreator.create(
-                contents: contents,
-                preferredFilename: template.filename,
-                in: directory
+            try forwardCreation(
+                .customTemplate(menuSlot: template.menuSlot),
+                context: context,
+                action: .customTemplate
             )
-            NSWorkspace.shared.activateFileViewerSelecting([createdURL])
         }
+    }
+
+    private func forwardCreation(
+        _ request: FileCreationInvocation.Request,
+        context: SelectionContext,
+        action: LocalActionName
+    ) throws {
+        guard let token = currentToken() else {
+            throw FinderActionError.authenticationUnavailable
+        }
+        guard let directory = context.creationDirectory,
+              let deepLink = FileCreationInvocation(
+                  request: request,
+                  directory: directory,
+                  authenticationToken: token
+              ).deepLink else {
+            throw FinderActionError.invalidTarget
+        }
+        openHost(with: deepLink, action: action)
     }
 
     private func currentMenuConfiguration() -> MenuConfiguration {

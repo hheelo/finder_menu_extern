@@ -113,6 +113,7 @@ final class AppModel: ObservableObject {
             menuConfiguration: {
                 MenuConfigurationFile.load(from: menuConfigurationURL)
             },
+            customTemplatesDirectory: { customTemplatesDirectory },
             recordAction: { action, result, category in
                 resolvedActionLogStore.append(LocalActionRecord(
                     source: .host,

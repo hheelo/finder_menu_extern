@@ -61,13 +61,13 @@ public enum FinderActionPolicy {
     ) -> Bool {
         switch action {
         case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
-             .copyParentPath, .copyRelativePath, .createFile, .createFolder,
-             .createFileFromClipboard:
+             .copyParentPath, .copyRelativePath:
             false
         case .openInVSCode, .openInCodex, .openInTerminal,
              .runCodexCLI, .runClaudeCode, .openInCursor, .openInZed,
              .openInSublimeText, .openInXcode, .openInJetBrains,
-             .openInDefaultApplication:
+             .openInDefaultApplication, .createFile, .createFolder,
+             .createFileFromClipboard:
             true
         }
     }

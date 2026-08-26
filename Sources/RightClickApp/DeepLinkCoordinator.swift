@@ -16,6 +16,10 @@ final class DeepLinkCoordinator {
     private let applicationURL: @MainActor (ExternalApplication) -> URL?
     private let nonceCache: NonceCache
     private let menuConfiguration: @MainActor () -> MenuConfiguration
+    private let customTemplatesDirectory: @MainActor () -> URL
+    private let clipboardText: @MainActor () -> String?
+    private let revealCreatedItem: @MainActor (URL) -> Void
+    private let fileCreator: FileCreator
     private let recordAction: @MainActor (
         LocalActionName,
         LocalActionResult,
@@ -30,6 +34,16 @@ final class DeepLinkCoordinator {
         menuConfiguration: @escaping @MainActor () -> MenuConfiguration = {
             .default
         },
+        customTemplatesDirectory: @escaping @MainActor () -> URL = {
+            MenuConfigurationFile.hostTemplatesDirectory()
+        },
+        clipboardText: @escaping @MainActor () -> String? = {
+            NSPasteboard.general.string(forType: .string)
+        },
+        revealCreatedItem: @escaping @MainActor (URL) -> Void = {
+            NSWorkspace.shared.activateFileViewerSelecting([$0])
+        },
+        fileCreator: FileCreator = FileCreator(),
         recordAction: @escaping @MainActor (
             LocalActionName,
             LocalActionResult,
@@ -42,6 +56,10 @@ final class DeepLinkCoordinator {
         self.terminalResolver = terminalResolver
         self.nonceCache = nonceCache
         self.menuConfiguration = menuConfiguration
+        self.customTemplatesDirectory = customTemplatesDirectory
+        self.clipboardText = clipboardText
+        self.revealCreatedItem = revealCreatedItem
+        self.fileCreator = fileCreator
         self.recordAction = recordAction
         self.applicationURL = applicationURL
     }
@@ -136,6 +154,9 @@ final class DeepLinkCoordinator {
                 invocation,
                 emit: emit
             )
+        case let .create(invocation):
+            appLogger.notice("收到深链 类型=create")
+            create(invocation, emit: emit)
         case let .error(invocation):
             appLogger.notice("收到深链 类型=error")
             recordAction(
@@ -144,6 +165,73 @@ final class DeepLinkCoordinator {
                 .extensionReported
             )
             emit(.trustedFailure(invocation.message))
+        }
+    }
+
+    private func create(
+        _ invocation: FileCreationInvocation,
+        emit: @escaping @MainActor (DeepLinkEvent) -> Void
+    ) {
+        let actionName = invocation.request.localActionName
+        emit(.status(L10n.text(
+            "status.creating_item",
+            fallback: "正在新建项目…"
+        )))
+        do {
+            let createdURL: URL
+            switch invocation.request {
+            case let .builtInTemplate(template):
+                createdURL = try fileCreator.create(
+                    template,
+                    override: menuConfiguration().templateOverride(
+                        for: template
+                    ),
+                    in: invocation.directory
+                )
+            case .folder:
+                createdURL = try fileCreator.createDirectory(
+                    in: invocation.directory
+                )
+            case .clipboardText:
+                guard let text = clipboardText(), !text.isEmpty else {
+                    throw FinderActionError.invalidTarget
+                }
+                createdURL = try fileCreator.create(
+                    contents: Data(text.utf8),
+                    preferredFilename: "Untitled.txt",
+                    in: invocation.directory
+                )
+            case let .customTemplate(menuSlot):
+                guard let template = menuConfiguration()
+                    .customTemplate(forSlot: menuSlot) else {
+                    throw FinderActionError.configurationUnavailable
+                }
+                let source = customTemplatesDirectory()
+                    .appendingPathComponent(template.filename)
+                let values = try source.resourceValues(forKeys: [
+                    .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey
+                ])
+                guard values.isRegularFile == true,
+                      values.isSymbolicLink != true,
+                      (values.fileSize ?? 0) <= TemplateMirror.maximumFileSize
+                else {
+                    throw FinderActionError.configurationUnavailable
+                }
+                createdURL = try fileCreator.create(
+                    contents: Data(contentsOf: source),
+                    preferredFilename: template.filename,
+                    in: invocation.directory
+                )
+            }
+            recordAction(actionName, .succeeded, nil)
+            revealCreatedItem(createdURL)
+            emit(.status(L10n.text(
+                "status.created_item",
+                fallback: "已新建项目"
+            )))
+        } catch {
+            recordAction(actionName, .failed, actionErrorCategory(error))
+            reportFailure(error.localizedDescription, emit: emit)
         }
     }
 
@@ -393,6 +481,12 @@ final class DeepLinkCoordinator {
         if error is CancellationError {
             return .cancelled
         }
+        if error is FileCreatorError || error is CocoaError {
+            return .fileSystem
+        }
+        if error is FinderActionError {
+            return LocalActionErrorCategory(error)
+        }
         return .executionFailed
     }
 }
@@ -406,7 +500,20 @@ private extension DeepLinkRequest.Payload {
         case let .open(invocation): LocalActionName(
             opening: invocation.application
         )
+        case let .create(invocation): invocation.request.localActionName
         case .error: .extensionErrorReport
+        }
+    }
+}
+
+private extension FileCreationInvocation.Request {
+    var localActionName: LocalActionName {
+        switch self {
+        case let .builtInTemplate(template):
+            LocalActionName(.createFile(template))
+        case .folder: .createFolder
+        case .clipboardText: .createFileFromClipboard
+        case .customTemplate: .customTemplate
         }
     }
 }

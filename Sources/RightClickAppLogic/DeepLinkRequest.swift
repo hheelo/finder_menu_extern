@@ -7,6 +7,7 @@ public struct DeepLinkRequest: Equatable {
         case configuredCLI(ConfiguredCLIInvocation)
         case terminal(TerminalInvocation)
         case open(OpenInvocation)
+        case create(FileCreationInvocation)
         case error(ErrorInvocation)
     }
 
@@ -43,6 +44,11 @@ public struct DeepLinkRequest: Equatable {
                 throw DeepLinkRequestError.invalidOpen
             }
             payload = .open(invocation)
+        case "create":
+            guard let invocation = FileCreationInvocation(deepLink: url) else {
+                throw DeepLinkRequestError.invalidCreation
+            }
+            payload = .create(invocation)
         case "error":
             guard let invocation = ErrorInvocation(deepLink: url) else {
                 throw DeepLinkRequestError.invalidError
@@ -77,6 +83,7 @@ public struct DeepLinkRequest: Equatable {
         case .cli, .configuredCLI: .invalidCLI
         case .terminal: .invalidTerminal
         case .open: .invalidOpen
+        case .create: .invalidCreation
         case .error: .invalidError
         }
     }
@@ -87,6 +94,7 @@ public enum DeepLinkRequestError: Error, Equatable {
     case invalidCLI
     case invalidTerminal
     case invalidOpen
+    case invalidCreation
     case invalidError
     case unknownAction(String?)
 
@@ -100,6 +108,8 @@ public enum DeepLinkRequestError: Error, Equatable {
             "终端请求无效、未通过认证，或工作目录不是现有的绝对文件夹路径。"
         case .invalidOpen:
             "打开请求无效或未通过认证：应用必须在白名单中，目标必须是现有的绝对路径。"
+        case .invalidCreation:
+            "新建文件请求无效、未通过认证，或目标不是现有的绝对文件夹路径。"
         case .invalidError:
             "错误报告无效或未通过本机 Finder 扩展认证。"
         case let .unknownAction(host):

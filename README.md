@@ -34,8 +34,9 @@ RightClickCore.framework
 └── 动作模型、选区规则、文件模板、CLI 链接、设置与共享本地化资源
 ```
 
-Finder 扩展直接完成复制和文件创建；打开编辑器、终端或运行 CLI 时，通过签名
-深链唤起宿主 App。自定义 CLI 深链只包含配置 ID 与工作目录，不包含可执行名或参数。
+Finder 扩展直接完成复制；文件创建、打开编辑器、终端或运行 CLI 通过签名深链交给
+未沙箱化的宿主 App，避免 Finder 上下文 URL 被误当作目录写授权。自定义 CLI 深链
+只包含配置 ID 与工作目录，不包含可执行名或参数。
 项目不依赖 App
 Group、开发团队或 provisioning profile。
 

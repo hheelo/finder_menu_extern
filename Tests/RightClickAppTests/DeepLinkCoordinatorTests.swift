@@ -18,6 +18,93 @@ struct DeepLinkCoordinatorTests {
         }
     }
 
+    @Test
+    func hostCreatesEveryFinderRequestedItemOutsideExtensionSandbox() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let templates = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false
+        )
+        try FileManager.default.createDirectory(
+            at: templates,
+            withIntermediateDirectories: false
+        )
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: templates)
+        }
+        try Data("custom body".utf8).write(
+            to: templates.appendingPathComponent("Notes.md")
+        )
+
+        let token = ExtensionRequestTokenStore.makeToken()
+        let custom = CustomFileTemplate(
+            id: "notes",
+            title: "Notes.md",
+            filename: "Notes.md",
+            menuSlot: 7
+        )
+        let records = ActionRecordRecorder()
+        var revealed: [URL] = []
+        let coordinator = DeepLinkCoordinator(
+            extensionRequestToken: { token },
+            executor: CoordinatorRecordingExecutor(failureMessage: nil),
+            menuConfiguration: {
+                MenuConfiguration(customTemplates: [custom])
+            },
+            customTemplatesDirectory: { templates },
+            clipboardText: { "clipboard body" },
+            revealCreatedItem: { revealed.append($0) },
+            recordAction: records.append,
+            applicationURL: { _ in nil }
+        )
+        let requests: [FileCreationInvocation.Request] = [
+            .builtInTemplate(.python),
+            .folder,
+            .clipboardText,
+            .customTemplate(menuSlot: 7)
+        ]
+
+        for request in requests {
+            let invocation = FileCreationInvocation(
+                request: request,
+                directory: root,
+                authenticationToken: token
+            )
+            coordinator.dispatch(
+                try #require(invocation.deepLink),
+                terminalProfile: .terminal,
+                emit: { _ in }
+            )
+        }
+
+        #expect(revealed.count == requests.count)
+        #expect(revealed.allSatisfy {
+            FileManager.default.fileExists(atPath: $0.path)
+        })
+        #expect(try String(
+            contentsOf: root.appendingPathComponent("Untitled.py"),
+            encoding: .utf8
+        ).hasPrefix("#!/usr/bin/env python3"))
+        #expect(try String(
+            contentsOf: root.appendingPathComponent("Untitled.txt"),
+            encoding: .utf8
+        ) == "clipboard body")
+        #expect(try String(
+            contentsOf: root.appendingPathComponent("Notes.md"),
+            encoding: .utf8
+        ) == "custom body")
+        #expect(records.values.map(\.result) == [
+            .received, .succeeded,
+            .received, .succeeded,
+            .received, .succeeded,
+            .received, .succeeded
+        ])
+    }
+
     @Test(arguments: ExecutionRoute.allCases)
     func executionRouteSucceeds(_ route: ExecutionRoute) async throws {
         let fixture = try makeFixture(route: route)

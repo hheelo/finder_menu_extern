@@ -105,7 +105,8 @@ public enum FinderMenuRenderer {
                 named: "doc.badge.plus",
                 accessibilityDescription: template.title
             )
-            item.isEnabled = isEnabled
+            // 自定义模板也由未沙箱化宿主落盘，与内置创建动作共享认证边界。
+            item.isEnabled = isEnabled && authenticationAvailable
             return item
         case let .submenu(title, isEnabled, children):
             let root = NSMenuItem(title: title, action: nil, keyEquivalent: "")

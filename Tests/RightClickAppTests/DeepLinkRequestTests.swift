@@ -29,6 +29,11 @@ struct DeepLinkRequestTests {
             workingDirectory: directory,
             authenticationToken: token
         )
+        let creation = FileCreationInvocation(
+            request: .builtInTemplate(.text),
+            directory: directory,
+            authenticationToken: token
+        )
 
         let cliRequest = try DeepLinkRequest(
                 deepLink: #require(cli.deepLink),
@@ -53,6 +58,12 @@ struct DeepLinkRequestTests {
             expectedAuthenticationToken: token
         )
         #expect(configuredRequest.payload == .configuredCLI(configured))
+
+        let creationRequest = try DeepLinkRequest(
+            deepLink: #require(creation.deepLink),
+            expectedAuthenticationToken: token
+        )
+        #expect(creationRequest.payload == .create(creation))
     }
 
     @Test
@@ -76,6 +87,11 @@ struct DeepLinkRequestTests {
         expectRejection(
             URL(string: "rightclick://open?app=unknown&path=/tmp")!,
             expected: .invalidOpen,
+            authenticationToken: token
+        )
+        expectRejection(
+            URL(string: "rightclick://create?path=/tmp&kind=unknown")!,
+            expected: .invalidCreation,
             authenticationToken: token
         )
         expectRejection(
