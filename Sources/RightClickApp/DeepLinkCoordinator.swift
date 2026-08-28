@@ -208,17 +208,12 @@ final class DeepLinkCoordinator {
                 }
                 let source = customTemplatesDirectory()
                     .appendingPathComponent(template.filename)
-                let values = try source.resourceValues(forKeys: [
-                    .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey
-                ])
-                guard values.isRegularFile == true,
-                      values.isSymbolicLink != true,
-                      (values.fileSize ?? 0) <= TemplateMirror.maximumFileSize
-                else {
+                guard let contents = try TemplateMirror()
+                    .loadContents(ofTemplateAt: source) else {
                     throw FinderActionError.configurationUnavailable
                 }
                 createdURL = try fileCreator.create(
-                    contents: Data(contentsOf: source),
+                    contents: contents,
                     preferredFilename: template.filename,
                     in: invocation.directory
                 )

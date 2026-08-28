@@ -230,4 +230,64 @@ struct TemplateMirrorTests {
         #expect(result.templates.isEmpty)
         #expect(result.skippedOversizedFilenames == ["Growing.bin"])
     }
+
+    @Test
+    func menuReadUsesTheSameBoundedNoFollowDescriptor() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appendingPathComponent("Template.txt")
+        let replacement = root.appendingPathComponent("Replacement.txt")
+        try Data("template".utf8).write(to: source)
+        try Data("must not be read".utf8).write(to: replacement)
+
+        let reader = TemplateMirror { url in
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.createSymbolicLink(
+                at: url,
+                withDestinationURL: replacement
+            )
+        }
+
+        #expect(try reader.loadContents(ofTemplateAt: source) == nil)
+    }
+
+    @Test
+    func invalidMirrorNodeIsReplacedInsteadOfBlockingSynchronization() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let mirror = root.appendingPathComponent("mirror", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: source,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: mirror,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sourceFile = source.appendingPathComponent("Note.txt")
+        let invalidMirror = mirror.appendingPathComponent("Note.txt")
+        try Data("fresh".utf8).write(to: sourceFile)
+        try FileManager.default.createDirectory(
+            at: invalidMirror,
+            withIntermediateDirectories: false
+        )
+
+        let result = try TemplateMirror().synchronize(
+            existing: [],
+            sourceDirectory: source,
+            mirrorDirectory: mirror
+        )
+
+        #expect(result.templates.map(\.filename) == ["Note.txt"])
+        #expect(
+            try String(contentsOf: invalidMirror, encoding: .utf8) == "fresh"
+        )
+    }
 }

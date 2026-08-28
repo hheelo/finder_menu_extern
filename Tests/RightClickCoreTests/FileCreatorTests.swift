@@ -151,4 +151,39 @@ struct FileCreatorTests {
             )
         }
     }
+
+    @Test
+    func validatesFilenameUnitLimitAndKeepsDuplicateNamesWithinIt() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        #expect(FileCreator.isSafeFilename(
+            String(repeating: "😀", count: 127) + "a"
+        ))
+        #expect(!FileCreator.isSafeFilename(
+            String(repeating: "😀", count: 128)
+        ))
+
+        let maximumLengthName = String(repeating: "a", count: 251) + ".txt"
+        let creator = FileCreator()
+        let first = try creator.create(
+            contents: Data(),
+            preferredFilename: maximumLengthName,
+            in: root
+        )
+        let second = try creator.create(
+            contents: Data(),
+            preferredFilename: maximumLengthName,
+            in: root
+        )
+
+        #expect(first.lastPathComponent.utf16.count == 255)
+        #expect(second.lastPathComponent.utf16.count <= 255)
+        #expect(second.lastPathComponent.hasSuffix(" 2.txt"))
+    }
 }

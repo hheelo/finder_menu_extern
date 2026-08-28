@@ -24,7 +24,10 @@ public enum FileCreatorError: LocalizedError {
 
 public struct FileCreator {
     private static let maximumCreationAttempts = 8
-    private static let maximumFilenameLength = 255
+    /// APFS/HFS 的 255 单元名称边界按 UTF-16 计数，而 Swift `String.count`
+    /// 统计扩展字素簇。两者对 emoji 等字符并不相同：128 个 emoji 的
+    /// `String.count` 是 128，但已占 256 个 UTF-16 单元，文件系统会拒绝。
+    private static let maximumFilenameUTF16Count = 255
     private let fileManager: FileManager
 
     public init(fileManager: FileManager = .default) {
@@ -123,7 +126,7 @@ public struct FileCreator {
 
     public static func isSafeFilename(_ filename: String) -> Bool {
         !filename.isEmpty
-            && filename.count <= maximumFilenameLength
+            && filename.utf16.count <= maximumFilenameUTF16Count
             && filename != "."
             && filename != ".."
             && !filename.contains("/")
@@ -140,12 +143,55 @@ public struct FileCreator {
         var candidate = directory.appendingPathComponent(filename)
         var suffix = 2
         while fileManager.fileExists(atPath: candidate.path) {
-            let nextName = pathExtension.isEmpty
-                ? "\(stem) \(suffix)"
-                : "\(stem) \(suffix).\(pathExtension)"
+            let nextName = Self.filename(
+                stem: stem,
+                pathExtension: pathExtension,
+                suffix: suffix
+            )
             candidate = directory.appendingPathComponent(nextName)
             suffix += 1
         }
         return candidate
+    }
+
+    /// 插入去重后缀时仍保持在文件系统的 255 单元名称上限内。优先裁短主文件名，
+    /// 极端情况下才裁短扩展名；按 `Character` 截取，不会拆开组合字符。
+    private static func filename(
+        stem: String,
+        pathExtension: String,
+        suffix: Int
+    ) -> String {
+        let suffixText = " \(suffix)"
+        var extensionText = pathExtension.isEmpty ? "" : ".\(pathExtension)"
+        let stemBudget = maximumFilenameUTF16Count
+            - suffixText.utf16.count
+            - extensionText.utf16.count
+        let fittedStem = prefix(
+            of: stem,
+            fittingUTF16Count: max(0, stemBudget)
+        )
+
+        let extensionBudget = maximumFilenameUTF16Count
+            - fittedStem.utf16.count
+            - suffixText.utf16.count
+        extensionText = prefix(
+            of: extensionText,
+            fittingUTF16Count: max(0, extensionBudget)
+        )
+        return fittedStem + suffixText + extensionText
+    }
+
+    private static func prefix(
+        of value: String,
+        fittingUTF16Count limit: Int
+    ) -> String {
+        guard limit > 0 else { return "" }
+        var used = 0
+        return String(value.prefix { character in
+            let count = String(character).utf16.count
+            guard used + count <= limit else { return false }
+            used += count
+            return true
+        })
     }
 }

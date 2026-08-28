@@ -122,15 +122,24 @@ public struct TemplateMirror {
         for source in eligibleSources {
             let filename = source.url.lastPathComponent
             let destination = mirrorDirectory.appendingPathComponent(filename)
-            let mirroredValues = try? destination.resourceValues(
-                forKeys: [.fileSizeKey, .contentModificationDateKey]
-            )
+            let mirroredValues = try? destination.resourceValues(forKeys: [
+                .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey,
+                .contentModificationDateKey
+            ])
+            let mirrorIsSafe = mirroredValues?.isRegularFile == true
+                && mirroredValues?.isSymbolicLink != true
+            if mirroredValues != nil, !mirrorIsSafe {
+                // 镜像是可再生的私有派生数据。异常目录或符号链接不能命中
+                // “未变化”快路径，也不能永久阻断同名模板的后续同步。
+                try fileManager.removeItem(at: destination)
+            }
             willOpenSource(source.url)
             let sourceResult = try readSource(
                 source.url,
-                mirroredFileSize: mirroredValues?.fileSize,
-                mirroredModificationDate:
-                    mirroredValues?.contentModificationDate
+                mirroredFileSize: mirrorIsSafe ? mirroredValues?.fileSize : nil,
+                mirroredModificationDate: mirrorIsSafe
+                    ? mirroredValues?.contentModificationDate
+                    : nil
             )
             let sourceDate: Date?
             switch sourceResult {
@@ -189,6 +198,28 @@ public struct TemplateMirror {
             templates: templates,
             skippedOversizedFilenames: oversizedFilenames
         )
+    }
+
+    /// 点击菜单后读取原始模板时复用同步阶段的同描述符校验：类型、大小与内容
+    /// 都来自一次 `open(O_NOFOLLOW)`，避免“先看属性、再重新打开”之间被替换成
+    /// 符号链接或超大文件，也避免把无界数据读进宿主主线程。
+    public func loadContents(ofTemplateAt url: URL) throws -> Data? {
+        willOpenSource(url)
+        switch try readSource(
+            url,
+            mirroredFileSize: nil,
+            mirroredModificationDate: nil
+        ) {
+        case .skipped:
+            return nil
+        case .oversized:
+            throw TemplateMirrorError.templateTooLarge(url.lastPathComponent)
+        case .unchanged:
+            // 没有提供镜像元数据，因此该分支不可达；保守地拒绝空结果。
+            return nil
+        case let .contents(contents, _):
+            return contents
+        }
     }
 
     /// 打开、类型检查、大小检查和读取始终使用同一个描述符。`O_NOFOLLOW`
