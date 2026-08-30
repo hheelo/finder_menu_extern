@@ -69,6 +69,45 @@ struct MenuConfigurationTests {
             MenuConfigurationFile.loadResult(from: url)
                 == .invalid(.unsupportedVersion(999), originalData: newer)
         )
+
+        let older = try JSONEncoder().encode(MenuConfiguration(version: 0))
+        try older.write(to: url)
+        #expect(
+            MenuConfigurationFile.loadResult(from: url)
+                == .invalid(.unsupportedVersion(0), originalData: older)
+        )
+    }
+
+    @Test
+    func detailedLoadResultExposesPersistenceAndRecoveryMetadata() {
+        let configuration = MenuConfiguration(collapseIntoSubmenu: true)
+        let original = Data("broken".utf8)
+
+        let loaded = MenuConfigurationLoadResult.loaded(configuration)
+        #expect(loaded.configuration == configuration)
+        #expect(loaded.canPersist)
+        #expect(loaded.failure == nil)
+        #expect(loaded.originalData == nil)
+
+        let migrated = MenuConfigurationLoadResult.migrated(
+            configuration,
+            fromVersion: 0
+        )
+        #expect(migrated.configuration == configuration)
+        #expect(migrated.canPersist)
+
+        let missing = MenuConfigurationLoadResult.missing
+        #expect(missing.configuration == .default)
+        #expect(missing.canPersist)
+
+        let invalid = MenuConfigurationLoadResult.invalid(
+            .corrupted,
+            originalData: original
+        )
+        #expect(invalid.configuration == .default)
+        #expect(!invalid.canPersist)
+        #expect(invalid.failure == .corrupted)
+        #expect(invalid.originalData == original)
     }
 
     @Test
@@ -118,6 +157,51 @@ struct MenuConfigurationTests {
     }
 
     @Test
+    func backupSkipsMissingBytesAndPreservesAnExistingSettingsFile() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("menu.json")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let unreadable = MenuConfigurationLoadResult.invalid(
+            .unreadable,
+            originalData: nil
+        )
+        #expect(try MenuConfigurationBackup.preserveInvalidConfiguration(
+            unreadable,
+            sourceURL: source
+        ) == nil)
+        #expect(try MenuConfigurationBackup.preserveExistingConfiguration(
+            at: source
+        ) == nil)
+
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false
+        )
+        let original = Data("existing settings".utf8)
+        try original.write(to: source)
+        let createdBackup = try MenuConfigurationBackup
+            .preserveExistingConfiguration(
+                at: source,
+                date: Date(timeIntervalSince1970: 0),
+                identifier: UUID(
+                    uuidString: "00000000-0000-4000-8000-000000000001"
+                )!
+            )
+        let backup = try #require(createdBackup)
+
+        #expect(backup.lastPathComponent.contains("-settings-"))
+        #expect(try Data(contentsOf: backup) == original)
+        let directoryMode = try #require(
+            FileManager.default.attributesOfItem(
+                atPath: backup.deletingLastPathComponent().path
+            )[.posixPermissions] as? NSNumber
+        ).intValue
+        #expect(directoryMode == 0o700)
+    }
+
+    @Test
     func portableSettingsRoundTripPreservesMachineLocalState() throws {
         let localTemplate = CustomFileTemplate(
             id: "local-template",
@@ -152,6 +236,95 @@ struct MenuConfigurationTests {
         #expect(imported.cliProfiles.map { $0.id } == ["gemini"])
         #expect(imported.terminalProfileID == TerminalProfile.ghostty.rawValue)
         #expect(imported.customTemplates == [localTemplate])
+    }
+
+    @Test
+    func portableSettingsStripMachineLocalStateFromTheDocument() throws {
+        let localTemplate = CustomFileTemplate(
+            id: "local-template",
+            title: "Local.md",
+            filename: "Local.md",
+            menuSlot: 1
+        )
+        let source = MenuConfiguration(
+            disabledActions: [RightClickAction.copyFilename.configurationID],
+            terminalProfileID: TerminalProfile.kitty.rawValue,
+            customTemplates: [localTemplate]
+        )
+
+        let data = try MenuConfigurationTransfer.exportData(source)
+        let imported = try MenuConfigurationTransfer.importData(
+            data,
+            preservingLocalStateFrom: .default
+        )
+
+        #expect(imported.disabledActions == source.disabledActions)
+        #expect(imported.terminalProfileID == nil)
+        #expect(imported.customTemplates.isEmpty)
+    }
+
+    @Test
+    func portableSettingsRejectMalformedUnsupportedAndOversizedDocuments() throws {
+        let current = MenuConfiguration.default
+
+        do {
+            _ = try MenuConfigurationTransfer.importData(
+                Data("not json".utf8),
+                preservingLocalStateFrom: current
+            )
+            Issue.record("损坏的设置文档本应被拒绝")
+        } catch let error as MenuConfigurationTransferError {
+            #expect(error == .invalidConfiguration)
+        }
+
+        let exported = try MenuConfigurationTransfer.exportData(.default)
+        var unsupported = try #require(
+            JSONSerialization.jsonObject(with: exported) as? [String: Any]
+        )
+        unsupported["formatVersion"] = 2
+        do {
+            _ = try MenuConfigurationTransfer.importData(
+                try JSONSerialization.data(withJSONObject: unsupported),
+                preservingLocalStateFrom: current
+            )
+            Issue.record("未知格式版本本应被拒绝")
+        } catch let error as MenuConfigurationTransferError {
+            #expect(error == .unsupportedFormat)
+        }
+
+        var wrongConfigurationVersion = try #require(
+            JSONSerialization.jsonObject(with: exported) as? [String: Any]
+        )
+        var configuration = try #require(
+            wrongConfigurationVersion["configuration"] as? [String: Any]
+        )
+        configuration["version"] = MenuConfiguration.currentVersion + 1
+        wrongConfigurationVersion["configuration"] = configuration
+        do {
+            _ = try MenuConfigurationTransfer.importData(
+                try JSONSerialization.data(
+                    withJSONObject: wrongConfigurationVersion
+                ),
+                preservingLocalStateFrom: current
+            )
+            Issue.record("未知配置版本本应被拒绝")
+        } catch let error as MenuConfigurationTransferError {
+            #expect(error == .invalidConfiguration)
+        }
+
+        let oversized = Data(
+            repeating: 0x20,
+            count: MenuConfigurationTransfer.maximumDocumentSize + 1
+        )
+        do {
+            _ = try MenuConfigurationTransfer.importData(
+                oversized,
+                preservingLocalStateFrom: current
+            )
+            Issue.record("超大设置文档本应被拒绝")
+        } catch let error as MenuConfigurationTransferError {
+            #expect(error == .documentTooLarge)
+        }
     }
 
     @Test

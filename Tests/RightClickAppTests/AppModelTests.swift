@@ -477,8 +477,76 @@ struct AppModelTests {
         #expect(fixture.model.errorHistory.count == 1)
     }
 
+    @Test
+    func localActionSessionLifecycleAndErrorClearingFlowThroughTheModel() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        let markerURL = fixture.directory.appendingPathComponent(
+            "host-session.active"
+        )
+
+        fixture.model.beginLocalActionLogSession()
+        fixture.model.beginLocalActionLogSession()
+        #expect(FileManager.default.fileExists(atPath: markerURL.path))
+        #expect(
+            fixture.actionLogStore.records().map(\.result) == [.started]
+        )
+
+        fixture.model.recordFailure("first")
+        fixture.model.recordFailure("second")
+        #expect(fixture.model.errorHistory.map(\.message) == ["second", "first"])
+        fixture.model.clearErrors()
+        #expect(fixture.model.errorHistory.isEmpty)
+
+        fixture.model.endLocalActionLogSession()
+        fixture.model.endLocalActionLogSession()
+        #expect(
+            fixture.actionLogStore.records().map(\.result)
+                == [.started, .succeeded]
+        )
+        #expect(!FileManager.default.fileExists(atPath: markerURL.path))
+        #expect(
+            LocalActionLogStore.load(
+                from: fixture.directory.appendingPathComponent(
+                    "action-log.json"
+                )
+            ).map(\.result) == [.started, .succeeded]
+        )
+    }
+
+    @Test
+    func explicitRecoveryResetReplacesCorruptConfiguration() throws {
+        let corrupt = Data("not json".utf8)
+        let fixture = try makeFixture(menuConfigurationData: corrupt)
+        defer { fixture.cleanUp() }
+
+        #expect(fixture.model.configurationRecoveryRequired)
+        #expect(!fixture.model.errorHistory.isEmpty)
+
+        fixture.model.resetConfigurationAfterRecovery()
+
+        #expect(!fixture.model.configurationRecoveryRequired)
+        #expect(fixture.model.menuConfiguration.terminalProfileID == "terminal")
+        #expect(fixture.model.lastStatus == L10n.text(
+            "status.reset_settings",
+            fallback: "Finder 菜单设置已重置"
+        ))
+        #expect(
+            MenuConfigurationFile.load(
+                from: fixture.directory.appendingPathComponent("menu.json")
+            ) == fixture.model.menuConfiguration
+        )
+        let backups = try FileManager.default.contentsOfDirectory(
+            at: fixture.directory.appendingPathComponent("Backups"),
+            includingPropertiesForKeys: nil
+        )
+        #expect(backups.count == 2)
+        #expect(backups.allSatisfy { $0.pathExtension == "json" })
+    }
+
     private func makeFixture(
-        extensionStatusProvider: (@MainActor () async -> Bool?)? = nil
+        extensionStatusProvider: (@MainActor () async -> Bool?)? = nil,
+        menuConfigurationData: Data? = nil
     ) throws -> Fixture {
         let suiteName = "RightClickAppTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
@@ -486,6 +554,11 @@ struct AppModelTests {
 
         let directory = try makeDirectory()
         let secondDirectory = try makeDirectory()
+        if let menuConfigurationData {
+            try menuConfigurationData.write(
+                to: directory.appendingPathComponent("menu.json")
+            )
+        }
         let executor = RecordingExecutor()
         let notifier = RecordingNotifier()
         let token = ExtensionRequestTokenStore.makeToken()

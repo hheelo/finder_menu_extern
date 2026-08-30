@@ -4,6 +4,28 @@ import Testing
 
 struct FileCreatorTests {
     @Test
+    func everyBuiltInTemplateHasAStableFilenameAndValidInitialContents() {
+        #expect(FileTemplate.allCases.map(\.preferredFilename) == [
+            "Untitled.txt",
+            "Untitled.md",
+            "Untitled.py",
+            "Untitled.sh",
+            "Untitled.html",
+            "Untitled.json",
+            "Untitled.csv"
+        ])
+        #expect(FileTemplate.allCases.allSatisfy { !$0.title.isEmpty })
+        #expect(FileTemplate.text.initialContents.isEmpty)
+        #expect(FileTemplate.markdown.initialContents.isEmpty)
+        #expect(FileTemplate.csv.initialContents.isEmpty)
+        #expect(FileTemplate.python.initialContents.hasPrefix("#!/usr/bin/env python3"))
+        #expect(FileTemplate.shell.initialContents.hasPrefix("#!/bin/zsh"))
+        #expect(FileTemplate.html.initialContents.contains("<!doctype html>"))
+        #expect(FileTemplate.html.initialContents.contains("<html lang=\""))
+        #expect(FileTemplate.json.initialContents == "{\n  \n}\n")
+    }
+
+    @Test
     func createsTemplateAndAvoidsOverwriting() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)

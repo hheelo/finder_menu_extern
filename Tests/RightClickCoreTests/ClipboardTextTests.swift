@@ -42,6 +42,10 @@ struct ClipboardTextTests {
             ClipboardText.filenames(for: urls, separator: .space)
                 == "file one.txt 二.txt"
         )
+        #expect(ClipboardSeparator.newline.text == "\n")
+        #expect(ClipboardSeparator.space.text == " ")
+        #expect(ClipboardSeparator.comma.text == ", ")
+        #expect(ClipboardSeparator.allCases.allSatisfy { !$0.title.isEmpty })
     }
 
     /// 非复制动作必须返回 nil，否则扩展会把空串塞进剪贴板。

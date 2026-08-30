@@ -163,6 +163,46 @@ struct LocalActionLogTests {
     }
 
     @Test
+    func reportOrdersTiedLifecycleRecordsAndAlwaysKeepsOneRecord() throws {
+        let date = Date(timeIntervalSince1970: 1)
+        let succeeded = LocalActionRecord(
+            id: UUID(uuidString: "00000000-0000-4000-8000-000000000001")!,
+            date: date,
+            source: .host,
+            action: .applicationSession,
+            result: .succeeded
+        )
+        let started = LocalActionRecord(
+            id: UUID(uuidString: "ffffffff-ffff-4fff-8fff-ffffffffffff")!,
+            date: date,
+            source: .host,
+            action: .applicationSession,
+            result: .started
+        )
+
+        let ordered = LocalActionLogReport.make(
+            hostRecords: [succeeded, started],
+            extensionRecords: [],
+            appVersion: "test",
+            generatedAt: date,
+            maximumRecordCount: 2
+        )
+        let startedRange = try #require(ordered.range(of: "\tstarted\t"))
+        let succeededRange = try #require(ordered.range(of: "\tsucceeded\t"))
+        #expect(startedRange.lowerBound < succeededRange.lowerBound)
+
+        let clamped = LocalActionLogReport.make(
+            hostRecords: [started, succeeded],
+            extensionRecords: [],
+            appVersion: "test",
+            generatedAt: date,
+            maximumRecordCount: 0
+        )
+        #expect(!clamped.contains("\tstarted\t"))
+        #expect(clamped.contains("\tsucceeded\t"))
+    }
+
+    @Test
     func sessionMarkerReportsAnUncleanPreviousTermination() throws {
         let directory = try makeDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -189,6 +229,61 @@ struct LocalActionLogTests {
                 && $0.errorCategory == .unexpectedTermination
         })
         #expect(!FileManager.default.fileExists(atPath: markerURL.path))
+    }
+
+    @Test
+    func normalSessionLifecycleIsIdempotentAndUsesPrivateMarker() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let markerURL = directory.appendingPathComponent("host-session.active")
+        let store = LocalActionLogStore(
+            fileURL: directory.appendingPathComponent("action-log.json")
+        )
+        let tracker = LocalActionSessionTracker(
+            store: store,
+            markerURL: markerURL
+        )
+        let start = Date(timeIntervalSince1970: 1)
+        let end = Date(timeIntervalSince1970: 2)
+
+        tracker.begin(date: start)
+        tracker.begin(date: Date(timeIntervalSince1970: 99))
+        #expect(FileManager.default.fileExists(atPath: markerURL.path))
+        let markerMode = try #require(
+            FileManager.default.attributesOfItem(atPath: markerURL.path)[
+                .posixPermissions
+            ] as? NSNumber
+        ).intValue
+        #expect(markerMode == 0o600)
+
+        tracker.end(date: end)
+        tracker.end(date: Date(timeIntervalSince1970: 100))
+
+        #expect(store.records().map(\.date) == [start, end])
+        #expect(store.records().map(\.result) == [.started, .succeeded])
+        #expect(!FileManager.default.fileExists(atPath: markerURL.path))
+    }
+
+    @Test
+    func logFileLocationsStayInsideTheirExpectedContainers() {
+        let home = URL(fileURLWithPath: "/Users/tester", isDirectory: true)
+        let host = LocalActionLogFile.hostURL(homeDirectory: home)
+        let extensionHost = LocalActionLogFile.extensionHostURL(
+            homeDirectory: home
+        )
+
+        #expect(
+            host.path
+                == "/Users/tester/Library/Application Support/RightClick/action-log.json"
+        )
+        #expect(
+            extensionHost.path
+                == "/Users/tester/Library/Containers/com.hheelo.RightClick.FinderExtension/Data/Library/Application Support/RightClick/action-log.json"
+        )
+        #expect(
+            LocalActionLogFile.sessionMarkerURL(for: host).path
+                == "/Users/tester/Library/Application Support/RightClick/host-session.active"
+        )
     }
 
     @Test
