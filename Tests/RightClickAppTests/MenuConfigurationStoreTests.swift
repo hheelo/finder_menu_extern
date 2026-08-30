@@ -65,8 +65,11 @@ struct MenuConfigurationStoreTests {
             await store.refreshCustomTemplates()
             probe.complete()
         }
-        try? await Task.sleep(for: .milliseconds(30))
+        let didStart = await Task.detached {
+            probe.waitUntilStarted(timeout: 1)
+        }.value
 
+        #expect(didStart)
         #expect(probe.hasStarted)
         #expect(!probe.hasCompleted)
         probe.release()
@@ -289,6 +292,7 @@ struct MenuConfigurationStoreTests {
 
 private final class TemplateSynchronizationProbe: @unchecked Sendable {
     private let lock = NSLock()
+    private let startedSemaphore = DispatchSemaphore(value: 0)
     private let releaseSemaphore = DispatchSemaphore(value: 0)
     private var started = false
     private var completed = false
@@ -298,7 +302,13 @@ private final class TemplateSynchronizationProbe: @unchecked Sendable {
 
     func beginAndWait() {
         lock.withLock { started = true }
-        _ = releaseSemaphore.wait(timeout: .now() + 0.5)
+        startedSemaphore.signal()
+        _ = releaseSemaphore.wait(timeout: .now() + 5)
+    }
+
+    func waitUntilStarted(timeout: TimeInterval) -> Bool {
+        if hasStarted { return true }
+        return startedSemaphore.wait(timeout: .now() + timeout) == .success
     }
 
     func release() { releaseSemaphore.signal() }

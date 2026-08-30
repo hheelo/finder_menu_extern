@@ -90,8 +90,14 @@ struct LocalActionLogTests {
                 result: .succeeded
             ))
         }
-        try? await Task.sleep(for: .milliseconds(100))
+        let didWrite = await Task.detached {
+            recorder.waitForFirstWrite(timeout: 1)
+        }.value
+        // 等待真实写入事件后同步冲刷，确保后台任务已退出持久化临界区，
+        // 再检查防抖确实只合并成一次写入。
+        store.flush()
 
+        #expect(didWrite)
         #expect(recorder.writeCount == 1)
         #expect(recorder.lastRecordCount == 5)
     }
@@ -308,6 +314,7 @@ struct LocalActionLogTests {
 
 private final class PersistenceRecorder: @unchecked Sendable {
     private let lock = NSLock()
+    private let writeSemaphore = DispatchSemaphore(value: 0)
     private let shouldFail: Bool
     private var recordedWriteCount = 0
     private var recordedLastRecordCount = 0
@@ -319,11 +326,17 @@ private final class PersistenceRecorder: @unchecked Sendable {
     var writeCount: Int { lock.withLock { recordedWriteCount } }
     var lastRecordCount: Int { lock.withLock { recordedLastRecordCount } }
 
+    func waitForFirstWrite(timeout: TimeInterval) -> Bool {
+        if writeCount > 0 { return true }
+        return writeSemaphore.wait(timeout: .now() + timeout) == .success
+    }
+
     func record(_ records: [LocalActionRecord]) throws {
         lock.withLock {
             recordedWriteCount += 1
             recordedLastRecordCount = records.count
         }
+        writeSemaphore.signal()
         if shouldFail { throw CocoaError(.fileWriteUnknown) }
     }
 }
