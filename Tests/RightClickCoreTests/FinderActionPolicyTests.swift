@@ -69,6 +69,28 @@ struct FinderActionPolicyTests {
     }
 
     @Test
+    func everyFinderFailureHasAUsefulLocalizedDescription() {
+        let errors: [FinderActionError] = [
+            .invalidTarget,
+            .invalidWorkingDirectory,
+            .tooManyOpenTargets(count: 129, maximum: 128),
+            .authenticationUnavailable,
+            .configurationUnavailable,
+            .hostApplicationUnavailable
+        ]
+
+        for error in errors {
+            #expect(error.errorDescription?.isEmpty == false)
+        }
+        let targetLimit = FinderActionError.tooManyOpenTargets(
+            count: 129,
+            maximum: 128
+        ).errorDescription ?? ""
+        #expect(targetLimit.contains("128"))
+        #expect(targetLimit.contains("129"))
+    }
+
+    @Test
     func rejectsTargetCountsAboveTheLimitWithoutTruncating() {
         #expect(FinderActionPolicy.openTargetError(count: 128) == nil)
         #expect(

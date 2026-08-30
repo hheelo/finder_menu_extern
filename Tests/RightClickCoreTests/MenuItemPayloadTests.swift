@@ -125,10 +125,50 @@ struct MenuItemPayloadTests {
     }
 
     @Test
+    func combinedPayloadPreservesPlacementForEveryKind() {
+        let payloads: [(MenuItemPayload, MenuPlacement)] = [
+            (
+                .action(RightClickMenuItemPayload(
+                    action: .copyPath,
+                    placement: .items
+                )),
+                .items
+            ),
+            (
+                .configuredCLI(ConfiguredCLIMenuItemPayload(
+                    menuSlot: CLIProfile.validMenuSlots.lowerBound,
+                    placement: .container
+                )),
+                .container
+            ),
+            (
+                .customTemplate(CustomTemplateMenuItemPayload(
+                    menuSlot: CustomFileTemplate.validMenuSlots.lowerBound,
+                    placement: .sidebar
+                )),
+                .sidebar
+            )
+        ]
+
+        for (payload, expectedPlacement) in payloads {
+            #expect(payload.placement == expectedPlacement)
+            #expect(MenuItemPayload(menuTag: payloadMenuTag(payload)) == payload)
+        }
+    }
+
+    @Test
     func rejectsTagsOutsideEverySection() {
         // 0 留给「不携带动作」，负数与越界的 placement 都不该被接受。
         #expect(MenuItemPayload(menuTag: 0) == nil)
         #expect(MenuItemPayload(menuTag: -1) == nil)
         #expect(MenuItemPayload(menuTag: 9_999) == nil)
+    }
+
+    private func payloadMenuTag(_ payload: MenuItemPayload) -> Int {
+        switch payload {
+        case let .action(value): value.menuTag
+        case let .configuredCLI(value): value.menuTag
+        case let .customTemplate(value): value.menuTag
+        }
     }
 }

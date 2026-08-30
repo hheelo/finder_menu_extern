@@ -43,6 +43,25 @@ struct RelativePathResolverTests {
     }
 
     @Test
+    func repositorySearchStopsAtThePublishedDepthLimit() {
+        let deepPath = "/" + (0...RelativePathResolver.maximumSearchDepth)
+            .map { "level-\($0)" }
+            .joined(separator: "/")
+        var queryCount = 0
+
+        let result = RelativePathResolver.repositoryRoot(
+            for: URL(fileURLWithPath: deepPath),
+            itemExists: { _ in
+                queryCount += 1
+                return false
+            }
+        )
+
+        #expect(result == nil)
+        #expect(queryCount == RelativePathResolver.maximumSearchDepth)
+    }
+
+    @Test
     func computesRelativePathsAndRejectsOutsiders() {
         let base = URL(fileURLWithPath: "/tmp/repo")
         #expect(

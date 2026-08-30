@@ -163,10 +163,38 @@ struct MenuConfigurationStoreTests {
     }
 
     @Test
-    func flushPersistsTheLastPendingEditOnlyOnce() async {
-        var saves: [MenuConfiguration] = []
+    func debouncedEditsPersistAutomaticallyAsOneSave() async {
+        let recorder = ConfigurationSaveRecorder()
         let store = makeStore(
             persistenceDelay: .milliseconds(20),
+            save: { configuration, _ in recorder.record(configuration) }
+        )
+
+        for index in 0..<10 {
+            var updated = store.configuration
+            updated.cliProfiles = [CLIProfile(
+                id: "custom",
+                title: "Command \(index)",
+                executable: "command",
+                menuSlot: 1
+            )]
+            store.replace(with: updated)
+        }
+
+        let didSave = await Task.detached {
+            recorder.waitForFirstSave(timeout: 1)
+        }.value
+
+        #expect(didSave)
+        #expect(recorder.saveCount == 1)
+        #expect(recorder.lastConfiguration?.cliProfiles.first?.title == "Command 9")
+    }
+
+    @Test
+    func flushPersistsTheLastPendingEditOnlyOnce() {
+        var saves: [MenuConfiguration] = []
+        let store = makeStore(
+            persistenceDelay: .seconds(60),
             save: { configuration, _ in saves.append(configuration) }
         )
         var updated = store.configuration
@@ -174,7 +202,6 @@ struct MenuConfigurationStoreTests {
         store.replace(with: updated)
 
         store.flushPendingPersist()
-        try? await Task.sleep(for: .milliseconds(80))
 
         #expect(saves.count == 1)
         #expect(saves.first?.clipboardSeparator == .comma)
@@ -313,4 +340,25 @@ private final class TemplateSynchronizationProbe: @unchecked Sendable {
 
     func release() { releaseSemaphore.signal() }
     func complete() { lock.withLock { completed = true } }
+}
+
+private final class ConfigurationSaveRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private let firstSaveSemaphore = DispatchSemaphore(value: 0)
+    private var configurations: [MenuConfiguration] = []
+
+    var saveCount: Int { lock.withLock { configurations.count } }
+    var lastConfiguration: MenuConfiguration? {
+        lock.withLock { configurations.last }
+    }
+
+    func record(_ configuration: MenuConfiguration) {
+        lock.withLock { configurations.append(configuration) }
+        firstSaveSemaphore.signal()
+    }
+
+    func waitForFirstSave(timeout: TimeInterval) -> Bool {
+        if saveCount > 0 { return true }
+        return firstSaveSemaphore.wait(timeout: .now() + timeout) == .success
+    }
 }

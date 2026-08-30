@@ -249,6 +249,101 @@ struct AppModelTests {
     }
 
     @Test
+    func menuPreferencesFlowThroughTheConfigurationStore() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+
+        #expect(fixture.model.clipboardSeparator == .newline)
+        fixture.model.clipboardSeparator = .comma
+        #expect(fixture.model.clipboardSeparator == .comma)
+
+        #expect(fixture.model.menuActionIsEnabled(.copyFilename))
+        fixture.model.setMenuAction(.copyFilename, isEnabled: false)
+        #expect(!fixture.model.menuActionIsEnabled(.copyFilename))
+        fixture.model.setMenuAction(.copyFilename, isEnabled: true)
+        #expect(fixture.model.menuActionIsEnabled(.copyFilename))
+
+        fixture.model.menuConfiguration.monitoredDirectories = [
+            fixture.directory.path,
+            fixture.secondDirectory.path
+        ]
+        fixture.model.removeMonitoredDirectory(fixture.directory.path)
+        #expect(fixture.model.menuConfiguration.monitoredDirectories == [
+            fixture.secondDirectory.path
+        ])
+        fixture.model.monitorAllDirectories()
+        #expect(fixture.model.menuConfiguration.monitoredDirectories.isEmpty)
+
+        fixture.model.flushPendingMenuConfiguration()
+        let persisted = MenuConfigurationFile.load(
+            from: fixture.directory.appendingPathComponent("menu.json")
+        )
+        #expect(persisted.clipboardSeparator == .comma)
+        #expect(persisted.disabledActions.isEmpty)
+        #expect(persisted.monitoredDirectories.isEmpty)
+    }
+
+    @Test
+    func customCLIProfileLifecycleReusesSlotsAndReportsTheLimit() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+        fixture.model.menuConfiguration.cliProfiles = CLIProfile.validMenuSlots
+            .map { slot in
+                CLIProfile(
+                    id: "profile-\(slot)",
+                    title: "Profile \(slot)",
+                    executable: "command",
+                    menuSlot: slot
+                )
+            }
+
+        let reusableSlot = 200
+        fixture.model.removeCLIProfile(id: "profile-\(reusableSlot)")
+        fixture.model.addCLIProfile()
+
+        #expect(fixture.model.menuConfiguration.cliProfiles.count == 400)
+        #expect(
+            fixture.model.menuConfiguration.cliProfiles.last?.menuSlot
+                == reusableSlot
+        )
+
+        fixture.model.addCLIProfile()
+        #expect(fixture.model.menuConfiguration.cliProfiles.count == 400)
+        #expect(fixture.model.errorHistory.first?.message == L10n.text(
+            "error.cli_limit",
+            fallback: "自定义 CLI 数量已达到上限。"
+        ))
+    }
+
+    @Test
+    func templateOverridesDropDefaultAndEmptyValues() throws {
+        let fixture = try makeFixture()
+        defer { fixture.cleanUp() }
+
+        #expect(fixture.model.templateFilename(for: .text).isEmpty)
+        #expect(fixture.model.templateEncoding(for: .text) == .utf8)
+
+        fixture.model.setTemplateFilename("Notes.txt", for: .text)
+        fixture.model.setTemplateEncoding(.utf16, for: .text)
+        #expect(fixture.model.templateFilename(for: .text) == "Notes.txt")
+        #expect(fixture.model.templateEncoding(for: .text) == .utf16)
+
+        fixture.model.setTemplateFilename("", for: .text)
+        #expect(fixture.model.templateFilename(for: .text).isEmpty)
+        #expect(
+            fixture.model.menuConfiguration.templateOverrides["text"]
+                != nil
+        )
+
+        fixture.model.setTemplateEncoding(.utf8, for: .text)
+        #expect(
+            fixture.model.menuConfiguration.templateOverrides["text"]
+                == nil
+        )
+        fixture.model.flushPendingMenuConfiguration()
+    }
+
+    @Test
     func multipleTrustedCLIRequestsExecuteWithoutAWindowQueue() async throws {
         let fixture = try makeFixture()
         defer { fixture.cleanUp() }
