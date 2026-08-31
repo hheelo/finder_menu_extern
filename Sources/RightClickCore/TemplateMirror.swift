@@ -112,10 +112,15 @@ public struct TemplateMirror {
             uniquingKeysWith: { first, _ in first }
         )
         let sourceNames = Set(eligibleSources.map(\.url.lastPathComponent))
-        var usedSlots = Set(
+        let usedSlots = Set(
             existing.filter { sourceNames.contains($0.filename) }.map(\.menuSlot)
         )
+        let availableSlots = CustomFileTemplate.validMenuSlots.filter {
+            !usedSlots.contains($0)
+        }
+        var nextAvailableSlotIndex = availableSlots.startIndex
         var templates: [CustomFileTemplate] = []
+        templates.reserveCapacity(eligibleSources.count)
         var expectedNames: Set<String> = []
         var oversizedFilenames = oversizedSources.map(\.url.lastPathComponent)
 
@@ -170,12 +175,11 @@ public struct TemplateMirror {
             if let previous = existingByFilename[filename], previous.isValid {
                 templates.append(previous)
             } else {
-                guard let slot = CustomFileTemplate.validMenuSlots.first(where: {
-                    !usedSlots.contains($0)
-                }) else {
+                guard nextAvailableSlotIndex < availableSlots.endIndex else {
                     throw TemplateMirrorError.tooManyTemplates
                 }
-                usedSlots.insert(slot)
+                let slot = availableSlots[nextAvailableSlotIndex]
+                availableSlots.formIndex(after: &nextAvailableSlotIndex)
                 templates.append(
                     CustomFileTemplate(
                         id: UUID().uuidString.lowercased(),

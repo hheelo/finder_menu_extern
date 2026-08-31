@@ -290,4 +290,39 @@ struct TemplateMirrorTests {
             try String(contentsOf: invalidMirror, encoding: .utf8) == "fresh"
         )
     }
+
+    @Test
+    func newTemplatesUseLowestAvailableSlotsWhileExistingSlotsStayStable() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let mirror = root.appendingPathComponent("mirror", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: source,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        for filename in ["A.txt", "B.txt", "C.txt"] {
+            try Data(filename.utf8).write(
+                to: source.appendingPathComponent(filename)
+            )
+        }
+        let existing = CustomFileTemplate(
+            id: "existing",
+            title: "B",
+            filename: "B.txt",
+            menuSlot: 2
+        )
+
+        let templates = try TemplateMirror().synchronize(
+            existing: [existing],
+            sourceDirectory: source,
+            mirrorDirectory: mirror
+        ).templates
+
+        #expect(templates.map(\.filename) == ["A.txt", "B.txt", "C.txt"])
+        #expect(templates.map(\.menuSlot) == [1, 2, 3])
+        #expect(templates[1] == existing)
+    }
 }

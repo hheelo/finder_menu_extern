@@ -188,6 +188,14 @@ public enum RightClickMenu {
         }
         guard !ranks.isEmpty else { return nodes }
 
+        return reordered(nodes, ranks: ranks)
+    }
+
+    /// 递归时复用同一份 rank 表；菜单层级增加时也不重复解析配置顺序。
+    private static func reordered(
+        _ nodes: [RightClickMenuNode],
+        ranks: [String: Int]
+    ) -> [RightClickMenuNode] {
         let recursivelyOrdered = nodes.map { node -> RightClickMenuNode in
             guard case let .submenu(title, isEnabled, items) = node else {
                 return node
@@ -195,12 +203,14 @@ public enum RightClickMenu {
             return .submenu(
                 title: title,
                 isEnabled: isEnabled,
-                items: reordered(items, actionOrder: actionOrder)
+                items: reordered(items, ranks: ranks)
             )
         }
 
         var result: [RightClickMenuNode] = []
+        result.reserveCapacity(nodes.count)
         var segment: [RightClickMenuNode] = []
+        segment.reserveCapacity(nodes.count)
         func appendSegment() {
             result.append(contentsOf: segment.enumerated().sorted { lhs, rhs in
                 let leftRank = minimumRank(in: lhs.element, ranks: ranks)
@@ -237,7 +247,9 @@ public enum RightClickMenu {
             // 动态项由 menuSlot 决定顺序，不参与只面向内置动作的 actionOrder。
             Int.max
         case let .submenu(_, _, items):
-            items.map { minimumRank(in: $0, ranks: ranks) }.min() ?? Int.max
+            items.reduce(Int.max) {
+                min($0, minimumRank(in: $1, ranks: ranks))
+            }
         }
     }
 
@@ -245,6 +257,7 @@ public enum RightClickMenu {
         from nodes: [RightClickMenuNode]
     ) -> [RightClickMenuNode] {
         var result: [RightClickMenuNode] = []
+        result.reserveCapacity(nodes.count)
         for node in nodes {
             if case .separator = node,
                result.isEmpty || result.last == .separator {
