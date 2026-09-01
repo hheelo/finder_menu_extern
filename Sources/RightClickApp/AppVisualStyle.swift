@@ -1,24 +1,37 @@
+import AppKit
 import SwiftUI
 
 enum AppVisualStyle {
-    static let cornerRadius: CGFloat = 14
-    static let compactCornerRadius: CGFloat = 10
-    static let panelStroke = Color.primary.opacity(0.08)
-    static let subtleFill = Color.primary.opacity(0.035)
+    static let cornerRadius: CGFloat = 16
+    static let compactCornerRadius: CGFloat = 11
+    static let panelStroke = Color.primary.opacity(0.075)
+    static let subtleFill = Color.primary.opacity(0.025)
+    static let elevatedShadow = Color.black.opacity(0.075)
 }
 
 struct AppSurfaceBackground: View {
     var body: some View {
         ZStack {
             Color(nsColor: .windowBackgroundColor)
+
             LinearGradient(
                 colors: [
-                    Color.accentColor.opacity(0.10),
-                    Color.accentColor.opacity(0.025),
+                    Color.accentColor.opacity(0.085),
+                    Color.indigo.opacity(0.035),
                     .clear
                 ],
                 startPoint: .topLeading,
-                endPoint: .center
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [
+                    Color.accentColor.opacity(0.075),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.9, y: 0.05),
+                startRadius: 0,
+                endRadius: 360
             )
         }
         .ignoresSafeArea()
@@ -29,46 +42,56 @@ struct AppIconMark: View {
     var size: CGFloat = 52
 
     var body: some View {
-        Image(systemName: "cursorarrow.click.2")
-            .font(.system(size: size * 0.48, weight: .semibold))
-            .foregroundStyle(.white)
+        Image(nsImage: NSApplication.shared.applicationIconImage)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
             .frame(width: size, height: size)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color.accentColor,
-                        Color.accentColor.opacity(0.72)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                    .stroke(.white.opacity(0.20), lineWidth: 1)
-            }
-            .shadow(color: Color.accentColor.opacity(0.22), radius: 10, y: 5)
+            .shadow(color: Color.accentColor.opacity(0.18), radius: 14, y: 7)
             .accessibilityHidden(true)
     }
 }
 
 struct VisualPanel<Content: View>: View {
+    private let tint: Color?
+    private let padding: CGFloat
     private let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(
+        tint: Color? = nil,
+        padding: CGFloat = 18,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.tint = tint
+        self.padding = padding
         self.content = content()
     }
 
     var body: some View {
         content
-            .padding(16)
-            .background(.regularMaterial)
-            .background(AppVisualStyle.subtleFill)
-            .clipShape(RoundedRectangle(
-                cornerRadius: AppVisualStyle.cornerRadius,
-                style: .continuous
-            ))
+            .padding(padding)
+            .background {
+                RoundedRectangle(
+                    cornerRadius: AppVisualStyle.cornerRadius,
+                    style: .continuous
+                )
+                .fill(.regularMaterial)
+                .overlay {
+                    if let tint {
+                        LinearGradient(
+                            colors: [tint.opacity(0.10), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .center
+                        )
+                    } else {
+                        AppVisualStyle.subtleFill
+                    }
+                }
+                .clipShape(RoundedRectangle(
+                    cornerRadius: AppVisualStyle.cornerRadius,
+                    style: .continuous
+                ))
+            }
             .overlay {
                 RoundedRectangle(
                     cornerRadius: AppVisualStyle.cornerRadius,
@@ -76,6 +99,7 @@ struct VisualPanel<Content: View>: View {
                 )
                 .stroke(AppVisualStyle.panelStroke, lineWidth: 1)
             }
+            .shadow(color: AppVisualStyle.elevatedShadow, radius: 12, y: 5)
     }
 }
 
@@ -85,17 +109,46 @@ struct StatusBadge: View {
     let tint: Color
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.caption.weight(.medium))
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+            Text(title)
+                .lineLimit(1)
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(tint.opacity(0.10), in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(tint.opacity(0.18), lineWidth: 1)
+        }
+    }
+}
+
+struct TintIcon: View {
+    let systemImage: String
+    let tint: Color
+    var size: CGFloat = 38
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: size * 0.42, weight: .semibold))
             .foregroundStyle(tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(tint.opacity(0.11))
-            .clipShape(Capsule())
+            .frame(width: size, height: size)
+            .background(tint.opacity(0.11), in: RoundedRectangle(
+                cornerRadius: size * 0.28,
+                style: .continuous
+            ))
             .overlay {
-                Capsule()
-                    .stroke(tint.opacity(0.20), lineWidth: 1)
+                RoundedRectangle(
+                    cornerRadius: size * 0.28,
+                    style: .continuous
+                )
+                .stroke(tint.opacity(0.14), lineWidth: 1)
             }
+            .accessibilityHidden(true)
     }
 }
 
@@ -104,9 +157,19 @@ struct SettingsSectionHeader: View {
     let systemImage: String
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.primary)
-            .textCase(nil)
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 22, height: 22)
+                .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(
+                    cornerRadius: 6,
+                    style: .continuous
+                ))
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .textCase(nil)
     }
 }

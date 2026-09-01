@@ -60,10 +60,10 @@ struct SettingsView: View {
             }
         }
         .frame(
-            minWidth: 640,
-            idealWidth: 720,
-            minHeight: 440,
-            idealHeight: 620
+            minWidth: 680,
+            idealWidth: 760,
+            minHeight: 480,
+            idealHeight: 640
         )
         .finderRestartConfirmation(isPresented: $confirmsFinderRestart) {
             model.restartFinder()

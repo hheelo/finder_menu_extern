@@ -140,7 +140,12 @@ struct RightClickApp: App {
         WindowGroup(id: AppWindow.mainID) {
             ContentView(updater: updater)
                 .environmentObject(model)
-                .frame(minWidth: 640, minHeight: 440)
+                .frame(
+                    minWidth: 680,
+                    idealWidth: 760,
+                    minHeight: 500,
+                    idealHeight: 560
+                )
                 .background(MainWindowBackground())
                 .task {
                     // 只在用户自己打开 App 时刷新与查更新；深链唤起时不做，

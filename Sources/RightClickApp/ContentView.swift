@@ -12,15 +12,26 @@ struct ContentView: View {
         ZStack {
             AppSurfaceBackground()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    appHeader
-                    featureGrid
-                    statusPanel
-                    footer
-                    errorHistory
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        appHeader
+                        featureGrid
+                        statusPanel
+                        errorHistory
+                    }
+                    .frame(maxWidth: 820)
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 26)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(28)
+
+                Divider()
+                    .opacity(0.6)
+                footer
+                    .padding(.horizontal, 30)
+                    .padding(.vertical, 12)
+                    .background(.ultraThinMaterial)
             }
         }
         .onAppear {
@@ -43,12 +54,12 @@ struct ContentView: View {
     }
 
     private var appHeader: some View {
-        HStack(spacing: 16) {
-            AppIconMark(size: 58)
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 18) {
+            AppIconMark(size: 68)
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("RightClick")
-                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                        .font(.system(size: 31, weight: .bold, design: .rounded))
                     if let version = AppVersion.current {
                         Text(version.displayString)
                             .font(.caption.monospacedDigit().weight(.medium))
@@ -67,26 +78,22 @@ struct ContentView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 16)
-            StatusBadge(
-                title: model.extensionEnabled
-                    ? L10n.text("home.extension_enabled", fallback: "Finder 扩展已启用")
-                    : L10n.text("home.extension_disabled", fallback: "还差一步：请在系统设置中启用扩展"),
-                systemImage: model.extensionEnabled
-                    ? "checkmark.circle.fill"
-                    : "exclamationmark.circle.fill",
-                tint: model.extensionEnabled ? .green : .orange
-            )
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 2)
     }
 
     private var featureGrid: some View {
         LazyVGrid(
-            columns: [GridItem(.flexible()), GridItem(.flexible())],
+            columns: Array(
+                repeating: GridItem(.flexible(), spacing: 10),
+                count: 4
+            ),
             spacing: 12
         ) {
             FeatureCard(
                 icon: "doc.on.doc",
+                tint: .blue,
                 title: L10n.text("home.feature.copy_title", fallback: "复制"),
                 detail: L10n.text(
                     "home.feature.copy_detail",
@@ -95,6 +102,7 @@ struct ContentView: View {
             )
             FeatureCard(
                 icon: "rectangle.and.hand.point.up.left",
+                tint: .purple,
                 title: L10n.text("home.feature.open_title", fallback: "打开"),
                 detail: L10n.text(
                     "home.feature.open_detail",
@@ -103,6 +111,7 @@ struct ContentView: View {
             )
             FeatureCard(
                 icon: "terminal",
+                tint: .indigo,
                 title: L10n.text("home.feature.terminal_title", fallback: "终端"),
                 detail: L10n.text(
                     "home.feature.terminal_detail",
@@ -111,6 +120,7 @@ struct ContentView: View {
             )
             FeatureCard(
                 icon: "doc.badge.plus",
+                tint: .teal,
                 title: L10n.text("home.feature.create_title", fallback: "新建"),
                 detail: L10n.text(
                     "home.feature.create_detail",
@@ -121,17 +131,26 @@ struct ContentView: View {
     }
 
     private var statusPanel: some View {
-        VisualPanel {
-            VStack(alignment: .leading, spacing: 15) {
-                HStack(alignment: .center, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 5) {
+        let statusTint: Color = model.extensionEnabled ? .green : .orange
+
+        return VisualPanel(tint: statusTint) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .center, spacing: 14) {
+                    TintIcon(
+                        systemImage: model.extensionEnabled
+                            ? "checkmark.circle.fill"
+                            : "exclamationmark.triangle.fill",
+                        tint: statusTint,
+                        size: 46
+                    )
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(model.extensionEnabled
                             ? L10n.text("home.extension_enabled", fallback: "Finder 扩展已启用")
                             : L10n.text(
                                 "home.extension_disabled",
                                 fallback: "还差一步：请在系统设置中启用扩展"
                             ))
-                            .font(.headline)
+                            .font(.title3.weight(.semibold))
                         Label(
                             diagnosticSummary,
                             systemImage: diagnosticAttentionCount == 0
@@ -139,9 +158,7 @@ struct ContentView: View {
                                 : "exclamationmark.triangle.fill"
                         )
                             .font(.callout)
-                            .foregroundStyle(
-                                diagnosticAttentionCount == 0 ? .green : .orange
-                            )
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     if model.isRefreshingDiagnostics {
@@ -186,13 +203,14 @@ struct ContentView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .truncationMode(.middle)
                 }
             }
         }
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             SettingsLink {
                 Label(
                     L10n.text("button.settings", fallback: "设置…"),
@@ -201,6 +219,7 @@ struct ContentView: View {
             }
             .keyboardShortcut(",", modifiers: .command)
             .accessibilityIdentifier("rightclick.main.settings")
+            .buttonStyle(.bordered)
 
             Button {
                 updater.checkForUpdates()
@@ -212,6 +231,7 @@ struct ContentView: View {
             }
             .keyboardShortcut("u", modifiers: .command)
             .accessibilityIdentifier("rightclick.main.check-updates")
+            .buttonStyle(.borderless)
 
             Button {
                 model.copyDiagnostics()
@@ -223,6 +243,7 @@ struct ContentView: View {
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .accessibilityIdentifier("rightclick.main.copy-diagnostics")
+            .buttonStyle(.borderless)
 
             Spacer()
 
@@ -235,9 +256,10 @@ struct ContentView: View {
                 )
             }
             .accessibilityIdentifier("rightclick.main.quit")
+            .buttonStyle(.borderless)
         }
-        .buttonStyle(.borderless)
         .foregroundStyle(.secondary)
+        .padding(.horizontal, 4)
     }
 
     @ViewBuilder
@@ -296,33 +318,24 @@ struct ContentView: View {
 
 private struct FeatureCard: View {
     let icon: String
+    let tint: Color
     let title: String
     let detail: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.tint)
-                .frame(width: 34, height: 34)
-                .background(Color.accentColor.opacity(0.11))
-                .clipShape(RoundedRectangle(
-                    cornerRadius: AppVisualStyle.compactCornerRadius,
-                    style: .continuous
-                ))
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 10) {
+            TintIcon(systemImage: icon, tint: tint, size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                 Text(detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
             }
-            Spacer(minLength: 0)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+        .padding(13)
+        .frame(maxWidth: .infinity, minHeight: 108, alignment: .topLeading)
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(
             cornerRadius: AppVisualStyle.cornerRadius,
@@ -335,5 +348,6 @@ private struct FeatureCard: View {
             )
             .stroke(AppVisualStyle.panelStroke, lineWidth: 1)
         }
+        .shadow(color: Color.black.opacity(0.035), radius: 7, y: 3)
     }
 }
