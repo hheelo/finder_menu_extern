@@ -141,10 +141,10 @@ struct RightClickApp: App {
             ContentView(updater: updater)
                 .environmentObject(model)
                 .frame(
-                    minWidth: 680,
-                    idealWidth: 760,
-                    minHeight: 500,
-                    idealHeight: 560
+                    minWidth: 720,
+                    idealWidth: 840,
+                    minHeight: 520,
+                    idealHeight: 620
                 )
                 .background(MainWindowBackground())
                 .task {

@@ -3,10 +3,11 @@ import SwiftUI
 
 enum AppVisualStyle {
     static let cornerRadius: CGFloat = 16
-    static let compactCornerRadius: CGFloat = 11
-    static let panelStroke = Color.primary.opacity(0.075)
-    static let subtleFill = Color.primary.opacity(0.025)
-    static let elevatedShadow = Color.black.opacity(0.075)
+    static let compactCornerRadius: CGFloat = 10
+    static let panelStroke = Color.primary.opacity(0.08)
+    static let panelHighlight = Color.white.opacity(0.24)
+    static let subtleFill = Color.primary.opacity(0.018)
+    static let elevatedShadow = Color.black.opacity(0.065)
 }
 
 struct AppSurfaceBackground: View {
@@ -16,22 +17,22 @@ struct AppSurfaceBackground: View {
 
             LinearGradient(
                 colors: [
-                    Color.accentColor.opacity(0.085),
-                    Color.indigo.opacity(0.035),
+                    Color.accentColor.opacity(0.075),
+                    Color.accentColor.opacity(0.018),
                     .clear
                 ],
                 startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                endPoint: UnitPoint(x: 0.65, y: 0.72)
             )
 
             RadialGradient(
                 colors: [
-                    Color.accentColor.opacity(0.075),
+                    Color.white.opacity(0.20),
                     .clear
                 ],
-                center: UnitPoint(x: 0.9, y: 0.05),
+                center: UnitPoint(x: 0.82, y: 0.02),
                 startRadius: 0,
-                endRadius: 360
+                endRadius: 420
             )
         }
         .ignoresSafeArea()
@@ -47,7 +48,8 @@ struct AppIconMark: View {
             .interpolation(.high)
             .scaledToFit()
             .frame(width: size, height: size)
-            .shadow(color: Color.accentColor.opacity(0.18), radius: 14, y: 7)
+            .shadow(color: Color.accentColor.opacity(0.16), radius: 16, y: 8)
+            .shadow(color: Color.black.opacity(0.10), radius: 3, y: 2)
             .accessibilityHidden(true)
     }
 }
@@ -79,9 +81,9 @@ struct VisualPanel<Content: View>: View {
                 .overlay {
                     if let tint {
                         LinearGradient(
-                            colors: [tint.opacity(0.10), .clear],
+                            colors: [tint.opacity(0.075), .clear],
                             startPoint: .topLeading,
-                            endPoint: .center
+                            endPoint: .bottomTrailing
                         )
                     } else {
                         AppVisualStyle.subtleFill
@@ -98,8 +100,22 @@ struct VisualPanel<Content: View>: View {
                     style: .continuous
                 )
                 .stroke(AppVisualStyle.panelStroke, lineWidth: 1)
+                .overlay(alignment: .top) {
+                    RoundedRectangle(
+                        cornerRadius: AppVisualStyle.cornerRadius,
+                        style: .continuous
+                    )
+                    .stroke(AppVisualStyle.panelHighlight, lineWidth: 0.5)
+                    .mask {
+                        LinearGradient(
+                            colors: [.black, .clear],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    }
+                }
             }
-            .shadow(color: AppVisualStyle.elevatedShadow, radius: 12, y: 5)
+            .shadow(color: AppVisualStyle.elevatedShadow, radius: 14, y: 6)
     }
 }
 
@@ -117,8 +133,9 @@ struct StatusBadge: View {
         }
         .font(.caption.weight(.medium))
         .foregroundStyle(tint)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(.thinMaterial, in: Capsule())
         .background(tint.opacity(0.10), in: Capsule())
         .overlay {
             Capsule()
@@ -135,19 +152,27 @@ struct TintIcon: View {
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(size: size * 0.42, weight: .semibold))
-            .foregroundStyle(tint)
+            .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(tint.opacity(0.11), in: RoundedRectangle(
-                cornerRadius: size * 0.28,
-                style: .continuous
-            ))
+            .background {
+                RoundedRectangle(
+                    cornerRadius: size * 0.28,
+                    style: .continuous
+                )
+                .fill(LinearGradient(
+                    colors: [tint.opacity(0.92), tint],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ))
+            }
             .overlay {
                 RoundedRectangle(
                     cornerRadius: size * 0.28,
                     style: .continuous
                 )
-                .stroke(tint.opacity(0.14), lineWidth: 1)
+                .stroke(Color.white.opacity(0.26), lineWidth: 0.75)
             }
+            .shadow(color: tint.opacity(0.20), radius: 6, y: 3)
             .accessibilityHidden(true)
     }
 }
