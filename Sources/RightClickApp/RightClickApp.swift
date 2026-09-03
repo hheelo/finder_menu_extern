@@ -144,7 +144,7 @@ struct RightClickApp: App {
                     minWidth: 720,
                     idealWidth: 840,
                     minHeight: 520,
-                    idealHeight: 620
+                    idealHeight: 560
                 )
                 .background(MainWindowBackground())
                 .task {
