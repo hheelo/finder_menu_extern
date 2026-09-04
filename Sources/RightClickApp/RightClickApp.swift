@@ -141,10 +141,10 @@ struct RightClickApp: App {
             ContentView(updater: updater)
                 .environmentObject(model)
                 .frame(
-                    minWidth: 720,
-                    idealWidth: 840,
-                    minHeight: 520,
-                    idealHeight: 560
+                    minWidth: 680,
+                    idealWidth: 780,
+                    minHeight: 460,
+                    idealHeight: 520
                 )
                 .background(MainWindowBackground())
                 .task {
@@ -176,6 +176,7 @@ struct RightClickApp: App {
                 }
         }
         .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unified(showsTitle: false))
         // URL 由 AppDelegate 处理；明确禁止外部事件选择这个 WindowGroup，
         // 否则 SwiftUI 会先创建窗口再投递事件，造成右键操作时界面闪现。
         .handlesExternalEvents(matching: Set<String>())
