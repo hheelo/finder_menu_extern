@@ -82,6 +82,7 @@ struct ContentView: View {
                         ? "checkmark.circle.fill"
                         : "exclamationmark.circle.fill"
                 )
+                .accessibilityIdentifier("rightclick.main.extension-status")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(model.extensionEnabled ? .green : .orange)
 
@@ -182,6 +183,7 @@ struct ContentView: View {
                         Text(diagnosticSummary)
                             .font(.body.weight(.medium))
                         Label(model.lastStatus, systemImage: "clock.arrow.circlepath")
+                            .accessibilityIdentifier("rightclick.main.last-status")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)

@@ -89,6 +89,12 @@ final class AppModel: ObservableObject {
         extensionStatusProvider: (@MainActor () async -> Bool?)? = nil,
         performInitialRefresh: Bool = true
     ) {
+        // 只注入 UI 测试的展示状态，避免触发真实 Finder 会话刷新。
+        if AppEnvironment.isRunningUITests {
+            extensionEnabled = ProcessInfo.processInfo.environment[
+                "RIGHTCLICK_UI_TEST_EXTENSION_ENABLED"
+            ] == "1"
+        }
         self.settings = settings
         let resolvedActionLogStore = actionLogStore ?? LocalActionLogStore(
             fileURL: AppEnvironment.isRunningTests

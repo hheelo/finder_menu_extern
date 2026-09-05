@@ -1,8 +1,79 @@
+import AppKit
 import Foundation
 import XCTest
 
 @MainActor
 final class RightClickUITests: XCTestCase {
+    func testHomeWithFinderExtensionEnabled() {
+        assertHome(extensionEnabled: true)
+    }
+
+    func testHomeWithFinderExtensionDisabled() {
+        assertHome(extensionEnabled: false)
+    }
+
+    private func assertHome(extensionEnabled: Bool) {
+        continueAfterFailure = false
+        let app = makeApplication(extensionEnabled: extensionEnabled)
+        defer { app.terminate() }
+        app.launch()
+        app.activate()
+
+        let status = element("rightclick.main.extension-status", in: app)
+        XCTAssertTrue(status.waitForExistence(timeout: 10))
+        // macOS StaticText 的显示文本通过 value 暴露，label 通常为空。
+        XCTAssertEqual(status.value as? String, extensionEnabled
+            ? "Finder extension enabled" : "Finder extension off")
+        let extensionButton = app.buttons["rightclick.main.extension-settings"]
+        XCTAssertEqual(extensionButton.label, extensionEnabled
+            ? "Manage Extension" : "Enable Finder Extension")
+        XCTAssertTrue(extensionButton.isEnabled)
+        XCTAssertTrue(extensionButton.isHittable)
+
+        // 检查入口可点击；不依赖线上 appcast，也不启动真实更新流程。
+        let updates = app.buttons["rightclick.main.check-updates"]
+        XCTAssertTrue(updates.exists)
+        XCTAssertTrue(updates.isEnabled)
+        XCTAssertTrue(updates.isHittable)
+
+        let pasteboard = NSPasteboard.general
+        let savedItems = pasteboard.pasteboardItems?.map { item in
+            item.types.compactMap { type in
+                item.data(forType: type).map { (type, $0) }
+            }
+        } ?? []
+        defer {
+            pasteboard.clearContents()
+            let restored = savedItems.map { values in
+                let item = NSPasteboardItem()
+                for (type, data) in values { item.setData(data, forType: type) }
+                return item
+            }
+            pasteboard.writeObjects(restored)
+        }
+        pasteboard.clearContents()
+        pasteboard.setString("UI regression sentinel", forType: .string)
+        let copy = app.buttons["rightclick.main.copy-diagnostics"]
+        XCTAssertTrue(copy.isEnabled)
+        XCTAssertTrue(copy.isHittable)
+        copy.click()
+        let copied = element("rightclick.main.last-status", in: app)
+        expectation(
+            for: NSPredicate(format: "value == %@", "Diagnostics copied"),
+            evaluatedWith: copied
+        )
+        waitForExpectations(timeout: 5)
+        let report = pasteboard.string(forType: .string) ?? ""
+        XCTAssertTrue(report.hasPrefix("RightClick "))
+        XCTAssertTrue(report.contains("macOS "))
+
+        let settings = app.buttons["rightclick.main.settings"]
+        XCTAssertTrue(settings.isHittable)
+        settings.click()
+        XCTAssertTrue(element("rightclick.settings.menu.collapse", in: app)
+            .waitForExistence(timeout: 10))
+    }
+
     func testMainWindowCanOpenSettings() {
         continueAfterFailure = false
         let app = makeApplication()
@@ -58,10 +129,13 @@ final class RightClickUITests: XCTestCase {
     }
 
     private func makeApplication(
+        extensionEnabled: Bool = false,
         closeMainWindowOnSettings: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["RIGHTCLICK_UI_TESTING"] = "1"
+        app.launchEnvironment["RIGHTCLICK_UI_TEST_EXTENSION_ENABLED"] =
+            extensionEnabled ? "1" : "0"
         if closeMainWindowOnSettings {
             app.launchEnvironment[
                 "RIGHTCLICK_UI_TEST_CLOSE_MAIN_ON_SETTINGS"
