@@ -31,7 +31,7 @@ final class RightClickUITests: XCTestCase {
         XCTAssertTrue(extensionButton.isHittable)
 
         // 检查入口可点击；不依赖线上 appcast，也不启动真实更新流程。
-        let updates = app.buttons["rightclick.main.check-updates"]
+        let updates = element("rightclick.main.check-updates", in: app)
         XCTAssertTrue(updates.exists)
         XCTAssertTrue(updates.isEnabled)
         XCTAssertTrue(updates.isHittable)
@@ -53,7 +53,7 @@ final class RightClickUITests: XCTestCase {
         }
         pasteboard.clearContents()
         pasteboard.setString("UI regression sentinel", forType: .string)
-        let copy = app.buttons["rightclick.main.copy-diagnostics"]
+        let copy = element("rightclick.main.copy-diagnostics", in: app)
         XCTAssertTrue(copy.isEnabled)
         XCTAssertTrue(copy.isHittable)
         copy.click()
@@ -67,7 +67,7 @@ final class RightClickUITests: XCTestCase {
         XCTAssertTrue(report.hasPrefix("RightClick "))
         XCTAssertTrue(report.contains("macOS "))
 
-        let settings = app.buttons["rightclick.main.settings"]
+        let settings = element("rightclick.main.settings", in: app)
         XCTAssertTrue(settings.isHittable)
         settings.click()
         XCTAssertTrue(element("rightclick.settings.menu.collapse", in: app)
