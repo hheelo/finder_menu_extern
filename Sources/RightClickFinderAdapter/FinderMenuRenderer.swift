@@ -47,8 +47,9 @@ public enum FinderMenuRenderer {
         case .separator:
             return .separator()
         case let .action(menuAction, isEnabled):
+            let title = menuAction.title
             let item = NSMenuItem(
-                title: menuAction.title,
+                title: title,
                 action: action,
                 keyEquivalent: ""
             )
@@ -59,7 +60,7 @@ public enum FinderMenuRenderer {
             ).menuTag
             item.image = menuImage(
                 named: menuAction.systemImageName,
-                accessibilityDescription: menuAction.title
+                accessibilityDescription: title
             )
             item.isEnabled = isEnabled && FinderActionPolicy.isSatisfied(
                 menuAction,

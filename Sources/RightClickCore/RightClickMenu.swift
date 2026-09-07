@@ -212,13 +212,18 @@ public enum RightClickMenu {
         var segment: [RightClickMenuNode] = []
         segment.reserveCapacity(nodes.count)
         func appendSegment() {
-            result.append(contentsOf: segment.enumerated().sorted { lhs, rhs in
-                let leftRank = minimumRank(in: lhs.element, ranks: ranks)
-                let rightRank = minimumRank(in: rhs.element, ranks: ranks)
-                return leftRank == rightRank
+            let ranked = segment.enumerated().map { offset, node in
+                (
+                    offset: offset,
+                    node: node,
+                    rank: minimumRank(in: node, ranks: ranks)
+                )
+            }
+            result.append(contentsOf: ranked.sorted { lhs, rhs in
+                lhs.rank == rhs.rank
                     ? lhs.offset < rhs.offset
-                    : leftRank < rightRank
-            }.map(\.element))
+                    : lhs.rank < rhs.rank
+            }.map(\.node))
             segment.removeAll(keepingCapacity: true)
         }
 

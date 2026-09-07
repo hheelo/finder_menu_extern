@@ -14,6 +14,9 @@ struct FinderMenuPerformanceTests {
     @Test
     func realisticHighLoadMenuStaysWithinInteractiveBudget() throws {
         let configuration = MenuConfiguration(
+            actionOrder: RightClickAction.allMenuActions.reversed().map(
+                \.configurationID
+            ),
             cliProfiles: (1...20).map {
                 CLIProfile(
                     id: "cli-\($0)",
@@ -39,7 +42,7 @@ struct FinderMenuPerformanceTests {
             selectedURLs: selectedURLs,
             targetedURL: nil
         )
-        let nodes = RightClickMenu.nodes(
+        let warmupNodes = RightClickMenu.nodes(
             placement: .items,
             context: context,
             configuration: configuration
@@ -48,7 +51,7 @@ struct FinderMenuPerformanceTests {
 
         // 第一次 AppKit/SF Symbols 初始化不计入稳态菜单基线。
         _ = FinderMenuRenderer.menu(
-            nodes: nodes,
+            nodes: warmupNodes,
             placement: .items,
             hasClipboardText: true,
             authenticationAvailable: true,
@@ -60,6 +63,11 @@ struct FinderMenuPerformanceTests {
         var renderedItemCount = 0
         for _ in 0..<Self.iterations {
             autoreleasepool {
+                let nodes = RightClickMenu.nodes(
+                    placement: .items,
+                    context: context,
+                    configuration: configuration
+                )
                 let menu = FinderMenuRenderer.menu(
                     nodes: nodes,
                     placement: .items,
