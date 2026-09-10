@@ -1,4 +1,5 @@
 import AppKit
+import RightClickAppServices
 import RightClickCore
 
 /// 可选菜单栏入口由 AppKit 独立持有，不进入 SwiftUI 根 Scene 图。

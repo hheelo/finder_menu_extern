@@ -1,5 +1,6 @@
 import AppKit
 import RightClickAppLogic
+import RightClickAppServices
 import SwiftUI
 
 /// 附属应用不参与常规激活，展示界面前必须显式抢一次前台，

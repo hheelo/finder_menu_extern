@@ -45,9 +45,14 @@ VERSION=1.1.4 ./scripts/build-release.sh
 第三条命令会验证 App、Finder 扩展、双语资源、通用架构、Ad-hoc 签名与 DMG 内容，
 并从只读挂载的 DMG 启动签名 App，等待 SwiftUI 首屏就绪标记后才算通过。
 
-`RightClickAppTests` 是无宿主逻辑测试：被测文件直接编入测试包，不启动
-`LSUIElement` App，也不依赖已安装的同 Bundle ID 副本或 Sparkle。装有
+`RightClickAppTests` 是无宿主逻辑测试：测试包链接 `RightClickAppServices`，不会
+重复编译生产源码，也不启动 `LSUIElement` App，不依赖已安装的同 Bundle ID 副本
+或 Sparkle。装有
 `/Applications/RightClick.app` 时应同样能在数秒内跑完三个逻辑测试 bundle。
+
+CI 会在生成覆盖率报告后运行 `scripts/verify-code-coverage.sh`，分别检查 Core、
+AppLogic、AppServices 与 FinderAdapter；SwiftUI App 和真实 Finder 扩展由 UI smoke
+及发布验证矩阵覆盖，不并入逻辑覆盖率门槛。
 
 ## 干净机器
 

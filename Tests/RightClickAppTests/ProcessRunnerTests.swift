@@ -1,3 +1,4 @@
+@testable import RightClickAppServices
 import Darwin
 import Foundation
 import RightClickCore

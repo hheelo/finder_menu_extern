@@ -1,3 +1,4 @@
+@testable import RightClickAppServices
 import AppKit
 import RightClickCore
 import Testing

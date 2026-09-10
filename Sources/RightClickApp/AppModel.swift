@@ -6,10 +6,10 @@ import SwiftUI
 import os
 
 @MainActor
-final class AppModel: ObservableObject {
+public final class AppModel: ObservableObject {
     private static let maximumErrorHistoryCount = 10
 
-    @Published var terminalProfile: TerminalProfile {
+    @Published public var terminalProfile: TerminalProfile {
         didSet {
             settings.terminalProfile = terminalProfile
             menuConfigurationStore.updateImmediately {
@@ -18,18 +18,18 @@ final class AppModel: ObservableObject {
             Task { await refreshDiagnostics() }
         }
     }
-    @Published var terminalWindowBehavior: TerminalWindowBehavior {
+    @Published public var terminalWindowBehavior: TerminalWindowBehavior {
         didSet { settings.terminalWindowBehavior = terminalWindowBehavior }
     }
-    @Published var menuBarIconEnabled: Bool {
+    @Published public var menuBarIconEnabled: Bool {
         didSet {
             settings.menuBarIconEnabled = menuBarIconEnabled
             onMenuBarIconEnabledChange?(menuBarIconEnabled)
         }
     }
-    @Published var hasCompletedOnboarding: Bool
-    @Published var shouldPresentOnboarding = false
-    @Published var menuConfiguration: MenuConfiguration {
+    @Published public var hasCompletedOnboarding: Bool
+    @Published public var shouldPresentOnboarding = false
+    @Published public var menuConfiguration: MenuConfiguration {
         didSet {
             menuConfigurationStore.replace(with: menuConfiguration)
             configuredMenuActions = Self.orderedActions(
@@ -37,18 +37,18 @@ final class AppModel: ObservableObject {
             )
         }
     }
-    @Published private(set) var configuredMenuActions: [RightClickAction] = []
-    @Published var lastStatus = L10n.text(
+    @Published public private(set) var configuredMenuActions: [RightClickAction] = []
+    @Published public var lastStatus = L10n.text(
         "status.waiting",
         fallback: "等待 Finder 操作"
     )
-    @Published var errorHistory: [AppErrorRecord] = []
-    @Published private(set) var extensionEnabled = false
-    @Published private(set) var extensionDetectionUnavailable = false
-    @Published private(set) var diagnostics: [DiagnosticItem] = []
-    @Published private(set) var isRefreshingDiagnostics = false
+    @Published public var errorHistory: [AppErrorRecord] = []
+    @Published public private(set) var extensionEnabled = false
+    @Published public private(set) var extensionDetectionUnavailable = false
+    @Published public private(set) var diagnostics: [DiagnosticItem] = []
+    @Published public private(set) var isRefreshingDiagnostics = false
 
-    var configurationRecoveryRequired: Bool {
+    public var configurationRecoveryRequired: Bool {
         menuConfigurationStore.requiresConfigurationRecovery
     }
 
@@ -64,7 +64,14 @@ final class AppModel: ObservableObject {
     let extensionActionLogURL: URL?
     private var diagnosticsAreAuthoritative = false
     private var isRefreshingExtensionStatus = false
-    var onMenuBarIconEnabledChange: ((Bool) -> Void)?
+    public var onMenuBarIconEnabledChange: ((Bool) -> Void)?
+
+    public convenience init(performInitialRefresh: Bool) {
+        self.init(
+            settings: .shared,
+            performInitialRefresh: performInitialRefresh
+        )
+    }
 
     init(
         settings: AppSettings = .shared,
@@ -177,11 +184,11 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func openExtensionSettings() {
+    public func openExtensionSettings() {
         FIFinderSyncController.showExtensionManagementInterface()
     }
 
-    func refreshExtensionStatus() async {
+    public func refreshExtensionStatus() async {
         // 首次向导会频繁轮询；旧系统的一次 pluginkit 检测可持续 5 秒。
         // 同一时刻只允许一项检测，避免多个进程重叠并乱序覆盖状态。
         guard !isRefreshingExtensionStatus else { return }
@@ -208,7 +215,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func handle(url: URL) {
+    public func handle(url: URL) {
         deepLinkCoordinator.dispatch(
             url,
             terminalProfile: terminalProfile,
@@ -226,7 +233,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func refreshDiagnostics(force: Bool = false) async {
+    public func refreshDiagnostics(force: Bool = false) async {
         guard !isRefreshingDiagnostics else { return }
         isRefreshingDiagnostics = true
         let requestedTerminalProfile = terminalProfile
@@ -254,7 +261,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func copyDiagnostics() {
+    public func copyDiagnostics() {
         let report = AppDiagnostics.report(
             diagnostics,
             terminalProfile: terminalProfile,
@@ -296,7 +303,7 @@ final class AppModel: ObservableObject {
         }
     }
 
-    var extensionDiagnosticDetail: String {
+    public var extensionDiagnosticDetail: String {
         if extensionDetectionUnavailable {
             return L10n.text(
                 "diagnostic.unable_to_detect",
@@ -329,7 +336,7 @@ final class AppModel: ObservableObject {
         ))
     }
 
-    func restartFinder(successStatus: String) {
+    public func restartFinder(successStatus: String) {
         lastStatus = L10n.text(
             "status.restarting_finder",
             fallback: "正在重启 Finder"

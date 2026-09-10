@@ -127,31 +127,33 @@ final class FinderSync: FIFinderSync {
             )
             return
         }
-        switch payload {
-        case let .configuredCLI(configured): performConfiguredCLI(configured)
-        case let .customTemplate(template): performCustomTemplate(template)
-        case let .action(action): perform(action)
-        }
-    }
-
-    private func perform(_ payload: RightClickMenuItemPayload) {
-        let action = payload.action
         // 菜单位置随 tag 一起往返。空白处和侧边栏必须继续忽略 Finder 窗口里
         // 可能残留的选区，确保动作落在鼠标实际指向的目录。
         let context = context(for: payload.placement)
+        let action = FinderActionDispatcher.actionName(for: payload)
+        let configuration = currentMenuConfiguration()
+        let token = FinderActionDispatcher.requiresAuthentication(for: payload)
+            ? currentToken()
+            : nil
         logger.notice("""
-            执行动作=\(action.logDescription, privacy: .public) \
-            tag=\(payload.menuTag, privacy: .public) \
+            执行动作=\(action.rawValue, privacy: .public) \
+            tag=\(sender.tag, privacy: .public) \
             位置=\(String(describing: payload.placement), privacy: .public) \
             生效=\(context.effectiveURLs.count, privacy: .public) \
             工作目录=\(context.workingDirectory != nil, privacy: .public)
             """)
-        reporting(
-            LocalActionName(action),
-            successResult: FinderActionPolicy.successResult(for: action),
-            label: "动作执行失败"
-        ) {
-            try execute(action, in: context)
+        recordAction(action, result: .started)
+        do {
+            let plan = try FinderActionDispatcher.plan(
+                for: payload,
+                context: context,
+                configuration: configuration,
+                authenticationToken: token
+            )
+            try execute(plan)
+            recordAction(plan.action, result: plan.successResult)
+        } catch {
+            report(action: action, error: error, label: "动作执行失败")
         }
     }
 
@@ -160,224 +162,40 @@ final class FinderSync: FIFinderSync {
     /// 绝不在扩展里弹模态框：`NSAlert.runModal()` 会占住扩展的主线程，而
     /// `menu(for:)` 也在主线程上，一旦弹出右键菜单就再也不出现。错误只记日志，
     /// 需要提示用户时经认证的 error 深链交给宿主 App。
-    private func reporting(
-        _ action: LocalActionName,
-        successResult: LocalActionResult,
-        label: String,
-        _ body: () throws -> Void
+    private func execute(_ plan: FinderActionPlan) throws {
+        switch plan.operation {
+        case let .copy(value):
+            NSPasteboard.general.clearContents()
+            guard NSPasteboard.general.setString(value, forType: .string) else {
+                throw FinderActionError.invalidTarget
+            }
+        case let .openHost(deepLink):
+            openHost(with: deepLink, action: plan.action)
+        }
+    }
+
+    private func report(
+        action: LocalActionName,
+        error: Error,
+        label: String
     ) {
-        recordAction(action, result: .started)
-        do {
-            try body()
-            recordAction(action, result: successResult)
-        } catch {
-            recordAction(
-                action,
-                result: .failed,
-                errorCategory: FinderActionPolicy.errorCategory(for: error)
-            )
-            logger.error(
-                "\(label, privacy: .public)：\(error.localizedDescription, privacy: .public)"
-            )
-            if FinderActionPolicy.shouldReportToHost(error) {
-                reportToHost(error.localizedDescription)
-            }
+        recordAction(
+            action,
+            result: .failed,
+            errorCategory: FinderActionPolicy.errorCategory(for: error)
+        )
+        logger.error(
+            "\(label, privacy: .public)：\(error.localizedDescription, privacy: .public)"
+        )
+        if FinderActionPolicy.shouldReportToHost(error) {
+            reportToHost(error.localizedDescription)
         }
-    }
-
-    private func execute(
-        _ action: RightClickAction,
-        in context: SelectionContext
-    ) throws {
-        switch action {
-        case .copyPath, .copyFilename, .copyFileURL, .copyShellPath,
-             .copyParentPath, .copyRelativePath:
-            // 相对路径的基准要向上探测 `.git`，只在点击时做；`menu(for:)`
-            // 里的每一次文件系统访问都会变成右键菜单的弹出延迟。
-            let base = action == .copyRelativePath
-                ? RelativePathResolver.base(for: context)
-                : nil
-            guard let text = ClipboardText.text(
-                for: action,
-                urls: context.effectiveURLs,
-                base: base,
-                separator: currentMenuConfiguration().clipboardSeparator
-            ) else {
-                throw FinderActionError.invalidTarget
-            }
-            try copy(text)
-        case .openInVSCode, .openInCodex, .openInCursor, .openInZed,
-             .openInSublimeText, .openInXcode, .openInJetBrains,
-             .openInDefaultApplication:
-            guard let application = ExternalApplication.forOpenAction(action)
-            else {
-                throw FinderActionError.invalidTarget
-            }
-            try open(context.effectiveURLs, with: application)
-        case let .createFile(template):
-            try forwardCreation(
-                .builtInTemplate(template),
-                context: context,
-                action: LocalActionName(action)
-            )
-        case .createFolder:
-            try forwardCreation(
-                .folder,
-                context: context,
-                action: .createFolder
-            )
-        case .createFileFromClipboard:
-            try forwardCreation(
-                .clipboardText,
-                context: context,
-                action: .createFileFromClipboard
-            )
-        case .openInTerminal:
-            guard let token = currentToken() else {
-                throw FinderActionError.authenticationUnavailable
-            }
-            guard let directory = context.workingDirectory,
-                  let deepLink = TerminalInvocation(
-                      workingDirectory: directory,
-                      authenticationToken: token
-                  ).deepLink else {
-                throw FinderActionError.invalidWorkingDirectory
-            }
-            // 用哪个终端由宿主决定：扩展读不到用户设置。
-            openHost(with: deepLink, action: .openInTerminal)
-        case .runCodexCLI:
-            try openHost(for: .codex, context: context)
-        case .runClaudeCode:
-            try openHost(for: .claude, context: context)
-        }
-    }
-
-    private func performConfiguredCLI(_ payload: ConfiguredCLIMenuItemPayload) {
-        let context = context(for: payload.placement)
-        reporting(
-            .configuredCLI,
-            successResult: .forwarded,
-            label: "动态 CLI 启动失败"
-        ) {
-            guard let profile = currentMenuConfiguration()
-                .cliProfile(forSlot: payload.menuSlot) else {
-                throw FinderActionError.configurationUnavailable
-            }
-            guard let token = currentToken() else {
-                throw FinderActionError.authenticationUnavailable
-            }
-            guard let directory = context.workingDirectory,
-                  let deepLink = ConfiguredCLIInvocation(
-                      profileID: profile.id,
-                      workingDirectory: directory,
-                      authenticationToken: token
-                  ).deepLink else {
-                throw FinderActionError.invalidWorkingDirectory
-            }
-            logger.notice("""
-                执行动态CLI id=\(profile.id, privacy: .public) \
-                slot=\(profile.menuSlot, privacy: .public)
-                """)
-            openHost(with: deepLink, action: .configuredCLI)
-        }
-    }
-
-    private func performCustomTemplate(_ payload: CustomTemplateMenuItemPayload) {
-        let context = context(for: payload.placement)
-        reporting(
-            .customTemplate,
-            successResult: .forwarded,
-            label: "自定义模板创建失败"
-        ) {
-            guard let template = currentMenuConfiguration()
-                .customTemplate(forSlot: payload.menuSlot) else {
-                throw FinderActionError.configurationUnavailable
-            }
-            try forwardCreation(
-                .customTemplate(menuSlot: template.menuSlot),
-                context: context,
-                action: .customTemplate
-            )
-        }
-    }
-
-    private func forwardCreation(
-        _ request: FileCreationInvocation.Request,
-        context: SelectionContext,
-        action: LocalActionName
-    ) throws {
-        guard let token = currentToken() else {
-            throw FinderActionError.authenticationUnavailable
-        }
-        guard let directory = context.creationDirectory,
-              let deepLink = FileCreationInvocation(
-                  request: request,
-                  directory: directory,
-                  authenticationToken: token
-              ).deepLink else {
-            throw FinderActionError.invalidTarget
-        }
-        openHost(with: deepLink, action: action)
     }
 
     private func currentMenuConfiguration() -> MenuConfiguration {
         menuConfigurationCache.configuration(
             at: MenuConfigurationFile.extensionURL()
         )
-    }
-
-    private func copy(_ value: String) throws {
-        guard !value.isEmpty else {
-            throw FinderActionError.invalidTarget
-        }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(value, forType: .string)
-    }
-
-    /// 交给宿主去启动目标 App。
-    ///
-    /// 扩展被沙箱化，`NSWorkspace.open(_:withApplicationAt:)` 会以
-    /// 「杂项错误」失败（日志里可见 LaunchServices 立刻返回错误）。而打开
-    /// URL 是沙箱允许的，所以统一用深链把请求交给未沙箱的宿主执行。
-    private func open(
-        _ urls: [URL],
-        with application: ExternalApplication
-    ) throws {
-        if let error = FinderActionPolicy.openTargetError(count: urls.count) {
-            throw error
-        }
-        guard let token = currentToken() else {
-            throw FinderActionError.authenticationUnavailable
-        }
-        guard let deepLink = OpenInvocation(
-            application: application,
-            targets: urls,
-            authenticationToken: token
-        ).deepLink else {
-            throw FinderActionError.invalidTarget
-        }
-        openHost(
-            with: deepLink,
-            action: LocalActionName(opening: application)
-        )
-    }
-
-    private func openHost(
-        for command: CLICommand,
-        context: SelectionContext
-    ) throws {
-        guard let requestToken = currentToken() else {
-            throw FinderActionError.authenticationUnavailable
-        }
-        guard let directory = context.workingDirectory,
-              let deepLink = CLIInvocation(
-                  command: command,
-                  workingDirectory: directory,
-                  authenticationToken: requestToken
-              ).deepLink else {
-            throw FinderActionError.invalidWorkingDirectory
-        }
-        openHost(with: deepLink, action: LocalActionName(command))
     }
 
     /// 只用 `open(_ url:)` 系列：指定 App 去启动在沙箱里会被拒绝，打开 URL 不会。

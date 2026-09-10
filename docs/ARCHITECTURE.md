@@ -91,6 +91,8 @@
 
 - 隔离 FinderSync 与 AppKit 菜单渲染边界：稳定 tag、置灰、图标和 stale selection
   语义可在普通测试进程中验证，扩展只保留系统回调和动作执行
+- `FinderActionDispatcher` 把稳定菜单 payload、选区、配置和认证令牌转换为复制或
+  宿主深链执行计划；扩展只执行 AppKit 剪贴板/Workspace 副作用并记录结果
 - Finder 菜单构建由 `BuildFinderMenu` signpost 覆盖；高负载配置基线在 CI 中重复构建
   菜单并设置宽松上界，用于捕获意外 I/O 或复杂度量级回归，而不是比较不同机器的微秒差异
 
@@ -117,6 +119,13 @@
 - `Localizable.xcstrings` 跟随 Core framework 打包，宿主与 Finder 扩展统一
   通过 `L10n` 从 framework bundle 取简体中文 / 英文文案
 
+### RightClickAppLogic / RightClickAppServices
+
+- `RightClickAppLogic` 保存不依赖 AppKit 的启动、深链、nonce、版本与终端启动计划；
+  `TerminalLaunchPlan` 对所有终端和窗口行为生成可直接断言的参数或 AppleScript 计划
+- `RightClickAppServices` 保存宿主状态、诊断、配置存储、进程执行和系统动作边界。
+  宿主与无宿主测试链接同一 framework，不再把生产源文件重复编译进测试包
+
 ## 自动验证边界
 
 - 逻辑单元测试继续以无宿主 bundle 运行，不启动 `LSUIElement` App，也不依赖
@@ -128,6 +137,8 @@
 - CI 在当前构建机运行覆盖率、静态分析、UI smoke 与 Universal Release，并在 macOS 14
   runner 单独执行逻辑测试；失败时保存 xcresult。真实 Finder/权限/卷测试通过
   `create-validation-report.sh` 生成不含个人路径的可归档报告
+- 覆盖率门禁只约束可单测的 Core、AppLogic、AppServices 与 FinderAdapter，避免把
+  未由逻辑测试进程执行的 SwiftUI App 和真实 Finder 扩展覆盖率混入指标
 
 ## 安全边界
 

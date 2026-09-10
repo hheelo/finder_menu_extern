@@ -11,9 +11,9 @@ settings:
     SWIFT_VERSION: "6.0"
     # 仅供 Xcode 内直接构建。install.sh、build-release.sh 和 Release CI 都调用
     # derive-build-number.sh 从 MARKETING_VERSION 推导并覆盖该值。
-    CURRENT_PROJECT_VERSION: 10110
+    CURRENT_PROJECT_VERSION: 10111
     # scripts/read-marketing-version.sh 读取这一项，并兼容有/无引号的标量。
-    MARKETING_VERSION: 1.1.10
+    MARKETING_VERSION: 1.1.11
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: true
@@ -64,17 +64,67 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         DEFINES_MODULE: true
 
+  # 宿主的可测试服务与状态层。App 和测试链接同一个产物，避免测试包再次编译
+  # 一份生产源码，也让覆盖率只归属真实模块。
+  RightClickAppServices:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/RightClickApp/ActionExecutor.swift
+      - Sources/RightClickApp/ProcessRunner.swift
+      - Sources/RightClickApp/AppDiagnostics.swift
+      - Sources/RightClickApp/AppLogger.swift
+      - Sources/RightClickApp/AppModel.swift
+      - Sources/RightClickApp/AppModelDataManagement.swift
+      - Sources/RightClickApp/AppModelLifecycle.swift
+      - Sources/RightClickApp/AppModelMenuConfiguration.swift
+      - Sources/RightClickApp/AppSmokeTest.swift
+      - Sources/RightClickApp/DeepLinkCoordinator.swift
+      - Sources/RightClickApp/DiagnosticsStore.swift
+      - Sources/RightClickApp/FinderSessionManager.swift
+      - Sources/RightClickApp/MenuConfigurationStore.swift
+      - Sources/RightClickApp/TerminalResolver.swift
+      - Sources/RightClickApp/UserLoginShell.swift
+      - Sources/RightClickApp/UserNotifier.swift
+    dependencies:
+      - target: RightClickCore
+      - target: RightClickAppLogic
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.AppServices
+        GENERATE_INFOPLIST_FILE: true
+        DEFINES_MODULE: true
+
   RightClick:
     type: application
     platform: macOS
     sources:
-      - Sources/RightClickApp
+      - path: Sources/RightClickApp
+        excludes:
+          - ActionExecutor.swift
+          - ProcessRunner.swift
+          - AppDiagnostics.swift
+          - AppLogger.swift
+          - AppModel.swift
+          - AppModelDataManagement.swift
+          - AppModelLifecycle.swift
+          - AppModelMenuConfiguration.swift
+          - AppSmokeTest.swift
+          - DeepLinkCoordinator.swift
+          - DiagnosticsStore.swift
+          - FinderSessionManager.swift
+          - MenuConfigurationStore.swift
+          - TerminalResolver.swift
+          - UserLoginShell.swift
+          - UserNotifier.swift
       - Resources/Assets.xcassets
       - Resources/RightClickApp
     dependencies:
       - target: RightClickCore
         embed: true
       - target: RightClickAppLogic
+        embed: true
+      - target: RightClickAppServices
         embed: true
       - target: RightClickFinderExtension
         embed: true
@@ -161,27 +211,10 @@ targets:
     platform: macOS
     sources:
       - Tests/RightClickAppTests
-      # 这些测试覆盖纯逻辑，不需要启动 LSUIElement 宿主。直接编译被测文件可以
-      # 避开已安装副本的 Bundle ID、Sparkle 和附属应用启动时序干扰。
-      - Sources/RightClickApp/ActionExecutor.swift
-      - Sources/RightClickApp/ProcessRunner.swift
-      - Sources/RightClickApp/AppDiagnostics.swift
-      - Sources/RightClickApp/AppLogger.swift
-      - Sources/RightClickApp/AppModel.swift
-      - Sources/RightClickApp/AppModelDataManagement.swift
-      - Sources/RightClickApp/AppModelLifecycle.swift
-      - Sources/RightClickApp/AppModelMenuConfiguration.swift
-      - Sources/RightClickApp/AppSmokeTest.swift
-      - Sources/RightClickApp/DeepLinkCoordinator.swift
-      - Sources/RightClickApp/DiagnosticsStore.swift
-      - Sources/RightClickApp/FinderSessionManager.swift
-      - Sources/RightClickApp/MenuConfigurationStore.swift
-      - Sources/RightClickApp/TerminalResolver.swift
-      - Sources/RightClickApp/UserLoginShell.swift
-      - Sources/RightClickApp/UserNotifier.swift
     dependencies:
       - target: RightClickCore
       - target: RightClickAppLogic
+      - target: RightClickAppServices
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hheelo.RightClick.AppTests
@@ -206,13 +239,32 @@ targets:
     type: application
     platform: macOS
     sources:
-      - Sources/RightClickApp
+      - path: Sources/RightClickApp
+        excludes:
+          - ActionExecutor.swift
+          - ProcessRunner.swift
+          - AppDiagnostics.swift
+          - AppLogger.swift
+          - AppModel.swift
+          - AppModelDataManagement.swift
+          - AppModelLifecycle.swift
+          - AppModelMenuConfiguration.swift
+          - AppSmokeTest.swift
+          - DeepLinkCoordinator.swift
+          - DiagnosticsStore.swift
+          - FinderSessionManager.swift
+          - MenuConfigurationStore.swift
+          - TerminalResolver.swift
+          - UserLoginShell.swift
+          - UserNotifier.swift
       - Resources/Assets.xcassets
       - Resources/RightClickApp
     dependencies:
       - target: RightClickCore
         embed: true
       - target: RightClickAppLogic
+        embed: true
+      - target: RightClickAppServices
         embed: true
       - package: Sparkle
         product: Sparkle

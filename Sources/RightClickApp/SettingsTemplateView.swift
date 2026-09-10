@@ -1,4 +1,5 @@
 import SwiftUI
+import RightClickAppServices
 import RightClickCore
 
 extension SettingsView {

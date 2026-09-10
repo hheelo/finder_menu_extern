@@ -23,7 +23,7 @@ extension AppModel {
 
     /// 复制发生在扩展进程里，所以这个设置的真相是菜单配置文件而不是
     /// UserDefaults——写回配置 Store 即下发到扩展容器。
-    var clipboardSeparator: ClipboardSeparator {
+    public var clipboardSeparator: ClipboardSeparator {
         get { menuConfiguration.clipboardSeparator }
         set {
             menuConfigurationStore.updateImmediately {
@@ -32,11 +32,11 @@ extension AppModel {
         }
     }
 
-    func menuActionIsEnabled(_ action: RightClickAction) -> Bool {
+    public func menuActionIsEnabled(_ action: RightClickAction) -> Bool {
         !menuConfiguration.disabledActions.contains(action.configurationID)
     }
 
-    func setMenuAction(_ action: RightClickAction, isEnabled: Bool) {
+    public func setMenuAction(_ action: RightClickAction, isEnabled: Bool) {
         menuConfigurationStore.updateImmediately { updated in
             if isEnabled {
                 updated.disabledActions.remove(action.configurationID)
@@ -49,7 +49,7 @@ extension AppModel {
         }
     }
 
-    func moveMenuActions(
+    public func moveMenuActions(
         fromOffsets source: IndexSet,
         toOffset destination: Int
     ) {
@@ -60,13 +60,13 @@ extension AppModel {
         }
     }
 
-    func restoreDefaultMenuActionOrder() {
+    public func restoreDefaultMenuActionOrder() {
         menuConfigurationStore.updateImmediately {
             $0.actionOrder = []
         }
     }
 
-    func addCLIProfile() {
+    public func addCLIProfile() {
         let usedSlots = Set(menuConfiguration.cliProfiles.map(\.menuSlot))
         guard let slot = CLIProfile.validMenuSlots.first(where: {
             !usedSlots.contains($0)
@@ -90,13 +90,13 @@ extension AppModel {
         }
     }
 
-    func removeCLIProfile(id: String) {
+    public func removeCLIProfile(id: String) {
         menuConfigurationStore.updateImmediately {
             $0.cliProfiles.removeAll { $0.id == id }
         }
     }
 
-    func removeCLIArgument(profileID: String, at index: Int) {
+    public func removeCLIArgument(profileID: String, at index: Int) {
         menuConfigurationStore.updateImmediately { updated in
             guard let profileIndex = updated.cliProfiles.firstIndex(
                 where: { $0.id == profileID }
@@ -106,11 +106,11 @@ extension AppModel {
         }
     }
 
-    func templateFilename(for template: FileTemplate) -> String {
+    public func templateFilename(for template: FileTemplate) -> String {
         menuConfiguration.templateOverrides[template.rawValue]?.filename ?? ""
     }
 
-    func setTemplateFilename(_ filename: String, for template: FileTemplate) {
+    public func setTemplateFilename(_ filename: String, for template: FileTemplate) {
         var updated = menuConfiguration
         var templateOverride = updated.templateOverrides[template.rawValue]
             ?? TemplateOverride()
@@ -124,12 +124,12 @@ extension AppModel {
         menuConfiguration = updated
     }
 
-    func templateEncoding(for template: FileTemplate) -> TemplateEncoding {
+    public func templateEncoding(for template: FileTemplate) -> TemplateEncoding {
         menuConfiguration.templateOverrides[template.rawValue]?
             .resolvedEncoding ?? .utf8
     }
 
-    func setTemplateEncoding(
+    public func setTemplateEncoding(
         _ encoding: TemplateEncoding,
         for template: FileTemplate
     ) {
@@ -149,7 +149,7 @@ extension AppModel {
         }
     }
 
-    func openCustomTemplatesDirectory() {
+    public func openCustomTemplatesDirectory() {
         do {
             try FileManager.default.createDirectory(
                 at: menuConfigurationStore.customTemplatesDirectory,
@@ -168,7 +168,7 @@ extension AppModel {
         }
     }
 
-    func refreshCustomTemplates() async {
+    public func refreshCustomTemplates() async {
         await menuConfigurationStore.refreshCustomTemplates()
     }
 

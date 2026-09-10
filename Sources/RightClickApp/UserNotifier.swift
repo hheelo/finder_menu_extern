@@ -2,10 +2,10 @@
 import Foundation
 import RightClickCore
 
-struct AppErrorRecord: Identifiable, Equatable {
-    let id: UUID
-    let message: String
-    let date: Date
+public struct AppErrorRecord: Identifiable, Equatable {
+    public let id: UUID
+    public let message: String
+    public let date: Date
 
     init(
         id: UUID = UUID(),

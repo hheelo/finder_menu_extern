@@ -1,4 +1,5 @@
 import Sparkle
+import RightClickAppServices
 import os
 
 /// 应用内更新。

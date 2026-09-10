@@ -1,4 +1,5 @@
 @testable import RightClickAppLogic
+@testable import RightClickAppServices
 import Testing
 
 @MainActor

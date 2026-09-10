@@ -5,10 +5,10 @@ import Foundation
 /// 只有显式传入临时目录时才生效，并且目录必须位于系统临时目录之下。主视图
 /// `onAppear` 后写入固定的 ready 文件，让打包验证可以确认签名后的 App 不只是
 /// 进程存活，而是已经完成 SwiftUI 首屏呈现。
-enum AppSmokeTest {
+public enum AppSmokeTest {
     static let directoryEnvironmentKey = "RIGHTCLICK_SMOKE_TEST_DIRECTORY"
 
-    static func markReady(
+    public static func markReady(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         temporaryDirectory: URL = FileManager.default.temporaryDirectory
     ) {

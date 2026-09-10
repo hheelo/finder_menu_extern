@@ -4,7 +4,7 @@ import RightClickCore
 
 @MainActor
 extension AppModel {
-    func refreshForUserPresentation() async {
+    public func refreshForUserPresentation() async {
         if !hasCompletedOnboarding && !AppEnvironment.isRunningUITests {
             shouldPresentOnboarding = true
         }
@@ -15,7 +15,7 @@ extension AppModel {
         _ = await (extensionRefresh, templateRefresh, diagnosticRefresh)
     }
 
-    func addMonitoredDirectories() {
+    public func addMonitoredDirectories() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -34,44 +34,44 @@ extension AppModel {
         }
     }
 
-    func removeMonitoredDirectory(_ path: String) {
+    public func removeMonitoredDirectory(_ path: String) {
         menuConfigurationStore.updateImmediately {
             $0.monitoredDirectories.removeAll { $0 == path }
         }
     }
 
-    func monitorAllDirectories() {
+    public func monitorAllDirectories() {
         menuConfigurationStore.updateImmediately {
             $0.monitoredDirectories = []
         }
     }
 
-    func completeOnboarding() {
+    public func completeOnboarding() {
         guard !hasCompletedOnboarding else { return }
         settings.hasCompletedOnboarding = true
         hasCompletedOnboarding = true
         shouldPresentOnboarding = false
     }
 
-    func skipOnboarding() {
+    public func skipOnboarding() {
         completeOnboarding()
     }
 
-    func restartOnboarding() {
+    public func restartOnboarding() {
         settings.hasCompletedOnboarding = false
         hasCompletedOnboarding = false
         shouldPresentOnboarding = true
     }
 
-    func persistMenuConfigurationImmediately() {
+    public func persistMenuConfigurationImmediately() {
         menuConfigurationStore.persistImmediately()
     }
 
-    func flushPendingMenuConfiguration() {
+    public func flushPendingMenuConfiguration() {
         menuConfigurationStore.flushPendingPersist()
     }
 
-    func restartFinder() {
+    public func restartFinder() {
         restartFinder(successStatus: L10n.text(
             "status.restarted_finder",
             fallback: "Finder 已重新启动"

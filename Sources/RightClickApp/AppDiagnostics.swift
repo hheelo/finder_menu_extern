@@ -2,11 +2,11 @@ import AppKit
 import RightClickAppLogic
 import RightClickCore
 
-struct DiagnosticItem: Codable, Identifiable, Sendable {
-    let id: String
-    let title: String
-    let passed: Bool
-    let detail: String
+public struct DiagnosticItem: Codable, Identifiable, Sendable {
+    public let id: String
+    public let title: String
+    public let passed: Bool
+    public let detail: String
 }
 
 @MainActor

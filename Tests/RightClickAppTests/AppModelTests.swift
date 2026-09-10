@@ -1,4 +1,6 @@
+@testable import RightClickAppServices
 import Foundation
+import RightClickAppLogic
 import RightClickCore
 import SwiftUI
 import Testing
@@ -385,19 +387,19 @@ struct AppModelTests {
 
     @Test
     func terminalScriptsDistinguishTabsFromWindows() {
-        let terminalTab = ActionExecutor.appleScript(
+        let terminalTab = TerminalLaunchPlan.appleScript(
             terminalProfile: .terminal,
             terminalWindowBehavior: .newTab
         )
-        let terminalWindow = ActionExecutor.appleScript(
+        let terminalWindow = TerminalLaunchPlan.appleScript(
             terminalProfile: .terminal,
             terminalWindowBehavior: .newWindow
         )
-        let iTermTab = ActionExecutor.appleScript(
+        let iTermTab = TerminalLaunchPlan.appleScript(
             terminalProfile: .iTerm,
             terminalWindowBehavior: .newTab
         )
-        let iTermWindow = ActionExecutor.appleScript(
+        let iTermWindow = TerminalLaunchPlan.appleScript(
             terminalProfile: .iTerm,
             terminalWindowBehavior: .newWindow
         )

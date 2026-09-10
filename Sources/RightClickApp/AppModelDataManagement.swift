@@ -5,15 +5,15 @@ import UniformTypeIdentifiers
 
 @MainActor
 extension AppModel {
-    func beginLocalActionLogSession() {
+    public func beginLocalActionLogSession() {
         actionLogSessionTracker.begin()
     }
 
-    func endLocalActionLogSession() {
+    public func endLocalActionLogSession() {
         actionLogSessionTracker.end()
     }
 
-    func exportLocalActionLog() {
+    public func exportLocalActionLog() {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
@@ -54,7 +54,7 @@ extension AppModel {
         }
     }
 
-    func exportSettings() {
+    public func exportSettings() {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
@@ -87,7 +87,7 @@ extension AppModel {
         }
     }
 
-    func importSettings() {
+    public func importSettings() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -117,7 +117,7 @@ extension AppModel {
         }
     }
 
-    func resetConfigurationAfterRecovery() {
+    public func resetConfigurationAfterRecovery() {
         do {
             try menuConfigurationStore.resetAfterRecovery()
             lastStatus = L10n.text(
@@ -134,7 +134,7 @@ extension AppModel {
         }
     }
 
-    func clearErrors() {
+    public func clearErrors() {
         errorHistory.removeAll()
     }
 

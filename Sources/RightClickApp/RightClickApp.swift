@@ -1,5 +1,6 @@
 import AppKit
 import RightClickAppLogic
+import RightClickAppServices
 import RightClickCore
 import SwiftUI
 

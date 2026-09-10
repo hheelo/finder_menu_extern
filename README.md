@@ -24,7 +24,7 @@ RightClick 是一个原生 macOS Finder 扩展，为右键菜单补充开发者�
 ```text
 RightClick.app
 ├── SwiftUI 设置、扩展状态与启用入口
-├── ActionExecutor（启动终端命令）
+├── RightClickAppServices.framework（状态、诊断与系统动作边界）
 ├── RightClickAppLogic.framework（启动、深链与窗口纯逻辑）
 └── RightClickFinderExtension.appex
     ├── RightClickFinderAdapter.framework（选区与 AppKit 菜单边界）
@@ -32,6 +32,9 @@ RightClick.app
 
 RightClickCore.framework
 └── 动作模型、选区规则、文件模板、CLI 链接、设置与共享本地化资源
+
+RightClickFinderAdapter.framework
+└── Finder 选区、菜单渲染与无副作用动作分派
 ```
 
 Finder 扩展直接完成复制；文件创建、打开编辑器、终端或运行 CLI 通过签名深链交给

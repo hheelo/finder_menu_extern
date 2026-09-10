@@ -56,6 +56,9 @@ jobs:
             .build/CIResults/Logic.xcresult | tee -a "${GITHUB_STEP_SUMMARY}"
           echo '```' >> "${GITHUB_STEP_SUMMARY}"
 
+      - name: Verify coverage thresholds
+        run: ./scripts/verify-code-coverage.sh .build/CIResults/Logic.xcresult
+
       - name: Static analysis
         run: |
           xcodebuild -quiet \
