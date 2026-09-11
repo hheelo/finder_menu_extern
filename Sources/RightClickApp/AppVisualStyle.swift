@@ -2,16 +2,23 @@ import AppKit
 import SwiftUI
 
 enum AppVisualStyle {
-    static let cornerRadius: CGFloat = 13
+    static let cornerRadius: CGFloat = 16
     static let compactCornerRadius: CGFloat = 8
-    static let panelStroke = Color(nsColor: .separatorColor).opacity(0.45)
+    static let panelStroke = Color(nsColor: .separatorColor).opacity(0.30)
     static let subtleFill = Color(nsColor: .controlBackgroundColor)
 }
 
 struct AppSurfaceBackground: View {
     var body: some View {
-        Color(nsColor: .windowBackgroundColor)
-            .ignoresSafeArea()
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+            LinearGradient(
+                colors: [Color.accentColor.opacity(0.055), .clear],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .ignoresSafeArea()
     }
 }
 
@@ -55,7 +62,11 @@ struct VisualPanel<Content: View>: View {
                 .fill(AppVisualStyle.subtleFill)
                 .overlay {
                     if let tint {
-                        tint.opacity(0.035)
+                        LinearGradient(
+                            colors: [tint.opacity(0.065), tint.opacity(0.015)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     }
                 }
                 .clipShape(RoundedRectangle(
@@ -70,6 +81,7 @@ struct VisualPanel<Content: View>: View {
                 )
                 .stroke(AppVisualStyle.panelStroke, lineWidth: 1)
             }
+            .shadow(color: .black.opacity(0.025), radius: 8, y: 3)
     }
 }
 
