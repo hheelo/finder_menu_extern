@@ -99,9 +99,7 @@ public enum RightClickMenu {
                 items: [
                     .action(.runCodexCLI, isEnabled: canRunCLI),
                     .action(.runClaudeCode, isEnabled: canRunCLI)
-                ] + configuration.cliProfiles.filter {
-                    $0.isValid && $0.isEnabled
-                }.map {
+                ] + configuration.cliProfiles.map {
                     .configuredCLI($0, isEnabled: canRunCLI)
                 }
             ),
@@ -115,18 +113,13 @@ public enum RightClickMenu {
                     .separator
                 ] + FileTemplate.allCases.map {
                     .action(.createFile($0), isEnabled: canCreateFile)
-                } + configuration.customTemplates.filter {
-                    $0.isValid
-                }.map {
+                } + configuration.customTemplates.map {
                     .customTemplate($0, isEnabled: canCreateFile)
                 }
             )
         ]
         let disabled = configuration.disabledActions
-        var configured = defaultNodes.compactMap {
-            filtered($0, disabledActions: disabled)
-        }
-        configured = removingRedundantSeparators(from: configured)
+        var configured = filteredNodes(defaultNodes, disabledActions: disabled)
         configured = reordered(
             configured,
             actionOrder: configuration.actionOrder
@@ -158,11 +151,7 @@ public enum RightClickMenu {
         case let .customTemplate(template, _):
             return template.isValid ? node : nil
         case let .submenu(title, isEnabled, items):
-            let children = removingRedundantSeparators(
-                from: items.compactMap {
-                    filtered($0, disabledActions: disabledActions)
-                }
-            )
+            let children = filteredNodes(items, disabledActions: disabledActions)
             guard !children.isEmpty else { return nil }
             return .submenu(
                 title: title,
@@ -258,12 +247,17 @@ public enum RightClickMenu {
         }
     }
 
-    private static func removingRedundantSeparators(
-        from nodes: [RightClickMenuNode]
+    /// 一次遍历完成动作筛选与分隔符清理，动态项也只校验一次。
+    private static func filteredNodes(
+        _ nodes: [RightClickMenuNode],
+        disabledActions: Set<String>
     ) -> [RightClickMenuNode] {
         var result: [RightClickMenuNode] = []
         result.reserveCapacity(nodes.count)
-        for node in nodes {
+        for candidate in nodes {
+            guard let node = filtered(candidate, disabledActions: disabledActions) else {
+                continue
+            }
             if case .separator = node,
                result.isEmpty || result.last == .separator {
                 continue

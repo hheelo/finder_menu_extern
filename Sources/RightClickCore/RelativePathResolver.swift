@@ -61,10 +61,14 @@ public enum RelativePathResolver {
     /// 刻意不生成 `../../` 形式：多选跨越基准时，一份混着 `../` 和普通相对路径的
     /// 列表比直接给绝对路径更难读，也更容易被粘到错误的位置。
     public static func relativePath(of url: URL, from base: URL) -> String? {
+        relativePath(of: url, baseComponents: base.standardizedFileURL.pathComponents)
+    }
+
+    /// 批量复制时复用已标准化的基准，避免为每个目标重复解析。
+    static func relativePath(of url: URL, baseComponents root: [String]) -> String? {
         let target = url.standardizedFileURL.pathComponents
-        let root = base.standardizedFileURL.pathComponents
         guard target.count >= root.count,
-              Array(target.prefix(root.count)) == root else {
+              target.starts(with: root) else {
             return nil
         }
         let remainder = target.dropFirst(root.count)

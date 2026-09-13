@@ -45,8 +45,9 @@ public enum ClipboardText {
         base: URL,
         separator: ClipboardSeparator = .newline
     ) -> String {
-        urls.map {
-            RelativePathResolver.relativePath(of: $0, from: base) ?? $0.path
+        let baseComponents = base.standardizedFileURL.pathComponents
+        return urls.map {
+            RelativePathResolver.relativePath(of: $0, baseComponents: baseComponents) ?? $0.path
         }
         .joined(separator: separator.text)
     }

@@ -119,6 +119,23 @@ struct RelativePathResolverTests {
         #expect(text == "a/b.txt\n/tmp/other/c.txt")
     }
 
+    @Test
+    func batchRelativePathsPreserveNormalizationAndSelectionOrder() {
+        let base = URL(fileURLWithPath: "/tmp/repo/sub/..")
+        let urls = [
+            URL(fileURLWithPath: "/tmp/repo/a/../b.txt"),
+            URL(fileURLWithPath: "/tmp/repo"),
+            URL(fileURLWithPath: "/tmp/repo2/outside.txt"),
+            URL(fileURLWithPath: "/tmp/repo/中文 file.txt"),
+            URL(fileURLWithPath: "/tmp/repo/b.txt")
+        ]
+        #expect(
+            ClipboardText.relativePaths(for: urls, base: base)
+                == "b.txt\n.\n/tmp/repo2/outside.txt\n中文 file.txt\nb.txt"
+        )
+        #expect(ClipboardText.relativePaths(for: [], base: base) == "")
+    }
+
     /// 基准解析失败时必须返回 nil，让扩展抛出可上报的错误——绝不能悄悄
     /// 退化成绝对路径，那会让用户粘错内容却毫无察觉。
     @Test
