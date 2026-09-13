@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 enum AppVisualStyle {
-    static let cornerRadius: CGFloat = 16
+    static let cornerRadius: CGFloat = 10
     static let compactCornerRadius: CGFloat = 8
     static let panelStroke = Color(nsColor: .separatorColor).opacity(0.30)
     static let subtleFill = Color(nsColor: .controlBackgroundColor)
@@ -10,15 +10,8 @@ enum AppVisualStyle {
 
 struct AppSurfaceBackground: View {
     var body: some View {
-        ZStack {
-            Color(nsColor: .windowBackgroundColor)
-            LinearGradient(
-                colors: [Color.accentColor.opacity(0.055), .clear],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        .ignoresSafeArea()
+        Color(nsColor: .windowBackgroundColor)
+            .ignoresSafeArea()
     }
 }
 
@@ -37,16 +30,13 @@ struct AppIconMark: View {
 }
 
 struct VisualPanel<Content: View>: View {
-    private let tint: Color?
     private let padding: CGFloat
     private let content: Content
 
     init(
-        tint: Color? = nil,
         padding: CGFloat = 18,
         @ViewBuilder content: () -> Content
     ) {
-        self.tint = tint
         self.padding = padding
         self.content = content()
     }
@@ -60,19 +50,6 @@ struct VisualPanel<Content: View>: View {
                     style: .continuous
                 )
                 .fill(AppVisualStyle.subtleFill)
-                .overlay {
-                    if let tint {
-                        LinearGradient(
-                            colors: [tint.opacity(0.065), tint.opacity(0.015)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    }
-                }
-                .clipShape(RoundedRectangle(
-                    cornerRadius: AppVisualStyle.cornerRadius,
-                    style: .continuous
-                ))
             }
             .overlay {
                 RoundedRectangle(
@@ -81,7 +58,6 @@ struct VisualPanel<Content: View>: View {
                 )
                 .stroke(AppVisualStyle.panelStroke, lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.025), radius: 8, y: 3)
     }
 }
 
@@ -93,14 +69,14 @@ struct TintIcon: View {
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(size: size * 0.42, weight: .semibold))
-            .foregroundStyle(tint)
+            .foregroundStyle(.white)
             .frame(width: size, height: size)
             .background {
                 RoundedRectangle(
                     cornerRadius: size * 0.26,
                     style: .continuous
                 )
-                .fill(tint.opacity(0.12))
+                .fill(tint.gradient)
             }
             .accessibilityHidden(true)
     }

@@ -22,7 +22,7 @@ struct OnboardingView: View {
                             "onboarding.title",
                             fallback: "欢迎使用 RightClick"
                         ))
-                            .font(.system(.title, design: .rounded).weight(.bold))
+                            .font(.title2.weight(.semibold))
                         Text(L10n.format(
                             "onboarding.progress",
                             fallback: "第 %1$lld 步，共 %2$lld 步",

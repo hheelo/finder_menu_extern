@@ -11,15 +11,15 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 30) {
+            VStack(alignment: .leading, spacing: 24) {
                 appHeader
                 featurePanel
                 statusPanel
                 errorHistory
             }
-            .frame(maxWidth: 720)
-            .padding(.horizontal, 38)
-            .padding(.top, 32)
+            .frame(maxWidth: 660)
+            .padding(.horizontal, 28)
+            .padding(.top, 24)
             .padding(.bottom, 36)
             .frame(maxWidth: .infinity)
         }
@@ -46,11 +46,10 @@ struct ContentView: View {
 
     private var appHeader: some View {
         HStack(alignment: .top, spacing: 18) {
-            AppIconMark(size: 68)
+            AppIconMark(size: 60)
             VStack(alignment: .leading, spacing: 5) {
                 Text("RightClick")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .tracking(-0.5)
+                    .font(.system(size: 24, weight: .semibold))
                 VStack(alignment: .leading, spacing: 8) {
                     Text(L10n.text(
                         "home.subtitle",
@@ -59,9 +58,6 @@ struct ContentView: View {
                     if let version = AppVersion.current {
                         Text(version.displayString)
                             .font(.caption.monospacedDigit().weight(.medium))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(.primary.opacity(0.045), in: Capsule())
                             .textSelection(.enabled)
                             .accessibilityLabel(version.accessibilityLabel)
                     }
@@ -85,12 +81,6 @@ struct ContentView: View {
                 .accessibilityIdentifier("rightclick.main.extension-status")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(model.extensionEnabled ? .green : .orange)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    (model.extensionEnabled ? Color.green : Color.orange).opacity(0.09),
-                    in: Capsule()
-                )
 
                 Button {
                     model.openExtensionSettings()
@@ -111,47 +101,48 @@ struct ContentView: View {
             Text(L10n.text("home.features", fallback: "主要功能"))
                 .font(.headline)
 
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                alignment: .leading,
-                spacing: 12
-            ) {
-                FeatureSummary(
-                    icon: "doc.on.doc",
-                    tint: .blue,
-                    title: L10n.text("home.feature.copy_title", fallback: "复制"),
-                    detail: L10n.text(
-                        "home.feature.copy_detail",
-                        fallback: "文件路径、文件名；支持多选"
+            VisualPanel(padding: 0) {
+                VStack(spacing: 0) {
+                    FeatureSummary(
+                        icon: "doc.on.doc",
+                        tint: .blue,
+                        title: L10n.text("home.feature.copy_title", fallback: "复制"),
+                        detail: L10n.text(
+                            "home.feature.copy_detail",
+                            fallback: "文件路径、文件名；支持多选"
+                        )
                     )
-                )
-                FeatureSummary(
-                    icon: "rectangle.and.hand.point.up.left",
-                    tint: .purple,
-                    title: L10n.text("home.feature.open_title", fallback: "打开"),
-                    detail: L10n.text(
-                        "home.feature.open_detail",
-                        fallback: "VS Code、ChatGPT 与更多编辑器"
+                    Divider().padding(.leading, 60)
+                    FeatureSummary(
+                        icon: "rectangle.and.hand.point.up.left",
+                        tint: .purple,
+                        title: L10n.text("home.feature.open_title", fallback: "打开"),
+                        detail: L10n.text(
+                            "home.feature.open_detail",
+                            fallback: "VS Code、ChatGPT 与更多编辑器"
+                        )
                     )
-                )
-                FeatureSummary(
-                    icon: "terminal",
-                    tint: .teal,
-                    title: L10n.text("home.feature.terminal_title", fallback: "终端"),
-                    detail: L10n.text(
-                        "home.feature.terminal_detail",
-                        fallback: "打开终端或运行 AI CLI"
+                    Divider().padding(.leading, 60)
+                    FeatureSummary(
+                        icon: "terminal",
+                        tint: .teal,
+                        title: L10n.text("home.feature.terminal_title", fallback: "终端"),
+                        detail: L10n.text(
+                            "home.feature.terminal_detail",
+                            fallback: "打开终端或运行 AI CLI"
+                        )
                     )
-                )
-                FeatureSummary(
-                    icon: "doc.badge.plus",
-                    tint: .orange,
-                    title: L10n.text("home.feature.create_title", fallback: "新建"),
-                    detail: L10n.text(
-                        "home.feature.create_detail",
-                        fallback: "内置与自定义模板、文件夹、剪贴板文本"
+                    Divider().padding(.leading, 60)
+                    FeatureSummary(
+                        icon: "doc.badge.plus",
+                        tint: .orange,
+                        title: L10n.text("home.feature.create_title", fallback: "新建"),
+                        detail: L10n.text(
+                            "home.feature.create_detail",
+                            fallback: "内置与自定义模板、文件夹、剪贴板文本"
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -163,7 +154,7 @@ struct ContentView: View {
             Text(L10n.text("settings.tab.diagnostics", fallback: "诊断"))
                 .font(.headline)
 
-            VisualPanel(tint: statusTint, padding: 0) {
+            VisualPanel(padding: 0) {
                 HStack(spacing: 14) {
                     TintIcon(
                         systemImage: diagnosticAttentionCount == 0
@@ -306,21 +297,21 @@ private struct FeatureSummary: View {
     let detail: String
 
     var body: some View {
-        VisualPanel(tint: tint, padding: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                TintIcon(systemImage: icon, tint: tint, size: 42)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.system(.headline, design: .rounded))
-                    Text(detail)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+        HStack(alignment: .center, spacing: 12) {
+            TintIcon(systemImage: icon, tint: tint, size: 30)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body.weight(.medium))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 }
