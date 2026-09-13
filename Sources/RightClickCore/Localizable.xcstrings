@@ -235,7 +235,12 @@
     "status.imported_settings" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "RightClick settings imported" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "RightClick 设置已导入" } } } },
     "status.reset_settings" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Finder menu settings reset" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Finder 菜单设置已重置" } } } },
     "settings.default_cli_title" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom CLI" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自定义 CLI" } } } },
-    "status.default_app" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "the default app" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认应用" } } } }
+    "status.default_app" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "the default app" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "默认应用" } } } },
+    "home.errors_disclosure" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show Details" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "查看详情" } } } },
+    "home.extension_disabled_detail" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn the extension on in System Settings and the menu appears." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在系统设置中打开扩展后，右键菜单才会出现。" } } } },
+    "home.extension_enabled_detail" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Right-click any file or folder in Finder to use it." } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Finder 中右键文件或文件夹即可使用。" } } } },
+    "settings.menu_actions" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Menu Items" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "菜单项" } } } },
+    "settings.transfer_and_setup" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Transfer & Setup" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置迁移与向导" } } } }
   },
   "version" : "1.0"
 }

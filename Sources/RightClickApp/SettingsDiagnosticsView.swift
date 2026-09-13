@@ -6,6 +6,7 @@ extension SettingsView {
     var diagnosticSettings: some View {
         Form {
             applicationSection
+            settingsTransferSection
             diagnosticsSection
             errorHistorySection
         }
@@ -36,12 +37,22 @@ extension SettingsView {
                 isOn: $model.menuBarIconEnabled
             )
             .focused($focusedControl, equals: .menuBarIcon)
-            Text(L10n.text(
+        } header: {
+            SettingsSectionHeader(
+                title: L10n.text("settings.application", fallback: "应用"),
+                systemImage: "app.badge"
+            )
+        } footer: {
+            SettingsFootnote(L10n.text(
                 "settings.menu_bar_icon_help",
                 fallback: "关闭主窗口后，可从菜单栏快速打开设置、复制诊断信息或重启 Finder。"
             ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    var settingsTransferSection: some View {
+        Section {
             HStack {
                 Button(L10n.text(
                     "button.export_settings",
@@ -63,33 +74,38 @@ extension SettingsView {
                         confirmsConfigurationReset = true
                     }
                 }
+                Spacer()
             }
-            Text(L10n.text(
-                "settings.settings_transfer_help",
-                fallback: "导入导出包含菜单顺序、自定义 CLI 和内置模板选项；本机终端选择与自定义模板文件保持不变。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button(L10n.text(
-                "button.restart_onboarding",
-                fallback: "重新运行首次向导"
-            )) {
-                model.restartOnboarding()
-                WindowPresenter.showOrCreateMainWindow()
+            HStack {
+                Button(L10n.text(
+                    "button.restart_onboarding",
+                    fallback: "重新运行首次向导"
+                )) {
+                    model.restartOnboarding()
+                    WindowPresenter.showOrCreateMainWindow()
+                }
+                Spacer()
             }
-            Text(L10n.text(
-                "settings.restart_onboarding_help",
-                fallback: "重新显示三步首次设置；现有菜单和终端配置不会被清除。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         } header: {
             SettingsSectionHeader(
-                title: L10n.text("settings.application", fallback: "应用"),
-                systemImage: "app.badge"
+                title: L10n.text(
+                    "settings.transfer_and_setup",
+                    fallback: "设置迁移与向导"
+                ),
+                systemImage: "arrow.up.arrow.down.square"
             )
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                SettingsFootnote(L10n.text(
+                    "settings.settings_transfer_help",
+                    fallback: "导入导出包含菜单顺序、自定义 CLI 和内置模板选项；本机终端选择与自定义模板文件保持不变。"
+                ))
+                SettingsFootnote(L10n.text(
+                    "settings.restart_onboarding_help",
+                    fallback: "重新显示三步首次设置；现有菜单和终端配置不会被清除。"
+                ))
+            }
         }
-
     }
 
     @ViewBuilder
@@ -112,21 +128,27 @@ extension SettingsView {
                                 item.passed ? Color.green : Color.orange
                             )
                         Text(item.detail)
+                            .font(.subheadline)
                             .foregroundStyle(
                                 item.passed ? Color.secondary : Color.orange
                             )
                             .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.trailing)
                     }
                 } label: {
-                    Label(
-                        item.title,
-                        systemImage: item.passed
+                    // 只给状态符号上色，标题保持主文本色——和系统设置里的
+                    // 检查项一致，整行染色会显得像错误提示。
+                    Label {
+                        Text(item.title)
+                    } icon: {
+                        Image(systemName: item.passed
                             ? "checkmark.circle.fill"
-                            : "exclamationmark.triangle.fill"
-                    )
-                    .foregroundStyle(
-                        item.passed ? Color.green : Color.orange
-                    )
+                            : "exclamationmark.triangle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(
+                                item.passed ? Color.green : Color.orange
+                            )
+                    }
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -156,19 +178,17 @@ extension SettingsView {
                 }
             }
 
-            Text(L10n.text(
-                "settings.local_log_help",
-                fallback: "导出时合并最近 200 条动作结果和异常终止标记；不记录文件路径、文件名、命令参数或深链内容。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         } header: {
             SettingsSectionHeader(
                 title: L10n.text("settings.diagnostics", fallback: "环境诊断"),
                 systemImage: "stethoscope"
             )
+        } footer: {
+            SettingsFootnote(L10n.text(
+                "settings.local_log_help",
+                fallback: "导出时合并最近 200 条动作结果和异常终止标记；不记录文件路径、文件名、命令参数或深链内容。"
+            ))
         }
-
     }
 
     @ViewBuilder

@@ -36,7 +36,7 @@ struct OnboardingView: View {
                     stepIndicator
                 }
 
-                VisualPanel {
+                VisualPanel(padding: 20) {
                     stepContent
                         .frame(
                             maxWidth: .infinity,
@@ -156,20 +156,21 @@ struct OnboardingView: View {
     private var stepContent: some View {
         switch step {
         case 0:
-            VStack(alignment: .leading, spacing: 16) {
-                Label(
-                    L10n.text(
+            VStack(alignment: .leading, spacing: 14) {
+                StepHeading(
+                    icon: "puzzlepiece.extension",
+                    tint: .blue,
+                    title: L10n.text(
                         "onboarding.extension_title",
                         fallback: "启用 Finder 扩展"
-                    ),
-                    systemImage: "puzzlepiece.extension"
+                    )
                 )
-                    .font(.title3.bold())
                 Text(L10n.text(
                     "onboarding.extension_detail",
                     fallback: "RightClick 需要 Finder 扩展才能把操作加入右键菜单。系统设置打开后，请启用 RightClick Finder Extension。"
                 ))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Button(model.extensionEnabled
                     ? L10n.text("button.manage_extension", fallback: "管理扩展")
                     : L10n.text(
@@ -203,20 +204,21 @@ struct OnboardingView: View {
                 }
             }
         case 1:
-            VStack(alignment: .leading, spacing: 16) {
-                Label(
-                    L10n.text(
+            VStack(alignment: .leading, spacing: 14) {
+                StepHeading(
+                    icon: "terminal",
+                    tint: .teal,
+                    title: L10n.text(
                         "onboarding.terminal_title",
                         fallback: "选择默认终端"
-                    ),
-                    systemImage: "terminal"
+                    )
                 )
-                    .font(.title3.bold())
                 Text(L10n.text(
                     "onboarding.terminal_detail",
                     fallback: "“在终端中打开”和 AI CLI 动作会使用这个终端。未安装的终端会安全回退到 Terminal。"
                 ))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Picker(
                     L10n.text("settings.terminal_picker", fallback: "默认终端"),
                     selection: $model.terminalProfile
@@ -244,20 +246,21 @@ struct OnboardingView: View {
                 }
             }
         default:
-            VStack(alignment: .leading, spacing: 16) {
-                Label(
-                    L10n.text(
+            VStack(alignment: .leading, spacing: 14) {
+                StepHeading(
+                    icon: "hand.point.up.left.fill",
+                    tint: .orange,
+                    title: L10n.text(
                         "onboarding.try_title",
                         fallback: "现在去 Finder 试一下"
-                    ),
-                    systemImage: "hand.point.up.left.fill"
+                    )
                 )
-                    .font(.title3.bold())
                 Text(L10n.text(
                     "onboarding.try_detail",
                     fallback: "在 Finder 中右键任意文件或文件夹，就能看到复制、编辑器、终端和新建文件等操作。"
                 ))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Label(
                     L10n.text(
                         "onboarding.permissions_detail",
@@ -272,7 +275,25 @@ struct OnboardingView: View {
                     fallback: "设置中还可以调整菜单、监控目录、自定义 CLI 和文件模板。"
                 ))
                     .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+}
+
+/// 每一步的小标题，和主窗口的功能行共用同一枚圆角彩色图标。
+private struct StepHeading: View {
+    let icon: String
+    let tint: Color
+    let title: String
+
+    var body: some View {
+        HStack(spacing: AppVisualStyle.rowIconSpacing) {
+            TintIcon(systemImage: icon, tint: tint, size: 30)
+            Text(title)
+                .font(.title3.weight(.semibold))
+        }
+        .padding(.bottom, 2)
+        .accessibilityElement(children: .combine)
     }
 }

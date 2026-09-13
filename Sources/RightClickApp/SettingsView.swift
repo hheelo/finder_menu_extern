@@ -11,6 +11,14 @@ struct SettingsView: View {
     @FocusState var focusedControl: SettingsFocus?
     @ScaledMetric(relativeTo: .body) var templateTitleWidth = 110
     @ScaledMetric(relativeTo: .body) var templateEncodingWidth = 150
+    @ScaledMetric(relativeTo: .body) var menuActionRowHeight = 24
+
+    /// 菜单项列表在贴合内容与不撑破设置窗口之间取折中：行数少时正好收满，
+    /// 超过上限后交给列表自己滚动。
+    var menuActionListHeight: CGFloat {
+        let rows = max(model.configuredMenuActions.count, 1)
+        return min(CGFloat(rows) * menuActionRowHeight + 12, menuActionRowHeight * 11)
+    }
 
     var body: some View {
         ZStack {

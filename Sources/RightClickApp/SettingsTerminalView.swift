@@ -41,19 +41,17 @@ extension SettingsView {
                     Text(behavior.title).tag(behavior)
                 }
             }
-            Text(L10n.text(
-                "settings.terminal_help",
-                fallback: "“在终端中打开”与“运行 AI CLI”都使用默认终端。选自动时优先 iTerm2；未安装的终端回退到 Terminal。Warp 与 Ghostty 当前只支持打开目录。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         } header: {
             SettingsSectionHeader(
                 title: L10n.text("settings.terminal", fallback: "终端"),
                 systemImage: "terminal"
             )
+        } footer: {
+            SettingsFootnote(L10n.text(
+                "settings.terminal_help",
+                fallback: "“在终端中打开”与“运行 AI CLI”都使用默认终端。选自动时优先 iTerm2；未安装的终端回退到 Terminal。Warp 与 Ghostty 当前只支持打开目录。"
+            ))
         }
-
     }
 
     @ViewBuilder
@@ -134,19 +132,17 @@ extension SettingsView {
             Button(L10n.text("button.add_cli", fallback: "添加 CLI 配置")) {
                 model.addCLIProfile()
             }
-            Text(L10n.text(
-                "settings.cli_security_help",
-                fallback: "可填写 PATH 中的命令名或可执行文件的绝对路径。深链只携带配置 ID；命令与参数保存在权限为 0600 的本机配置文件中。每个参数单独填写，不解析整行 shell 命令。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         } header: {
             SettingsSectionHeader(
                 title: L10n.text("settings.cli_title", fallback: "自定义 AI CLI"),
                 systemImage: "chevron.left.forwardslash.chevron.right"
             )
+        } footer: {
+            SettingsFootnote(L10n.text(
+                "settings.cli_security_help",
+                fallback: "可填写 PATH 中的命令名或可执行文件的绝对路径。深链只携带配置 ID；命令与参数保存在权限为 0600 的本机配置文件中。每个参数单独填写，不解析整行 shell 命令。"
+            ))
         }
-
     }
 
     @ViewBuilder

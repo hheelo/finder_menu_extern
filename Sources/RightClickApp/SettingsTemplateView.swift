@@ -32,19 +32,17 @@ extension SettingsView {
                 ))
                     .foregroundStyle(.secondary)
             }
-            Text(L10n.text(
-                "settings.templates_help",
-                fallback: "把文件放入 ~/Library/Application Support/RightClick/Templates/，刷新后会按原文件名出现在 Finder 的“新建文件”菜单中。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         } header: {
             SettingsSectionHeader(
                 title: L10n.text("settings.templates", fallback: "自定义文件模板"),
                 systemImage: "folder.badge.plus"
             )
+        } footer: {
+            SettingsFootnote(L10n.text(
+                "settings.templates_help",
+                fallback: "把文件放入 ~/Library/Application Support/RightClick/Templates/，刷新后会按原文件名出现在 Finder 的“新建文件”菜单中。"
+            ))
         }
-
     }
 
     @ViewBuilder
@@ -86,12 +84,6 @@ extension SettingsView {
                     }
                 }
             }
-            Text(L10n.text(
-                "settings.builtin_templates_help",
-                fallback: "文件名留空时使用内置默认值；非法文件名和未知编码会被安全忽略。"
-            ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         } header: {
             SettingsSectionHeader(
                 title: L10n.text(
@@ -100,8 +92,12 @@ extension SettingsView {
                 ),
                 systemImage: "doc.on.doc"
             )
+        } footer: {
+            SettingsFootnote(L10n.text(
+                "settings.builtin_templates_help",
+                fallback: "文件名留空时使用内置默认值；非法文件名和未知编码会被安全忽略。"
+            ))
         }
-
     }
 
     func templateFilenameField(

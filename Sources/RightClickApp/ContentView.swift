@@ -11,16 +11,17 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: AppVisualStyle.sectionSpacing) {
                 appHeader
+                extensionBanner
                 featurePanel
                 statusPanel
                 errorHistory
             }
-            .frame(maxWidth: 660)
+            .frame(maxWidth: 640)
             .padding(.horizontal, 28)
-            .padding(.top, 24)
-            .padding(.bottom, 36)
+            .padding(.top, 20)
+            .padding(.bottom, 32)
             .frame(maxWidth: .infinity)
         }
         .background(AppSurfaceBackground())
@@ -45,104 +46,157 @@ struct ContentView: View {
     }
 
     private var appHeader: some View {
-        HStack(alignment: .top, spacing: 18) {
-            AppIconMark(size: 60)
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(alignment: .center, spacing: 16) {
+            AppIconMark(size: 64)
+            VStack(alignment: .leading, spacing: 4) {
                 Text("RightClick")
-                    .font(.system(size: 24, weight: .semibold))
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(L10n.text(
-                        "home.subtitle",
-                        fallback: "给 Finder 右键菜单加上开发者常用操作"
-                    ))
-                    if let version = AppVersion.current {
-                        Text(version.displayString)
-                            .font(.caption.monospacedDigit().weight(.medium))
-                            .textSelection(.enabled)
-                            .accessibilityLabel(version.accessibilityLabel)
-                    }
+                    .font(.system(size: 26, weight: .semibold))
+                Text(L10n.text(
+                    "home.subtitle",
+                    fallback: "给 Finder 右键菜单加上开发者常用操作"
+                ))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let version = AppVersion.current {
+                    Text(version.displayString)
+                        .font(.caption.monospacedDigit().weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background {
+                            Capsule(style: .continuous).fill(.quaternary)
+                        }
+                        .padding(.top, 3)
+                        .accessibilityLabel(version.accessibilityLabel)
                 }
-                .font(.callout)
-                .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 24)
-            VStack(alignment: .trailing, spacing: 9) {
-                Label(
-                    model.extensionEnabled
-                        ? L10n.text("home.extension_enabled", fallback: "Finder 扩展已启用")
-                        : L10n.text(
-                            "home.extension_disabled_short",
-                            fallback: "Finder 扩展未启用"
-                        ),
-                    systemImage: model.extensionEnabled
-                        ? "checkmark.circle.fill"
-                        : "exclamationmark.circle.fill"
-                )
-                .accessibilityIdentifier("rightclick.main.extension-status")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(model.extensionEnabled ? .green : .orange)
+            Spacer(minLength: 0)
+        }
+    }
 
-                Button {
-                    model.openExtensionSettings()
-                } label: {
-                    Text(model.extensionEnabled
-                        ? L10n.text("button.manage_extension", fallback: "管理扩展")
-                        : L10n.text("button.enable_extension", fallback: "启用 Finder 扩展"))
+    /// 扩展开关是这个 App 唯一的必做前置条件，独立成一条通知横幅：
+    /// 未启用时用醒目按钮把用户直接送到系统设置，已启用时退回中性样式。
+    private var extensionBanner: some View {
+        let enabled = model.extensionEnabled
+
+        return VisualPanel(padding: 0) {
+            PanelRow {
+                HStack(spacing: AppVisualStyle.rowIconSpacing) {
+                    Image(systemName: enabled
+                        ? "checkmark.circle.fill"
+                        : "exclamationmark.triangle.fill")
+                        .font(.system(size: 22))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(enabled ? Color.green : Color.orange)
+                        .frame(width: AppVisualStyle.rowIconSize)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(enabled
+                            ? L10n.text(
+                                "home.extension_enabled",
+                                fallback: "Finder 扩展已启用"
+                            )
+                            : L10n.text(
+                                "home.extension_disabled_short",
+                                fallback: "Finder 扩展未启用"
+                            ))
+                            .font(.body.weight(.medium))
+                            .accessibilityIdentifier(
+                                "rightclick.main.extension-status"
+                            )
+                        Text(enabled
+                            ? L10n.text(
+                                "home.extension_enabled_detail",
+                                fallback: "在 Finder 中右键文件或文件夹即可使用。"
+                            )
+                            : L10n.text(
+                                "home.extension_disabled_detail",
+                                fallback: "在系统设置中打开扩展后，右键菜单才会出现。"
+                            ))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 12)
+
+                    extensionButton(enabled: enabled)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
-                .accessibilityIdentifier("rightclick.main.extension-settings")
             }
         }
     }
 
-    private var featurePanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text("home.features", fallback: "主要功能"))
-                .font(.headline)
+    @ViewBuilder
+    private func extensionButton(enabled: Bool) -> some View {
+        let title = enabled
+            ? L10n.text("button.manage_extension", fallback: "管理扩展")
+            : L10n.text("button.enable_extension", fallback: "启用 Finder 扩展")
+        let action = { model.openExtensionSettings() }
 
-            VisualPanel(padding: 0) {
-                VStack(spacing: 0) {
-                    FeatureSummary(
-                        icon: "doc.on.doc",
-                        tint: .blue,
-                        title: L10n.text("home.feature.copy_title", fallback: "复制"),
-                        detail: L10n.text(
-                            "home.feature.copy_detail",
-                            fallback: "文件路径、文件名；支持多选"
-                        )
+        if enabled {
+            Button(title, action: action)
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+                .accessibilityIdentifier("rightclick.main.extension-settings")
+        } else {
+            Button(title, action: action)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+                .accessibilityIdentifier("rightclick.main.extension-settings")
+        }
+    }
+
+    private var featurePanel: some View {
+        SectionBox(L10n.text("home.features", fallback: "主要功能")) {
+            VStack(spacing: 0) {
+                FeatureSummary(
+                    icon: "doc.on.doc",
+                    tint: .blue,
+                    title: L10n.text("home.feature.copy_title", fallback: "复制"),
+                    detail: L10n.text(
+                        "home.feature.copy_detail",
+                        fallback: "文件路径、文件名；支持多选"
                     )
-                    Divider().padding(.leading, 60)
-                    FeatureSummary(
-                        icon: "rectangle.and.hand.point.up.left",
-                        tint: .purple,
-                        title: L10n.text("home.feature.open_title", fallback: "打开"),
-                        detail: L10n.text(
-                            "home.feature.open_detail",
-                            fallback: "VS Code、ChatGPT 与更多编辑器"
-                        )
+                )
+                PanelDivider()
+                FeatureSummary(
+                    icon: "rectangle.and.hand.point.up.left",
+                    tint: .purple,
+                    title: L10n.text("home.feature.open_title", fallback: "打开"),
+                    detail: L10n.text(
+                        "home.feature.open_detail",
+                        fallback: "VS Code、ChatGPT 与更多编辑器"
                     )
-                    Divider().padding(.leading, 60)
-                    FeatureSummary(
-                        icon: "terminal",
-                        tint: .teal,
-                        title: L10n.text("home.feature.terminal_title", fallback: "终端"),
-                        detail: L10n.text(
-                            "home.feature.terminal_detail",
-                            fallback: "打开终端或运行 AI CLI"
-                        )
+                )
+                PanelDivider()
+                FeatureSummary(
+                    icon: "terminal",
+                    tint: .teal,
+                    title: L10n.text(
+                        "home.feature.terminal_title",
+                        fallback: "终端"
+                    ),
+                    detail: L10n.text(
+                        "home.feature.terminal_detail",
+                        fallback: "打开终端或运行 AI CLI"
                     )
-                    Divider().padding(.leading, 60)
-                    FeatureSummary(
-                        icon: "doc.badge.plus",
-                        tint: .orange,
-                        title: L10n.text("home.feature.create_title", fallback: "新建"),
-                        detail: L10n.text(
-                            "home.feature.create_detail",
-                            fallback: "内置与自定义模板、文件夹、剪贴板文本"
-                        )
+                )
+                PanelDivider()
+                FeatureSummary(
+                    icon: "doc.badge.plus",
+                    tint: .orange,
+                    title: L10n.text(
+                        "home.feature.create_title",
+                        fallback: "新建"
+                    ),
+                    detail: L10n.text(
+                        "home.feature.create_detail",
+                        fallback: "内置与自定义模板、文件夹、剪贴板文本"
                     )
-                }
+                )
             }
         }
     }
@@ -150,30 +204,28 @@ struct ContentView: View {
     private var statusPanel: some View {
         let statusTint: Color = diagnosticAttentionCount == 0 ? .green : .orange
 
-        return VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text("settings.tab.diagnostics", fallback: "诊断"))
-                .font(.headline)
-
-            VisualPanel(padding: 0) {
-                HStack(spacing: 14) {
+        return SectionBox(
+            L10n.text("settings.tab.diagnostics", fallback: "诊断")
+        ) {
+            PanelRow {
+                HStack(spacing: AppVisualStyle.rowIconSpacing) {
                     TintIcon(
                         systemImage: diagnosticAttentionCount == 0
                             ? "checkmark"
                             : "exclamationmark",
-                        tint: statusTint,
-                        size: 36
+                        tint: statusTint
                     )
-                    VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(diagnosticSummary)
                             .font(.body.weight(.medium))
                         Label(model.lastStatus, systemImage: "clock.arrow.circlepath")
                             .accessibilityIdentifier("rightclick.main.last-status")
-                            .font(.caption)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 12)
                     if model.isRefreshingDiagnostics {
                         ProgressView()
                             .controlSize(.small)
@@ -192,8 +244,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
             }
         }
     }
@@ -209,6 +259,7 @@ struct ContentView: View {
             }
             .keyboardShortcut(",", modifiers: .command)
             .accessibilityIdentifier("rightclick.main.settings")
+            .help(L10n.text("button.settings", fallback: "设置…"))
 
             Button {
                 updater.checkForUpdates()
@@ -239,13 +290,16 @@ struct ContentView: View {
     @ViewBuilder
     private var errorHistory: some View {
         if !model.errorHistory.isEmpty {
-            VisualPanel {
+            SectionBox(
+                L10n.format(
+                    "home.errors",
+                    fallback: "最近错误（%lld）",
+                    Int64(model.errorHistory.count)
+                ),
+                padding: AppVisualStyle.cardPadding
+            ) {
                 DisclosureGroup(
-                    L10n.format(
-                        "home.errors",
-                        fallback: "最近错误（%lld）",
-                        Int64(model.errorHistory.count)
-                    ),
+                    L10n.text("home.errors_disclosure", fallback: "查看详情"),
                     isExpanded: $errorsExpanded
                 ) {
                     ScrollView {
@@ -297,21 +351,20 @@ private struct FeatureSummary: View {
     let detail: String
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            TintIcon(systemImage: icon, tint: tint, size: 30)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.body.weight(.medium))
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        PanelRow {
+            HStack(alignment: .center, spacing: AppVisualStyle.rowIconSpacing) {
+                TintIcon(systemImage: icon, tint: tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body.weight(.medium))
+                    Text(detail)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 }
