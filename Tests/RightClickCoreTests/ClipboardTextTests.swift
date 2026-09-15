@@ -48,6 +48,18 @@ struct ClipboardTextTests {
         #expect(ClipboardSeparator.allCases.allSatisfy { !$0.title.isEmpty })
     }
 
+    @Test
+    func largeSelectionPreservesEveryPathAndItsOrder() {
+        let manyURLs = (0..<5_000).map {
+            URL(fileURLWithPath: "/tmp/batch/item-\($0).txt")
+        }
+        let copied = ClipboardText.paths(for: manyURLs, separator: .newline)
+        let lines = copied.split(separator: "\n").map(String.init)
+
+        #expect(lines.count == manyURLs.count)
+        #expect(lines == manyURLs.map(\.path))
+    }
+
     /// 非复制动作必须返回 nil，否则扩展会把空串塞进剪贴板。
     @Test
     func mapsOnlyClipboardActionsToText() {

@@ -32,6 +32,30 @@ struct FinderActionDispatcherTests {
         #expect(plan.operation == .copy(selected.map(\.path).joined(separator: ", ")))
     }
 
+    @Test(arguments: [MenuPlacement.container, .sidebar])
+    func backgroundCopyUsesTargetInsteadOfStaleSelection(
+        _ placement: MenuPlacement
+    ) throws {
+        let stale = URL(fileURLWithPath: "/tmp/stale-selection.txt")
+        let target = URL(fileURLWithPath: "/tmp/target folder", isDirectory: true)
+        let context = FinderSelectionResolver.context(
+            placement: placement,
+            selectedURLs: [stale],
+            targetedURL: target
+        )
+        let plan = try FinderActionDispatcher.plan(
+            for: .action(RightClickMenuItemPayload(
+                action: .copyPath,
+                placement: placement
+            )),
+            context: context,
+            configuration: .default,
+            authenticationToken: nil
+        )
+
+        #expect(plan.operation == .copy(target.path))
+    }
+
     @Test(arguments: [
         RightClickAction.openInVSCode,
         .openInCodex,
@@ -209,6 +233,31 @@ struct FinderActionDispatcherTests {
                 authenticationToken: token
             )
         }
+    }
+
+    @Test
+    func openPlanAcceptsTheMaximumNumberOfTargets() throws {
+        let urls = (0..<OpenInvocation.maximumTargets).map {
+            URL(fileURLWithPath: "/tmp/item-\($0)")
+        }
+        let plan = try FinderActionDispatcher.plan(
+            for: .action(RightClickMenuItemPayload(
+                action: .openInVSCode,
+                placement: .items
+            )),
+            context: SelectionContext(selectedURLs: urls, targetedURL: nil),
+            configuration: .default,
+            authenticationToken: token
+        )
+
+        let url = try hostURL(from: plan)
+        let queryItems = try #require(
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
+        )
+        #expect(
+            queryItems.filter { $0.name == "path" }.compactMap(\.value)
+                == urls.map(\.path)
+        )
     }
 
     private func hostURL(from plan: FinderActionPlan) throws -> URL {

@@ -257,6 +257,33 @@ struct RightClickMenuTests {
     }
 
     @Test
+    func disablingAnEntireGroupRemovesItsSubmenuWithoutExtraSeparators() {
+        let context = SelectionContext(selectedURLs: [], targetedURL: folder)
+        let copyOptions: [RightClickAction] = [
+            .copyRelativePath, .copyFileURL, .copyShellPath, .copyParentPath
+        ]
+        let configuration = MenuConfiguration(
+            disabledActions: Set(copyOptions.map(\.configurationID))
+        )
+        let nodes = RightClickMenu.nodes(
+            placement: .container,
+            context: context,
+            configuration: configuration
+        )
+
+        #expect(submenuItems(named: moreCopyTitle, in: nodes) == nil)
+        let separator = RightClickMenuNode.separator
+        let hasAdjacentSeparators = zip(nodes, nodes.dropFirst())
+            .contains { pair in
+                pair.0 == separator && pair.1 == separator
+            }
+        #expect(nodes.first != separator)
+        #expect(nodes.last != separator)
+        #expect(!hasAdjacentSeparators)
+        #expect(nodes.contains(.action(.copyPath, isEnabled: true)))
+    }
+
+    @Test
     func dynamicIdentifiersDoNotReorderTheirParentSubmenus() {
         let context = SelectionContext(selectedURLs: [], targetedURL: folder)
         let profile = CLIProfile(
