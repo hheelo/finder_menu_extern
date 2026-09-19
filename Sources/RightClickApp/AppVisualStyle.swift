@@ -4,7 +4,7 @@ import SwiftUI
 /// 界面统一的尺寸与配色。数值对齐系统设置里的分组卡片，让宿主窗口、设置窗口
 /// 和首次向导共用同一套节奏。
 enum AppVisualStyle {
-    static let cornerRadius: CGFloat = 12
+    static let cornerRadius: CGFloat = 14
     static let cardPadding: CGFloat = 16
     static let sectionSpacing: CGFloat = 22
     static let rowHorizontalPadding: CGFloat = 14
@@ -23,6 +23,14 @@ enum AppVisualStyle {
 struct AppSurfaceBackground: View {
     var body: some View {
         Color(nsColor: .windowBackgroundColor)
+            .overlay(alignment: .top) {
+                LinearGradient(
+                    colors: [Color.accentColor.opacity(0.045), .clear],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(height: 260)
+            }
             .ignoresSafeArea()
     }
 }
@@ -44,13 +52,16 @@ struct AppIconMark: View {
 /// 系统设置风格的分组卡片：填充用 control 背景色，边框是一根发丝线。
 struct VisualPanel<Content: View>: View {
     private let padding: CGFloat
+    private let tint: Color?
     private let content: Content
 
     init(
         padding: CGFloat = AppVisualStyle.cardPadding,
+        tint: Color? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.padding = padding
+        self.tint = tint
         self.content = content()
     }
 
@@ -65,11 +76,16 @@ struct VisualPanel<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background { shape.fill(AppVisualStyle.subtleFill) }
+            .background {
+                shape.fill(AppVisualStyle.subtleFill)
+                if let tint {
+                    shape.fill(tint.opacity(0.055))
+                }
+            }
             // strokeBorder 向内描边，1pt 的 stroke 会有一半溢出到填充之外。
             .overlay {
                 shape.strokeBorder(
-                    AppVisualStyle.panelStroke,
+                    tint?.opacity(0.24) ?? AppVisualStyle.panelStroke.opacity(0.7),
                     lineWidth: AppVisualStyle.hairline
                 )
             }

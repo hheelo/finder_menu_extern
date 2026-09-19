@@ -20,7 +20,7 @@ struct ContentView: View {
             }
             .frame(maxWidth: 640)
             .padding(.horizontal, 28)
-            .padding(.top, 20)
+            .padding(.top, 28)
             .padding(.bottom, 32)
             .frame(maxWidth: .infinity)
         }
@@ -81,7 +81,10 @@ struct ContentView: View {
     private var extensionBanner: some View {
         let enabled = model.extensionEnabled
 
-        return VisualPanel(padding: 0) {
+        return VisualPanel(
+            padding: 0,
+            tint: enabled ? .green : .orange
+        ) {
             PanelRow {
                 HStack(spacing: AppVisualStyle.rowIconSpacing) {
                     Image(systemName: enabled
@@ -150,8 +153,15 @@ struct ContentView: View {
     }
 
     private var featurePanel: some View {
-        SectionBox(L10n.text("home.features", fallback: "主要功能")) {
-            VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.text("home.features", fallback: "主要功能"))
+                .font(.headline)
+                .padding(.leading, 2)
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible())],
+                alignment: .leading,
+                spacing: 12
+            ) {
                 FeatureSummary(
                     icon: "doc.on.doc",
                     tint: .blue,
@@ -161,7 +171,6 @@ struct ContentView: View {
                         fallback: "文件路径、文件名；支持多选"
                     )
                 )
-                PanelDivider()
                 FeatureSummary(
                     icon: "rectangle.and.hand.point.up.left",
                     tint: .purple,
@@ -171,7 +180,6 @@ struct ContentView: View {
                         fallback: "VS Code、ChatGPT 与更多编辑器"
                     )
                 )
-                PanelDivider()
                 FeatureSummary(
                     icon: "terminal",
                     tint: .teal,
@@ -184,7 +192,6 @@ struct ContentView: View {
                         fallback: "打开终端或运行 AI CLI"
                     )
                 )
-                PanelDivider()
                 FeatureSummary(
                     icon: "doc.badge.plus",
                     tint: .orange,
@@ -351,10 +358,10 @@ private struct FeatureSummary: View {
     let detail: String
 
     var body: some View {
-        PanelRow {
-            HStack(alignment: .center, spacing: AppVisualStyle.rowIconSpacing) {
-                TintIcon(systemImage: icon, tint: tint)
-                VStack(alignment: .leading, spacing: 2) {
+        VisualPanel(padding: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                TintIcon(systemImage: icon, tint: tint, size: 34)
+                VStack(alignment: .leading, spacing: 5) {
                     Text(title)
                         .font(.body.weight(.medium))
                     Text(detail)
@@ -364,6 +371,7 @@ private struct FeatureSummary: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
         }
         .accessibilityElement(children: .combine)
     }
