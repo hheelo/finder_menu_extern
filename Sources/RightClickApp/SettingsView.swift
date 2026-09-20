@@ -74,6 +74,22 @@ struct SettingsView: View {
             minHeight: 500,
             idealHeight: 660
         )
+        .safeAreaInset(edge: .top) {
+            if model.menuConfigurationSaveFailed {
+                HStack {
+                    Label(L10n.text(
+                        "settings.unsaved_changes",
+                        fallback: "设置尚未保存，Finder 仍使用上次保存的配置。"
+                    ), systemImage: "exclamationmark.triangle")
+                    Spacer()
+                    Button(L10n.text("button.retry_save", fallback: "重试保存")) {
+                        model.persistMenuConfigurationImmediately()
+                    }
+                }
+                .padding()
+                .background(.regularMaterial)
+            }
+        }
         .finderRestartConfirmation(isPresented: $confirmsFinderRestart) {
             model.restartFinder()
         }

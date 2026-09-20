@@ -1,6 +1,8 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "button.retry_save" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Retry Save"}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "重试保存"}}}},
+    "settings.unsaved_changes" : {"localizations": {"en": {"stringUnit": {"state": "translated", "value": "Settings have not been saved. Finder is still using the last saved configuration."}}, "zh-Hans": {"stringUnit": {"state": "translated", "value": "设置尚未保存，Finder 仍使用上次保存的配置。"}}}},
     "settings.security" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Permissions & Security" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "权限与安全" } } } },
     "menu.show_rightclick" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Show RightClick" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示 RightClick" } } } },
     "settings.application" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Application" } }, "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "应用" } } } },

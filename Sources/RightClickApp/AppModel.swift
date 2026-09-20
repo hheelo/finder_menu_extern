@@ -48,6 +48,8 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var diagnostics: [DiagnosticItem] = []
     @Published public private(set) var isRefreshingDiagnostics = false
 
+    @Published public private(set) var menuConfigurationSaveFailed = false
+
     public var configurationRecoveryRequired: Bool {
         menuConfigurationStore.requiresConfigurationRecovery
     }
@@ -168,6 +170,10 @@ public final class AppModel: ObservableObject {
             menuConfiguration: menuConfiguration
         )
 
+        menuConfigurationSaveFailed = configurationStore.persistenceFailed
+        configurationStore.onPersistenceFailureChange = { [weak self] failed in
+            self?.menuConfigurationSaveFailed = failed
+        }
         configurationStore.onChange = { [weak self] configuration in
             self?.menuConfiguration = configuration
         }

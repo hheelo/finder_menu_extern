@@ -19,7 +19,14 @@ final class DeepLinkCoordinator {
     private let customTemplatesDirectory: @MainActor () -> URL
     private let clipboardText: @MainActor () -> String?
     private let revealCreatedItem: @MainActor (URL) -> Void
-    private let fileCreator: FileCreator
+    typealias ItemCreator = @Sendable (
+        FileCreationInvocation, MenuConfiguration, URL, String?
+    ) throws -> URL
+    private let createItem: ItemCreator
+    // Terminal uses global focus and keyboard events, so serialize all launch routes,
+    // including launches into different terminal apps.
+    private var terminalLaunchTail: Task<Void, Never>?
+    private var terminalLaunchID = UUID()
     private let recordAction: @MainActor (
         LocalActionName,
         LocalActionResult,
@@ -43,7 +50,7 @@ final class DeepLinkCoordinator {
         revealCreatedItem: @escaping @MainActor (URL) -> Void = {
             NSWorkspace.shared.activateFileViewerSelecting([$0])
         },
-        fileCreator: FileCreator = FileCreator(),
+        createItem: @escaping ItemCreator = DeepLinkCoordinator.createItem,
         recordAction: @escaping @MainActor (
             LocalActionName,
             LocalActionResult,
@@ -59,7 +66,7 @@ final class DeepLinkCoordinator {
         self.customTemplatesDirectory = customTemplatesDirectory
         self.clipboardText = clipboardText
         self.revealCreatedItem = revealCreatedItem
-        self.fileCreator = fileCreator
+        self.createItem = createItem
         self.recordAction = recordAction
         self.applicationURL = applicationURL
     }
@@ -177,56 +184,67 @@ final class DeepLinkCoordinator {
             "status.creating_item",
             fallback: "正在新建项目…"
         )))
-        do {
-            let createdURL: URL
-            switch invocation.request {
-            case let .builtInTemplate(template):
-                createdURL = try fileCreator.create(
-                    template,
-                    override: menuConfiguration().templateOverride(
-                        for: template
-                    ),
-                    in: invocation.directory
-                )
-            case .folder:
-                createdURL = try fileCreator.createDirectory(
-                    in: invocation.directory
-                )
-            case .clipboardText:
-                guard let text = clipboardText(), !text.isEmpty else {
-                    throw FinderActionError.invalidTarget
-                }
-                createdURL = try fileCreator.create(
-                    contents: Data(text.utf8),
-                    preferredFilename: "Untitled.txt",
-                    in: invocation.directory
-                )
-            case let .customTemplate(menuSlot):
-                guard let template = menuConfiguration()
-                    .customTemplate(forSlot: menuSlot) else {
-                    throw FinderActionError.configurationUnavailable
-                }
-                let source = customTemplatesDirectory()
-                    .appendingPathComponent(template.filename)
-                guard let contents = try TemplateMirror()
-                    .loadContents(ofTemplateAt: source) else {
-                    throw FinderActionError.configurationUnavailable
-                }
-                createdURL = try fileCreator.create(
-                    contents: contents,
-                    preferredFilename: template.filename,
-                    in: invocation.directory
-                )
+        // Capture UI-owned values once; background work must not reread mutable settings
+        // or the clipboard after another Finder request arrives.
+        let configuration = menuConfiguration()
+        let templatesDirectory = customTemplatesDirectory()
+        let text = invocation.request == .clipboardText ? clipboardText() : nil
+        let createItem = createItem
+        Task {
+            do {
+                let createdURL = try await Task.detached(priority: .userInitiated) {
+                    try createItem(invocation, configuration, templatesDirectory, text)
+                }.value
+                recordAction(actionName, .succeeded, nil)
+                revealCreatedItem(createdURL)
+                emit(.status(L10n.text(
+                    "status.created_item",
+                    fallback: "已新建项目"
+                )))
+            } catch {
+                recordAction(actionName, .failed, actionErrorCategory(error))
+                reportFailure(error.localizedDescription, emit: emit)
             }
-            recordAction(actionName, .succeeded, nil)
-            revealCreatedItem(createdURL)
-            emit(.status(L10n.text(
-                "status.created_item",
-                fallback: "已新建项目"
-            )))
-        } catch {
-            recordAction(actionName, .failed, actionErrorCategory(error))
-            reportFailure(error.localizedDescription, emit: emit)
+        }
+    }
+
+    nonisolated static func createItem(
+        _ invocation: FileCreationInvocation,
+        configuration: MenuConfiguration,
+        templatesDirectory: URL,
+        clipboardText: String?
+    ) throws -> URL {
+        let creator = FileCreator()
+        switch invocation.request {
+        case let .builtInTemplate(template):
+            return try creator.create(
+                template,
+                override: configuration.templateOverride(for: template),
+                in: invocation.directory
+            )
+        case .folder:
+            return try creator.createDirectory(in: invocation.directory)
+        case .clipboardText:
+            guard let text = clipboardText, !text.isEmpty else {
+                throw FinderActionError.invalidTarget
+            }
+            return try creator.create(
+                contents: Data(text.utf8),
+                preferredFilename: "Untitled.txt",
+                in: invocation.directory
+            )
+        case let .customTemplate(menuSlot):
+            guard let template = configuration.customTemplate(forSlot: menuSlot),
+                  let contents = try TemplateMirror().loadContents(
+                    ofTemplateAt: templatesDirectory.appendingPathComponent(template.filename)
+                  ) else {
+                throw FinderActionError.configurationUnavailable
+            }
+            return try creator.create(
+                contents: contents,
+                preferredFilename: template.filename,
+                in: invocation.directory
+            )
         }
     }
 
@@ -433,8 +451,15 @@ final class DeepLinkCoordinator {
         emit: @escaping @MainActor (DeepLinkEvent) -> Void,
         operation: @escaping @MainActor () async throws -> Void
     ) {
-        emit(.status(startingTitle))
-        Task {
+        let previous = terminalLaunchTail
+        let launchID = UUID()
+        terminalLaunchID = launchID
+        terminalLaunchTail = Task {
+            await previous?.value
+            defer {
+                if terminalLaunchID == launchID { terminalLaunchTail = nil }
+            }
+            emit(.status(startingTitle))
             do {
                 try await operation()
                 recordAction(actionName, .succeeded, nil)

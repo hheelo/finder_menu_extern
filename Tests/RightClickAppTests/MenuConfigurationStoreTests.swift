@@ -288,6 +288,76 @@ struct MenuConfigurationStoreTests {
         #expect(saves.count == 1)
     }
 
+    @Test(arguments: [true, false])
+    func failedSaveRetainsLatestChangesUntilRetrySucceeds(immediate: Bool) {
+        var attempts = 0
+        var saved: MenuConfiguration?
+        var failureStates: [Bool] = []
+        let store = makeStore(persistenceDelay: .seconds(60)) { configuration, _ in
+            attempts += 1
+            if attempts == 1 { throw CocoaError(.fileWriteNoPermission) }
+            saved = configuration
+        }
+        store.onPersistenceFailureChange = { failureStates.append($0) }
+        if immediate {
+            store.updateImmediately { $0.collapseIntoSubmenu = true }
+        } else {
+            var updated = store.configuration
+            updated.collapseIntoSubmenu = true
+            store.replace(with: updated)
+            store.flushPendingPersist()
+        }
+        #expect(store.hasUnsavedChanges)
+        #expect(store.persistenceFailed)
+        #expect(saved == nil)
+
+        // A newer edit replaces the failed snapshot, including when closing settings.
+        var latest = store.configuration
+        latest.copySeparator = ClipboardSeparator.comma.rawValue
+        store.replace(with: latest)
+        store.flushPendingPersist()
+        #expect(saved == latest)
+        #expect(!store.hasUnsavedChanges)
+        #expect(!store.persistenceFailed)
+        #expect(failureStates == [true, false])
+        store.flushPendingPersist()
+        #expect(attempts == 2)
+    }
+
+    @Test
+    func retryWithoutAnotherEditPersistsFailedImmediateSave() {
+        var attempts = 0
+        let store = makeStore(persistenceDelay: .seconds(60)) { _, _ in
+            attempts += 1
+            if attempts == 1 { throw CocoaError(.fileWriteNoPermission) }
+        }
+        store.updateImmediately { $0.collapseIntoSubmenu = true }
+        store.persistImmediately()
+        #expect(attempts == 2)
+        #expect(!store.hasUnsavedChanges)
+        #expect(!store.persistenceFailed)
+    }
+
+    @Test
+    func initializationSaveFailureCanBeRetried() {
+        var attempts = 0
+        let store = MenuConfigurationStore(
+            configurationURL: URL(fileURLWithPath: "/tmp/menu.json"),
+            customTemplatesDirectory: URL(fileURLWithPath: "/tmp/Templates"),
+            terminalProfileID: TerminalProfile.ghostty.rawValue,
+            load: { _ in .loaded(.default) },
+            save: { _, _ in
+                attempts += 1
+                if attempts == 1 { throw CocoaError(.fileWriteNoPermission) }
+            }
+        )
+        #expect(store.persistenceFailed)
+        store.flushPendingPersist()
+        #expect(attempts == 2)
+        #expect(!store.hasUnsavedChanges)
+        #expect(!store.persistenceFailed)
+    }
+
     private func makeStore(
         persistenceDelay: Duration,
         save: @escaping MenuConfigurationStore.Saver

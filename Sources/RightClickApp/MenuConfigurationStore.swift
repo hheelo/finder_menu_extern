@@ -24,6 +24,11 @@ final class MenuConfigurationStore {
     private(set) var configuration: MenuConfiguration
     private(set) var recoveryFailure: MenuConfigurationLoadFailure?
     var onChange: ((MenuConfiguration) -> Void)?
+    var onPersistenceFailureChange: ((Bool) -> Void)?
+    private(set) var hasUnsavedChanges = false
+    private(set) var persistenceFailed = false {
+        didSet { onPersistenceFailureChange?(persistenceFailed) }
+    }
     var onStatus: ((String) -> Void)?
     var onFailure: ((String) -> Void)?
 
@@ -109,6 +114,8 @@ final class MenuConfigurationStore {
             do {
                 try save(initial, configurationURL)
             } catch {
+                hasUnsavedChanges = true
+                persistenceFailed = true
                 deferredInitializationFailure = Self.saveFailureMessage(error)
             }
         }
@@ -119,6 +126,7 @@ final class MenuConfigurationStore {
     func replace(with updated: MenuConfiguration) {
         guard updated != configuration else { return }
         configuration = updated
+        hasUnsavedChanges = true
         onChange?(updated)
         schedulePersist()
     }
@@ -128,6 +136,7 @@ final class MenuConfigurationStore {
         body(&updated)
         guard updated != configuration else { return }
         configuration = updated
+        hasUnsavedChanges = true
         onChange?(updated)
         pendingPersist?.cancel()
         pendingPersist = nil
@@ -168,6 +177,8 @@ final class MenuConfigurationStore {
         try save(imported, configurationURL)
         pendingPersist?.cancel()
         pendingPersist = nil
+        hasUnsavedChanges = false
+        persistenceFailed = false
         recoveryFailure = nil
         configuration = imported
         onChange?(imported)
@@ -180,6 +191,10 @@ final class MenuConfigurationStore {
         var reset = MenuConfiguration.default
         reset.terminalProfileID = configuration.terminalProfileID
         try save(reset, configurationURL)
+        pendingPersist?.cancel()
+        pendingPersist = nil
+        hasUnsavedChanges = false
+        persistenceFailed = false
         recoveryFailure = nil
         configuration = reset
         onChange?(reset)
@@ -242,7 +257,7 @@ final class MenuConfigurationStore {
     }
 
     private func flushPendingPersist(reportStatus: Bool) {
-        guard pendingPersist != nil else { return }
+        guard hasUnsavedChanges else { return }
         pendingPersist?.cancel()
         pendingPersist = nil
         persist(reportStatus: reportStatus)
@@ -255,6 +270,8 @@ final class MenuConfigurationStore {
         }
         do {
             try save(configuration, configurationURL)
+            hasUnsavedChanges = false
+            persistenceFailed = false
             if reportStatus {
                 onStatus?(L10n.text(
                     "status.menu_saved",
@@ -262,6 +279,7 @@ final class MenuConfigurationStore {
                 ))
             }
         } catch {
+            persistenceFailed = true
             onFailure?(Self.saveFailureMessage(error))
         }
     }
